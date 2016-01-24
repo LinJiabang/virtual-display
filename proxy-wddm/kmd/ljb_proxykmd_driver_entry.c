@@ -1,5 +1,5 @@
 /*
- * ljb_proxykmd_driver_entry.c
+ * ljb_proxykmd_driver_entry.c, adapted from WDK toaster sample code.
  *
  * Author: Lin Jiabang (lin.jiabang@gmail.com)
  *     Copyright (C) 2016  Lin Jiabang
@@ -23,6 +23,7 @@
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (INIT, DriverEntry)
+#pragma alloc_text (PAGE, LJB_PROXYKMD_Unload)
 #endif
 
 /*
@@ -101,4 +102,44 @@ DriverEntry(
 
     return STATUS_SUCCESS;
     }
+
+VOID
+LJB_PROXYKMD_Unload(
+    __in PDRIVER_OBJECT DriverObject
+    )
+/*++
+
+Routine Description:
+
+    Free all the allocated resources in DriverEntry, etc.
+
+Arguments:
+
+    DriverObject - pointer to a driver object.
+
+Return Value:
+
+    VOID.
+
+--*/
+{
+    PAGED_CODE ();
+
+    //
+    // The device object(s) should be NULL now
+    // (since we unload, all the devices objects associated with this
+    // driver must be deleted.
+    //
+    if (DriverObject->DeviceObject != NULL) {
+        ASSERTMSG("DeviceObject is not deleted ", FALSE);
+    }
+
+    //
+    // We should not be unloaded until all the devices we control
+    // have been removed from our queue.
+    //
+    KdPrint((__FUNCTION__ "\n"));
+
+    return;
+}
 
