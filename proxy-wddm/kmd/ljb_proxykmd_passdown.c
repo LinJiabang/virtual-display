@@ -66,7 +66,7 @@ LJB_PROXYKMD_PassDown (
     }
 
     IoSkipCurrentIrpStackLocation (Irp);
-    ntStatus = IoCallDriver (DeviceExtension->StackDeviceObject, Irp);
+    ntStatus = IoCallDriver (DeviceExtension->NextLowerDriver, Irp);
     IoReleaseRemoveLock(&DeviceExtension->RemoveLock, Irp);
     return ntStatus;
 }

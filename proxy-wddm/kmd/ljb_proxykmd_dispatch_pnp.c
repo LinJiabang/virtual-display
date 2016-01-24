@@ -291,6 +291,22 @@ Return Value:
 
         SET_NEW_PNP_STATE(DeviceExtension, PNP_DELETED);
 
+        if (DeviceExtension->DeviceType == DEVICE_TYPE_FDO)
+        {
+            (VOID) IoSetDeviceInterfaceState(
+                &DeviceExtension->InterfaceName,
+                FALSE
+                );
+            RtlFreeUnicodeString(&DeviceExtension->InterfaceName);
+            
+            if (DeviceExtension->FilterDeviceObject != NULL)
+            {
+                LJB_PROXYKMD_RemoveAndDetachFilter(
+                    DeviceExtension->FilterDeviceObject
+                    );
+                DeviceExtension->FilterDeviceObject = NULL;
+            }
+        }
         IoDetachDevice(DeviceExtension->NextLowerDriver);
         IoDeleteDevice(DeviceObject);
         return status;
@@ -350,7 +366,7 @@ Return Value:
             //
             RESTORE_PREVIOUS_PNP_STATE(DeviceExtension);
         }
-
+        
         status = STATUS_SUCCESS; // We must not fail this IRP.
         break;
 
