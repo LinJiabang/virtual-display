@@ -26,6 +26,8 @@
 #pragma alloc_text (PAGE, LJB_PROXYKMD_Unload)
 #endif
 
+LJB_GLOBAL_DRIVER_DATA   GlobalDriverData;
+
 /*
  * Name:  DriverEntry
  *
@@ -82,9 +84,9 @@ DriverEntry(
 
     KdPrint((__FUNCTION__ ": Built %s %s\n", __DATE__, __TIME__));
 
-    RtlZeroMemory(&gDriverData, sizeof(gDriverData));
-    InitializeListHead(&gDriverData.ClientDriverListHead);
-    InitializeListHead(&gDriverData.AdapterListHead);
+    RtlZeroMemory(&GlobalDriverData, sizeof(GlobalDriverData));
+    InitializeListHead(&GlobalDriverData.ClientInitDataListHead);
+    InitializeListHead(&GlobalDriverData.ClientAdapterListHead);
 
     for (i = 0; i <= IRP_MJ_MAXIMUM_FUNCTION; i++)
         {
@@ -103,10 +105,6 @@ DriverEntry(
     return STATUS_SUCCESS;
     }
 
-VOID
-LJB_PROXYKMD_Unload(
-    __in PDRIVER_OBJECT DriverObject
-    )
 /*++
 
 Routine Description:
@@ -122,6 +120,10 @@ Return Value:
     VOID.
 
 --*/
+VOID
+LJB_PROXYKMD_Unload(
+    __in PDRIVER_OBJECT DriverObject
+    )
 {
     PAGED_CODE ();
 
@@ -130,8 +132,9 @@ Return Value:
     // (since we unload, all the devices objects associated with this
     // driver must be deleted.
     //
-    if (DriverObject->DeviceObject != NULL) {
-        ASSERTMSG("DeviceObject is not deleted ", FALSE);
+    if (DriverObject->DeviceObject != NULL)
+    {
+        KdPrint(("DeviceObject is not deleted\n"));
     }
 
     //

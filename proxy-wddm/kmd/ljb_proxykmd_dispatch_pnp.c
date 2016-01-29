@@ -87,6 +87,28 @@ PnPMinorFunctionString (
 
 #endif
 
+static
+VOID
+LJB_PROXYKMD_DetachAndRemoveFilter(
+    __in DEVICE_OBJECT *    FilterDeviceObject
+    )
+{
+    LJB_DEVICE_EXTENSION * CONST DeviceExtension = FilterDeviceObject->DeviceExtension;
+    UNICODE_STRING          DxgkSvcName;
+
+    RtlInitUnicodeString(&DxgkSvcName, DXGK_SVC_NAME);
+    (VOID) ZwUnloadDriver(&DxgkSvcName);
+    KdPrint((" " __FUNCTION__ ": "
+        " Detach from NextLowerDriver(%p), Remove FilterDevice(%p)\n",
+        DeviceExtension->NextLowerDriver,
+        FilterDeviceObject
+        ));
+
+    if (DeviceExtension->NextLowerDriver != NULL)
+        IoDetachDevice (DeviceExtension->NextLowerDriver);
+    IoDeleteDevice(FilterDeviceObject);
+}
+    
 NTSTATUS
 FilterStartCompletionRoutine(
     PDEVICE_OBJECT   DeviceObject,
@@ -301,7 +323,7 @@ Return Value:
             
             if (DeviceExtension->FilterDeviceObject != NULL)
             {
-                LJB_PROXYKMD_RemoveAndDetachFilter(
+                LJB_PROXYKMD_DetachAndRemoveFilter(
                     DeviceExtension->FilterDeviceObject
                     );
                 DeviceExtension->FilterDeviceObject = NULL;

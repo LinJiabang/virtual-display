@@ -141,7 +141,7 @@ typedef struct _LJB_DEVICE_EXTENSION
 
     DEVICE_TYPE                         DeviceType;
     PNP_STATE                           DevicePnPState;
-    PNP_STATE                           PreviousPnpState;
+    PNP_STATE                           PreviousPnPState;
     IO_REMOVE_LOCK                      RemoveLock;
 
     PFILE_OBJECT                        DxgkFileObject;
@@ -166,6 +166,9 @@ typedef struct _LJB_GLOBAL_DRIVER_DATA
     RTL_OSVERSIONINFOW                  RtlOsVersion;
     PFN_DXGK_INITIALIZE                 DxgkInitializeWin7;
     PFN_DXGK_INITIALIZE                 DxgkInitializeWin8;
+    
+    LIST_ENTRY                          ClientInitDataListHead;
+    LIST_ENTRY                          ClientAdapterListHead;
 }   LJB_GLOBAL_DRIVER_DATA;
 
 extern LJB_GLOBAL_DRIVER_DATA   GlobalDriverData;
@@ -174,6 +177,20 @@ extern LJB_GLOBAL_DRIVER_DATA   GlobalDriverData;
  * C function declaration
  */
 _C_BEGIN
+
+DRIVER_INITIALIZE           DriverEntry;
+DRIVER_ADD_DEVICE           LJB_PROXYKMD_AddDevice;
+DRIVER_DISPATCH             LJB_PROXYKMD_DispatchPnp;
+DRIVER_DISPATCH             LJB_PROXYKMD_DispatchPower;
+DRIVER_DISPATCH             LJB_PROXYKMD_DispatchCreate;
+DRIVER_DISPATCH             LJB_PROXYKMD_DispatchClose;
+DRIVER_DISPATCH             LJB_PROXYKMD_DispatchInternalIoctl;
+DRIVER_DISPATCH             LJB_PROXYKMD_DispatchIoctl;
+DRIVER_DISPATCH             LJB_PROXYKMD_PassDown;
+DRIVER_UNLOAD               LJB_PROXYKMD_Unload;
+
+DXGK_INTIALIZE              DxgkInitializeWin7;
+DXGK_INTIALIZE              DxgkInitializeWin8;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (

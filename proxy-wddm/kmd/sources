@@ -1,0 +1,20 @@
+TARGETNAME=ljb_proxykmd
+TARGETTYPE=DRIVER
+
+INCLUDES = ..\include;
+
+MSC_WARNING_LEVEL= /W4 /WX
+
+
+TARGETLIBS= $(DDK_LIB_PATH)\aux_klib.lib
+SOURCES=											        \
+	ljb_proxykmd_add_device.c						        \
+    ljb_proxykmd_dispatch_create.c                          \
+    ljb_proxykmd_dispatch_close.c                           \
+	ljb_proxykmd_dispatch_internal_ioctl.c			        \
+    ljb_proxykmd_dispatch_ioctl.c                           \
+	ljb_proxykmd_dispatch_pnp.c						        \
+	ljb_proxykmd_dispatch_power.c					        \
+	ljb_proxykmd_driver_entry.c						        \
+    ljb_proxykmd_guid.c                                     \
+    ljb_proxykmd_passdown.c                                 \

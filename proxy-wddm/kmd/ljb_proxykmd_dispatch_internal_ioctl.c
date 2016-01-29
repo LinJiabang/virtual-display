@@ -49,7 +49,7 @@ LJB_PROXYKMD_InternalIoctlCompletion(
  * simply pass it down.
  */
 NTSTATUS
-LCI_PROXYKMD_DispatchInternalIoctl (
+LJB_PROXYKMD_DispatchInternalIoctl (
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP Irp
     )
@@ -100,7 +100,7 @@ LCI_PROXYKMD_DispatchInternalIoctl (
             KdPrint((__FUNCTION__ ": successfully get pfnDxgkInializeWin7(%p)\n",
                 GlobalDriverData.DxgkInitializeWin8
                 ));
-            *((PFN_DXGK_INITIALIZE *) UserBuffer) = &LJB_PROXYKMD_DxgkInitializeWin7;
+            //*((PFN_DXGK_INITIALIZE *) UserBuffer) = &DxgkInitializeWin7;
         }
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
         break;
@@ -116,7 +116,7 @@ LCI_PROXYKMD_DispatchInternalIoctl (
             TRUE,
             TRUE
             );
-        ntStatus = IoCallDriver(pDevExt->NextLowerDriver, Irp);
+        ntStatus = IoCallDriver(DeviceExtension->NextLowerDriver, Irp);
         if (ntStatus == STATUS_PENDING)
         {
             KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
@@ -134,7 +134,7 @@ LCI_PROXYKMD_DispatchInternalIoctl (
             KdPrint((__FUNCTION__ ": successfully get pfnDxgkInializeWin8(%p)\n",
                 GlobalDriverData.DxgkInitializeWin8
                 ));
-            *((PFN_DXGK_INITIALIZE *) Irp->UserBuffer) = &LJB_PROXYKMD_DxgkInitializeWin8;
+            //*((PFN_DXGK_INITIALIZE *) Irp->UserBuffer) = &DxgkInitializeWin8;
         }
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
         break;

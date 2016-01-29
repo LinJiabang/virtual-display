@@ -19,6 +19,10 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include "ljb_proxykmd.h"
+#include "ljb_proxykmd_guid.h"
+#include <aux_klib.h>
+
+#pragma warning(disable:28175) /* allow DriverObject->DriverName access */
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (PAGE, LJB_PROXYKMD_AddDevice)
@@ -51,7 +55,7 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
     ntStatus = ZwLoadDriver(&DxgkSvcName);
     if ((!NT_SUCCESS(ntStatus) && ntStatus != STATUS_IMAGE_ALREADY_LOADED))
     {
-        KdPrint((("?" __FUNCTION__ ": "
+        KdPrint(("?" __FUNCTION__ ": "
             "ZwLoadDriver failed with ntStatus(%08x)\n",
             ntStatus
             ));
@@ -163,6 +167,8 @@ LJB_PROXYKMD_IsDxgknlLoaded(
     ULONG                           NumOfModules;
     UINT                            i;
 
+    UNREFERENCED_PARAMETER(DeviceObject);
+
     DxgkIsLoaded = FALSE;
     ntStatus = AuxKlibInitialize();
     if (!NT_SUCCESS(ntStatus))
@@ -249,7 +255,6 @@ LJB_PROXYKMD_IsDxgknlLoaded(
     return DxgkIsLoaded;
 }
 
-
 NTSTATUS
 LJB_PROXYKMD_AddDevice(
     __in PDRIVER_OBJECT DriverObject,
@@ -327,7 +332,7 @@ LJB_PROXYKMD_AddDevice(
         return ntStatus;
     }
 
-    GlobalDriverData.DebugLevel      = DeviceExtention->DebugLevel;
+    GlobalDriverData.DebugLevel      = DeviceExtension->DebugLevel;
     GlobalDriverData.DriverObject    = DriverObject;
     GlobalDriverData.DeviceObject    = DeviceObject;
 
@@ -337,36 +342,37 @@ LJB_PROXYKMD_AddDevice(
      * attaching a filter object to it. If it is already loaded, attach our
      * filter object
      */
-    if (LJB_PROXYKMD_IsDxgknlLoaded(DeviceObject))
+    if (!LJB_PROXYKMD_IsDxgknlLoaded(DeviceObject))
     {
-        ntStatus = LJB_PROXYKMD_CreateAndAttachDxgkFilter(
-            DriverObject,
-            DeviceObject
-            );
-        if (!NT_SUCCESS(ntStatus))
-        {
-            KdPrint(("?" __FUNCTION__ ": "
-                "LJB_PROXYKMD_CreateAndAttachDxgkFilter failed with ntStatus(0x%08x)?\n",
-                ntStatus
-                ));
-            RtlFreeUnicodeString(&DeviceExtension->InterfaceName);
-            IoDetachDevice (DeviceExtension->NextLowerDriver);
-            IoDeleteDevice(DeviceObject);
-            return ntStatus;
-        }
     }
-    else
+
+    /*
+     * now that the Dxgkrnl is loaded, create and attach our filter
+     */
+    ntStatus = LJB_PROXYKMD_CreateAndAttachDxgkFilter(
+        DriverObject,
+        DeviceObject
+        );
+    if (!NT_SUCCESS(ntStatus))
     {
+        KdPrint(("?" __FUNCTION__ ": "
+            "LJB_PROXYKMD_CreateAndAttachDxgkFilter failed with ntStatus(0x%08x)?\n",
+            ntStatus
+            ));
+        RtlFreeUnicodeString(&DeviceExtension->InterfaceName);
+        IoDetachDevice (DeviceExtension->NextLowerDriver);
+        IoDeleteDevice(DeviceObject);
+        return ntStatus;
     }
 
     IoInitializeRemoveLock (
         &DeviceExtension->RemoveLock ,
-        LCI_PROXYKMD_POOL_TAG,
+        LJB_POOL_TAG,
         1,
         100
         );
 
-    DeviceObject->Flags |= DeviceObject->NextLowerDriver->Flags &
+    DeviceObject->Flags |= DeviceExtension->NextLowerDriver->Flags &
         (DO_BUFFERED_IO | DO_DIRECT_IO | DO_POWER_PAGABLE );
     DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
