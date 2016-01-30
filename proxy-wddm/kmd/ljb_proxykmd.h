@@ -157,6 +157,12 @@ DXGK_INTIALIZE(
     );
 typedef DXGK_INTIALIZE *PFN_DXGK_INITIALIZE;
 
+typedef struct _LJB_DRIVER_BINDING_TAG
+{
+    LIST_ENTRY                              ListEntry;
+    ULONG                                   DxgkAddDeviceTag;
+} LJB_DRIVER_BINDING_TAG;
+
 typedef struct _LJB_GLOBAL_DRIVER_DATA
 {
     DEVICE_OBJECT *                     DeviceObject;
@@ -166,12 +172,32 @@ typedef struct _LJB_GLOBAL_DRIVER_DATA
     RTL_OSVERSIONINFOW                  RtlOsVersion;
     PFN_DXGK_INITIALIZE                 DxgkInitializeWin7;
     PFN_DXGK_INITIALIZE                 DxgkInitializeWin8;
+
+    LIST_ENTRY                          ClientDriverListHead;
+    LONG                                ClientDriverListCount;
     
-    LIST_ENTRY                          ClientInitDataListHead;
     LIST_ENTRY                          ClientAdapterListHead;
+    LONG                                ClientAdapterListCount;
+
+    LJB_DRIVER_BINDING_TAG              DriverBindingPool[4];
+    LIST_ENTRY                          DriverBindingHead;
+    LONG                                DriverBindingCount;
+
 }   LJB_GLOBAL_DRIVER_DATA;
 
 extern LJB_GLOBAL_DRIVER_DATA   GlobalDriverData;
+
+typedef struct _LJB_CLIENT_DRIVER_DATA
+{
+    LIST_ENTRY                              ListEntry;
+    DRIVER_OBJECT *                         DriverObject;
+    UNICODE_STRING                          RegistryPath;
+    WCHAR                                   RegistryPathBuffer[MAX_PATH];
+    ULONG                                   DxgkAddDeviceTag;
+    LJB_DRIVER_BINDING_TAG *                DriverBindingTag;
+    LONG                                    ReferenceCount;
+    DRIVER_INITIALIZATION_DATA              DriverInitData;
+}   LJB_CLIENT_DRIVER_DATA;
 
 /*
  * C function declaration
@@ -189,8 +215,8 @@ DRIVER_DISPATCH             LJB_PROXYKMD_DispatchIoctl;
 DRIVER_DISPATCH             LJB_PROXYKMD_PassDown;
 DRIVER_UNLOAD               LJB_PROXYKMD_Unload;
 
-DXGK_INTIALIZE              DxgkInitializeWin7;
-DXGK_INTIALIZE              DxgkInitializeWin8;
+DXGK_INTIALIZE              LJB_DXGK_InitializeWin7;
+DXGK_INTIALIZE              LJB_DXGK_InitializeWin8;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (

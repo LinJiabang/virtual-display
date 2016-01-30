@@ -265,6 +265,7 @@ LJB_PROXYKMD_AddDevice(
     LJB_DEVICE_EXTENSION *  DeviceExtension;
     RTL_OSVERSIONINFOW      RtlOsVersion;
     NTSTATUS                ntStatus;
+    UINT                    i;
 
     PAGED_CODE();
 
@@ -376,5 +377,21 @@ LJB_PROXYKMD_AddDevice(
         (DO_BUFFERED_IO | DO_DIRECT_IO | DO_POWER_PAGABLE );
     DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
-    return ntStatus;
+    /*
+     * Initialize DriverBindingPool, DriverBindingHead, DriverBindingCount
+     */
+    InitializeListHead(&GlobalDriverData.DriverBindingHead);
+    GlobalDriverData.DriverBindingCount = 0;
+
+    for (i = 0; i < 4; i++)
+    {
+        LJB_DRIVER_BINDING_TAG * CONST ThisBinding = GlobalDriverData.DriverBindingPool + i;
+
+        InitializeListHead(&ThisBinding->ListEntry);
+        ThisBinding->DxgkAddDeviceTag = i;
+        InsertTailList(&GlobalDriverData.DriverBindingHead, &ThisBinding->ListEntry);
+        GlobalDriverData.DriverBindingCount++;
+    }
+
+   return ntStatus;
 }

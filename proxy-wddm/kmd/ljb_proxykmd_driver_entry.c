@@ -85,8 +85,11 @@ DriverEntry(
     KdPrint((__FUNCTION__ ": Built %s %s\n", __DATE__, __TIME__));
 
     RtlZeroMemory(&GlobalDriverData, sizeof(GlobalDriverData));
-    InitializeListHead(&GlobalDriverData.ClientInitDataListHead);
+    InitializeListHead(&GlobalDriverData.ClientDriverListHead);
+    GlobalDriverData.ClientDriverListCount = 0;
+
     InitializeListHead(&GlobalDriverData.ClientAdapterListHead);
+    GlobalDriverData.ClientAdapterListCount = 0;
 
     for (i = 0; i <= IRP_MJ_MAXIMUM_FUNCTION; i++)
         {
