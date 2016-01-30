@@ -1069,3 +1069,148 @@ LJB_DXGK_InitializeWin7(
         (DRIVER_INITIALIZATION_DATA *)&MyDriverInitData
         );
 }
+
+NTSTATUS
+LJB_DXGK_InitializeWin8(
+    __in PDRIVER_OBJECT                     DriverObject,
+    __in PUNICODE_STRING                    RegistryPath,
+    __in PDRIVER_INITIALIZATION_DATA        DriverInitializationData
+    )
+{
+    DRIVER_INITIALIZATION_DATA              MyDriverInitData;
+    LJB_CLIENT_DRIVER_DATA *                ClientDriverData;
+    ULONG                                   DriverInitDataLength;
+    DECLARE_CONST_UNICODE_STRING(BasicRenderName, L"\\Driver\\BasicRender");
+
+    /*
+     * don't try to hack if BasicRender is calling us.
+     */
+    if (RtlEqualUnicodeString( &DriverObject->DriverName, &BasicRenderName, TRUE))
+        return (*GlobalDriverData.DxgkInitializeWin8)(DriverObject, RegistryPath, DriverInitializationData);
+
+    ClientDriverData = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_CLIENT_DRIVER_DATA));
+    if (ClientDriverData == NULL)
+    {
+        KdPrint(("?" __FUNCTION__ ": "
+            "Unable to allocate ClientDriverData?\n"
+            ));
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    /*
+     * track down the input RegistryPath
+     */
+    ASSERT(RegistryPath->Length <= MAX_PATH);
+    ClientDriverData->RegistryPath.Length = RegistryPath->Length;
+    ClientDriverData->RegistryPath.MaximumLength = MAX_PATH;
+    ClientDriverData->RegistryPath.Buffer = ClientDriverData->RegistryPathBuffer;
+    RtlCopyMemory(
+        ClientDriverData->RegistryPathBuffer,
+        RegistryPath->Buffer,
+        RegistryPath->Length
+        );
+    ClientDriverData->DriverObject     = DriverObject;
+    InsertTailList(
+        &GlobalDriverData.ClientDriverListHead,
+        &ClientDriverData->ListEntry
+        );
+    InterlockedIncrement(&GlobalDriverData.ClientDriverListCount);
+
+    KdPrint((__FUNCTION__ ": "
+        "Version=(0x%x), RegistryPath(%ws)\n",
+        DriverInitializationData->Version,
+        ClientDriverData->RegistryPathBuffer
+        ));
+
+    RtlZeroMemory(&MyDriverInitData, sizeof(MyDriverInitData));
+    if (DriverInitializationData->Version < DXGKDDI_INTERFACE_VERSION_WIN8)
+        {
+        DriverInitDataLength = sizeof(DRIVER_INITIALIZATION_DATA_WIN7);
+        RtlCopyMemory(
+            &MyDriverInitData,
+            &DriverInitTableWin7,
+            DriverInitDataLength
+            );
+        }
+    else if (DriverInitializationData->Version < DXGKDDI_INTERFACE_VERSION_WDDM2_0_PREVIEW)
+        {
+        /*
+         * this is Win8 or Win8.1
+         */
+        DriverInitDataLength = sizeof(DRIVER_INITIALIZATION_DATA_WIN8);
+        RtlCopyMemory(
+            &MyDriverInitData,
+            &DriverInitTableWin8,
+            DriverInitDataLength
+            );
+        }
+    else
+        {
+        /*
+         * this is Win10 or above.
+         */
+        DriverInitDataLength = sizeof(DRIVER_INITIALIZATION_DATA_WIN10);
+        RtlCopyMemory(
+            &MyDriverInitData,
+            &DriverInitTableWin10,
+            DriverInitDataLength
+            );
+        }
+    MyDriverInitData.Version = DriverInitializationData->Version;
+    if (DriverInitializationData->Version > DXGKDDI_INTERFACE_VERSION)
+        MyDriverInitData.Version = DXGKDDI_INTERFACE_VERSION;
+
+    /*
+     * special hack for DxgkDdiAddDevice
+     */
+    if (!IsListEmpty(&GlobalDriverData.DriverBindingHead))
+    {
+        LJB_DRIVER_BINDING_TAG *    DriverBindingTag;
+        LIST_ENTRY *                pListEntry;
+
+        pListEntry = RemoveHeadList(&GlobalDriverData.DriverBindingHead);
+        DriverBindingTag = CONTAINING_RECORD(
+            pListEntry,
+            LJB_DRIVER_BINDING_TAG,
+            ListEntry
+            );
+        ClientDriverData->DxgkAddDeviceTag = DriverBindingTag->DxgkAddDeviceTag;
+        ClientDriverData->DriverBindingTag = DriverBindingTag;
+        MyDriverInitData.DxgkDdiAddDevice = DriverBindingTable[ClientDriverData->DxgkAddDeviceTag];
+    }
+    else
+    {
+        KdPrint(("?"__FUNCTION__ ": no DriverBindingTag left? No interception for this adapter!\n"));
+        RemoveEntryList(&ClientDriverData->ListEntry);
+        InterlockedDecrement(&GlobalDriverData.ClientDriverListCount);
+        LJB_PROXYKMD_FreePool(ClientDriverData);
+        return (*GlobalDriverData.DxgkInitializeWin7)(
+            DriverObject,
+            RegistryPath,
+            DriverInitializationData
+            );
+    }
+
+    /*
+     * NO INTERCEPT DDI: DxgkDdiControlEtwLogging/DxgkDdiUnload
+     */
+    MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
+    MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
+
+    LJB_FilterPointers(
+        (PVOID *) &MyDriverInitData,
+        (PVOID *) DriverInitializationData,
+        DriverInitDataLength / sizeof(PVOID)
+        );
+
+    RtlCopyMemory(
+        &ClientDriverData->DriverInitData,
+        DriverInitializationData,
+        DriverInitDataLength
+        );
+    return (*GlobalDriverData.DxgkInitializeWin8)(
+        DriverObject,
+        RegistryPath,
+        (DRIVER_INITIALIZATION_DATA *)&MyDriverInitData
+        );
+}

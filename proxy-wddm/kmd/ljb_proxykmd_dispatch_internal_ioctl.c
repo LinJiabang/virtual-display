@@ -100,7 +100,7 @@ LJB_PROXYKMD_DispatchInternalIoctl (
             KdPrint((__FUNCTION__ ": successfully get pfnDxgkInializeWin7(%p)\n",
                 GlobalDriverData.DxgkInitializeWin8
                 ));
-            //*((PFN_DXGK_INITIALIZE *) UserBuffer) = &DxgkInitializeWin7;
+            *((PFN_DXGK_INITIALIZE *) UserBuffer) = &LJB_DXGK_InitializeWin7;
         }
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
         break;
@@ -134,7 +134,7 @@ LJB_PROXYKMD_DispatchInternalIoctl (
             KdPrint((__FUNCTION__ ": successfully get pfnDxgkInializeWin8(%p)\n",
                 GlobalDriverData.DxgkInitializeWin8
                 ));
-            //*((PFN_DXGK_INITIALIZE *) Irp->UserBuffer) = &DxgkInitializeWin8;
+            *((PFN_DXGK_INITIALIZE *) Irp->UserBuffer) = &LJB_DXGK_InitializeWin8;
         }
         IoCompleteRequest(Irp, IO_NO_INCREMENT);
         break;
