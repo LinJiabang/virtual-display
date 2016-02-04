@@ -19,3 +19,5 @@ SOURCES=											        \
     ljb_proxykmd_guid.c                                     \
     ljb_proxykmd_passdown.c                                 \
     ljb_dxgk_initialize.c                                   \
+    ljb_dxgk_add_device.c                                   \
+    ljb_dxgk_start_device.c                                 \

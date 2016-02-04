@@ -107,7 +107,7 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
     FilterDeviceExtension->DeviceType = DEVICE_TYPE_FILTER;
     FilterDeviceExtension->DeviceObject = FilterDeviceObject;
     FilterDeviceExtension->PhysicalDeviceObject = DxgkDeviceObject;
-    FilterDeviceExtension->DebugLevel = DeviceExtension->DebugLevel;
+    FilterDeviceExtension->DebugMask = DeviceExtension->DebugMask;
     FilterDeviceExtension->NextLowerDriver = IoAttachDeviceToDeviceStack(
         FilterDeviceObject,
         DxgkDeviceObject
@@ -265,7 +265,6 @@ LJB_PROXYKMD_AddDevice(
     LJB_DEVICE_EXTENSION *  DeviceExtension;
     RTL_OSVERSIONINFOW      RtlOsVersion;
     NTSTATUS                ntStatus;
-    UINT                    i;
 
     PAGED_CODE();
 
@@ -333,7 +332,7 @@ LJB_PROXYKMD_AddDevice(
         return ntStatus;
     }
 
-    GlobalDriverData.DebugLevel      = DeviceExtension->DebugLevel;
+    GlobalDriverData.DebugMask      = DeviceExtension->DebugMask;
     GlobalDriverData.DriverObject    = DriverObject;
     GlobalDriverData.DeviceObject    = DeviceObject;
 
@@ -376,22 +375,6 @@ LJB_PROXYKMD_AddDevice(
     DeviceObject->Flags |= DeviceExtension->NextLowerDriver->Flags &
         (DO_BUFFERED_IO | DO_DIRECT_IO | DO_POWER_PAGABLE );
     DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
-
-    /*
-     * Initialize DriverBindingPool, DriverBindingHead, DriverBindingCount
-     */
-    InitializeListHead(&GlobalDriverData.DriverBindingHead);
-    GlobalDriverData.DriverBindingCount = 0;
-
-    for (i = 0; i < 4; i++)
-    {
-        LJB_DRIVER_BINDING_TAG * CONST ThisBinding = GlobalDriverData.DriverBindingPool + i;
-
-        InitializeListHead(&ThisBinding->ListEntry);
-        ThisBinding->DxgkAddDeviceTag = i;
-        InsertTailList(&GlobalDriverData.DriverBindingHead, &ThisBinding->ListEntry);
-        GlobalDriverData.DriverBindingCount++;
-    }
 
    return ntStatus;
 }

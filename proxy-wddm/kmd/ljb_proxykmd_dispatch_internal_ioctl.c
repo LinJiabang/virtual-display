@@ -98,7 +98,7 @@ LJB_PROXYKMD_DispatchInternalIoctl (
              */
             GlobalDriverData.DxgkInitializeWin7 = *((PFN_DXGK_INITIALIZE *) UserBuffer);
             KdPrint((__FUNCTION__ ": successfully get pfnDxgkInializeWin7(%p)\n",
-                GlobalDriverData.DxgkInitializeWin8
+                GlobalDriverData.DxgkInitializeWin7
                 ));
             *((PFN_DXGK_INITIALIZE *) UserBuffer) = &LJB_DXGK_InitializeWin7;
         }

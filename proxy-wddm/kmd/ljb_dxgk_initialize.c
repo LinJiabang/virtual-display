@@ -143,7 +143,7 @@ typedef struct _DRIVER_INITIALIZATION_DATA_WIN7
 static CONST DRIVER_INITIALIZATION_DATA_WIN7    DriverInitTableWin7 =
 {
     DXGKDDI_INTERFACE_VERSION_WIN7,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_AddDevice0,
+    &LJB_DXGK_AddDevice0,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StartDevice,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StopDevice,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RemoveDevice,
@@ -434,7 +434,7 @@ typedef struct _DRIVER_INITIALIZATION_DATA_WIN8
 static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin8 =
 {
     DXGKDDI_INTERFACE_VERSION,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_AddDevice0,
+    &LJB_DXGK_AddDevice0,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StartDevice,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StopDevice,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RemoveDevice,
@@ -768,7 +768,7 @@ typedef struct _DRIVER_INITIALIZATION_DATA_WIN10 {
 static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
 {
     DXGKDDI_INTERFACE_VERSION,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_AddDevice0,
+    &LJB_DXGK_AddDevice0,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StartDevice,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StopDevice,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RemoveDevice,
@@ -897,12 +897,12 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
 
 static CONST PDXGKDDI_ADD_DEVICE DriverBindingTable[] =
     {
-    NULL, //&LJB_DXGK_AddDevice0,
-    NULL, //&LJB_DXGK_AddDevice1,
-    NULL, //&LJB_DXGK_AddDevice2,
-    NULL, //&LJB_DXGK_AddDevice3
+    &LJB_DXGK_AddDevice0,
+    &LJB_DXGK_AddDevice1,
+    &LJB_DXGK_AddDevice2,
+    &LJB_DXGK_AddDevice3
     };
-    
+
 VOID
 LJB_FilterPointers(
     __inout PVOID * DstPointers,
@@ -1021,11 +1021,11 @@ LJB_DXGK_InitializeWin7(
     if (!IsListEmpty(&GlobalDriverData.DriverBindingHead))
     {
         LJB_DRIVER_BINDING_TAG *    DriverBindingTag;
-        LIST_ENTRY *                pListEntry;
+        LIST_ENTRY *                listEntry;
 
-        pListEntry = RemoveHeadList(&GlobalDriverData.DriverBindingHead);
+        listEntry = RemoveHeadList(&GlobalDriverData.DriverBindingHead);
         DriverBindingTag = CONTAINING_RECORD(
-            pListEntry,
+            listEntry,
             LJB_DRIVER_BINDING_TAG,
             ListEntry
             );
@@ -1166,11 +1166,11 @@ LJB_DXGK_InitializeWin8(
     if (!IsListEmpty(&GlobalDriverData.DriverBindingHead))
     {
         LJB_DRIVER_BINDING_TAG *    DriverBindingTag;
-        LIST_ENTRY *                pListEntry;
+        LIST_ENTRY *                listEntry;
 
-        pListEntry = RemoveHeadList(&GlobalDriverData.DriverBindingHead);
+        listEntry = RemoveHeadList(&GlobalDriverData.DriverBindingHead);
         DriverBindingTag = CONTAINING_RECORD(
-            pListEntry,
+            listEntry,
             LJB_DRIVER_BINDING_TAG,
             ListEntry
             );

@@ -52,6 +52,8 @@
 #define IOCTL_GET_DXGK_INITIALIZE_DISPLAY_ONLY  0x230043
 #define IOCTL_GET_DXGK_INITIALIZE_WIN8          0x230047
 
+#define USB_MONITOR_MAX                 6
+
 /*
  * PoolTag macro
  */
@@ -70,7 +72,7 @@ LJB_PROXYKMD_GetPoolZero(
     PVOID   Buffer;
 
     Buffer = ExAllocatePoolWithTag(
-        NonPagedPool,
+        NonPagedPoolNx,
         NumberOfBytes,
         LJB_POOL_TAG
         );
@@ -99,6 +101,16 @@ LJB_PROXYKMD_GetPoolZero(
 #define DBGLVL_VIDPN        (1 << 8)
 #define DBGLVL_VSYNC        (1 << 9)
 #define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER)
+
+#if (DBG)
+#define DBG_PRINT(adapter, mask, arg)           \
+    if (adapter->DebugMask & mask)              \
+    {                                           \
+        DbgPrint arg;                           \
+    }
+#else
+#define DBG_PRINT(adapter, mask, arg)
+#endif
 
 typedef enum _DEVICE_TYPE
 {
@@ -146,7 +158,7 @@ typedef struct _LJB_DEVICE_EXTENSION
 
     PFILE_OBJECT                        DxgkFileObject;
 
-    ULONG                               DebugLevel;
+    ULONG                               DebugMask;
 }   LJB_DEVICE_EXTENSION;
 
 typedef NTSTATUS
@@ -167,7 +179,7 @@ typedef struct _LJB_GLOBAL_DRIVER_DATA
 {
     DEVICE_OBJECT *                     DeviceObject;
     PDRIVER_OBJECT                      DriverObject;
-    ULONG                               DebugLevel;
+    ULONG                               DebugMask;
 
     RTL_OSVERSIONINFOW                  RtlOsVersion;
     PFN_DXGK_INITIALIZE                 DxgkInitializeWin7;
@@ -175,13 +187,16 @@ typedef struct _LJB_GLOBAL_DRIVER_DATA
 
     LIST_ENTRY                          ClientDriverListHead;
     LONG                                ClientDriverListCount;
-    
+    KSPIN_LOCK                          ClientDriverListLock;
+
     LIST_ENTRY                          ClientAdapterListHead;
     LONG                                ClientAdapterListCount;
+    KSPIN_LOCK                          ClientAdapterListLock;
 
     LJB_DRIVER_BINDING_TAG              DriverBindingPool[4];
     LIST_ENTRY                          DriverBindingHead;
     LONG                                DriverBindingCount;
+    KSPIN_LOCK                          DriverBindingLock;
 
 }   LJB_GLOBAL_DRIVER_DATA;
 
@@ -198,6 +213,32 @@ typedef struct _LJB_CLIENT_DRIVER_DATA
     LONG                                    ReferenceCount;
     DRIVER_INITIALIZATION_DATA              DriverInitData;
 }   LJB_CLIENT_DRIVER_DATA;
+
+typedef struct _LJB_ADAPTER
+{
+    LIST_ENTRY                              ListEntry;
+    PDEVICE_OBJECT                          PhysicalDeviceObject;
+    PVOID                                   hAdapter;
+    LJB_CLIENT_DRIVER_DATA *                ClientDriverData;
+    ULONG                                   DebugMask;
+
+    /*
+     * information obtained from DxgkDdiStartDevice
+     */
+    DXGK_START_INFO                         DxgkStartInfo;
+    DXGKRNL_INTERFACE                       DxgkInterface;
+    ULONG                                   NumberOfVideoPresentSources;
+    ULONG                                   NumberOfChildren;
+    USHORT                                  PciVendorId;
+
+    /*
+     * information obtained from DxgkDdiQueryChildRelations
+     */
+    D3DDDI_VIDEO_PRESENT_TARGET_ID          UsbTargetIdBase;
+    ULONG                                   ActualNumberOfChildren;
+
+
+}   LJB_ADAPTER;
 
 /*
  * C function declaration
@@ -217,12 +258,24 @@ DRIVER_UNLOAD               LJB_PROXYKMD_Unload;
 
 DXGK_INTIALIZE              LJB_DXGK_InitializeWin7;
 DXGK_INTIALIZE              LJB_DXGK_InitializeWin8;
+DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice0;
+DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice1;
+DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice2;
+DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice3;
+DXGKDDI_START_DEVICE        LJB_DXGK_StartDevice;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (
     __in PDEVICE_OBJECT DeviceObject,
     __in PIRP Irp
     );
+
+LJB_ADAPTER *
+LJB_DXGK_FindAdapterByDriverAdapter(
+    __in PVOID hAdapter
+    );
+#define FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter) LJB_DXGK_FindAdapterByDriverAdapter(hAdapter)
+
 _C_END
 
 #endif

@@ -71,7 +71,6 @@ LJB_GLOBAL_DRIVER_DATA   GlobalDriverData;
  *    and I/O operations is required
  *
  */
-
 NTSTATUS
 DriverEntry(
     __in PDRIVER_OBJECT  DriverObject,
@@ -82,14 +81,33 @@ DriverEntry(
 
     UNREFERENCED_PARAMETER(RegistryPath);
 
-    KdPrint((__FUNCTION__ ": Built %s %s\n", __DATE__, __TIME__));
+    KdPrint((__FUNCTION__ ": Built at %s %s\n", __DATE__, __TIME__));
 
     RtlZeroMemory(&GlobalDriverData, sizeof(GlobalDriverData));
     InitializeListHead(&GlobalDriverData.ClientDriverListHead);
+    KeInitializeSpinLock(&GlobalDriverData.ClientDriverListLock);
     GlobalDriverData.ClientDriverListCount = 0;
 
     InitializeListHead(&GlobalDriverData.ClientAdapterListHead);
+    KeInitializeSpinLock(&GlobalDriverData.ClientAdapterListLock);
     GlobalDriverData.ClientAdapterListCount = 0;
+
+    /*
+     * Initialize DriverBindingPool, DriverBindingHead, DriverBindingCount
+     */
+    InitializeListHead(&GlobalDriverData.DriverBindingHead);
+    KeInitializeSpinLock(&GlobalDriverData.DriverBindingLock);
+    GlobalDriverData.DriverBindingCount = 0;
+
+    for (i = 0; i < 4; i++)
+    {
+        LJB_DRIVER_BINDING_TAG * CONST ThisBinding = GlobalDriverData.DriverBindingPool + i;
+
+        InitializeListHead(&ThisBinding->ListEntry);
+        ThisBinding->DxgkAddDeviceTag = i;
+        InsertTailList(&GlobalDriverData.DriverBindingHead, &ThisBinding->ListEntry);
+        GlobalDriverData.DriverBindingCount++;
+    }
 
     for (i = 0; i <= IRP_MJ_MAXIMUM_FUNCTION; i++)
         {
