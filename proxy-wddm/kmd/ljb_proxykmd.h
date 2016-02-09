@@ -53,6 +53,8 @@
 #define IOCTL_GET_DXGK_INITIALIZE_WIN8          0x230047
 
 #define USB_MONITOR_MAX                 6
+#define INBOX_MONITOR_MAX               64
+#define SEGMENT_DESC_MAX                16
 
 /*
  * PoolTag macro
@@ -193,6 +195,10 @@ typedef struct _LJB_GLOBAL_DRIVER_DATA
     LONG                                ClientAdapterListCount;
     KSPIN_LOCK                          ClientAdapterListLock;
 
+    LIST_ENTRY                          ClientDeviceListHead;
+    LONG                                ClientDeviceListCount;
+    KSPIN_LOCK                          ClientDeviceListLock;
+
     LJB_DRIVER_BINDING_TAG              DriverBindingPool[4];
     LIST_ENTRY                          DriverBindingHead;
     LONG                                DriverBindingCount;
@@ -232,14 +238,54 @@ typedef struct _LJB_ADAPTER
     USHORT                                  PciVendorId;
 
     /*
-     * information obtained from DxgkDdiQueryChildRelations
+     * information obtained from DxgkDdiQueryChildRelations/DxgkDdiQueryChildStatus
      */
+    DXGK_CHILD_DESCRIPTOR                   ChildRelations[INBOX_MONITOR_MAX];
+    BOOLEAN                                 ChildConnectionStatus[INBOX_MONITOR_MAX];
     D3DDDI_VIDEO_PRESENT_TARGET_ID          UsbTargetIdBase;
     ULONG                                   ActualNumberOfChildren;
 
+    /*
+     * information obtained from DxgkDdiQueryAdapterInfo
+     */
+    DXGK_DRIVERCAPS                         DriverCaps;
+    DXGK_QUERYSEGMENTOUT                    SegmentOut;
+    DXGK_SEGMENTDESCRIPTOR                  SegmentDescriptors[SEGMENT_DESC_MAX];
 
+    /*
+     * allocations created by DxgkDdiCreateAllocations
+     */
+    LIST_ENTRY                              AllocationListHead;
+    KSPIN_LOCK                              AllocationListLock;
+    LONG                                    AllocationListCount;
+    
 }   LJB_ADAPTER;
 
+
+/*
+ * created by DxgkDdiCreateDevice
+ */
+typedef struct _LJB_DEVICE
+{
+    LIST_ENTRY              ListEntry;
+    LJB_ADAPTER *           Adapter;
+    HANDLE                  hRTDevice;
+    DXGKARG_CREATEDEVICE    CreateDevice;
+
+    /*
+     * output from miniport driver
+     */
+    HANDLE                  hDevice;        // miniport driver output
+    DXGK_DEVICEINFO         DeviceInfo;
+} LJB_DEVICE;
+
+typedef struct _LJB_ALLOCATION
+{
+    LIST_ENTRY              ListEntry;
+    LJB_ADAPTER *           Adapter;
+    HANDLE                  hAllocation;
+    DXGK_ALLOCATIONINFO     AllocationInfo;
+} LJB_ALLOCATION;
 /*
  * C function declaration
  */
@@ -256,13 +302,27 @@ DRIVER_DISPATCH             LJB_PROXYKMD_DispatchIoctl;
 DRIVER_DISPATCH             LJB_PROXYKMD_PassDown;
 DRIVER_UNLOAD               LJB_PROXYKMD_Unload;
 
-DXGK_INTIALIZE              LJB_DXGK_InitializeWin7;
-DXGK_INTIALIZE              LJB_DXGK_InitializeWin8;
-DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice0;
-DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice1;
-DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice2;
-DXGKDDI_ADD_DEVICE          LJB_DXGK_AddDevice3;
-DXGKDDI_START_DEVICE        LJB_DXGK_StartDevice;
+DXGK_INTIALIZE                  LJB_DXGK_InitializeWin7;
+DXGK_INTIALIZE                  LJB_DXGK_InitializeWin8;
+DXGKDDI_ADD_DEVICE              LJB_DXGK_AddDevice0;
+DXGKDDI_ADD_DEVICE              LJB_DXGK_AddDevice1;
+DXGKDDI_ADD_DEVICE              LJB_DXGK_AddDevice2;
+DXGKDDI_ADD_DEVICE              LJB_DXGK_AddDevice3;
+DXGKDDI_START_DEVICE            LJB_DXGK_StartDevice;
+DXGKDDI_STOP_DEVICE             LJB_DXGK_StopDevice;
+DXGKDDI_REMOVE_DEVICE           LJB_DXGK_RemoveDevice;
+DXGKDDI_DISPATCH_IO_REQUEST     LJB_DXGK_DispatchIoRequest;
+DXGKDDI_INTERRUPT_ROUTINE       LJB_DXGK_InterruptRoutine;
+DXGKDDI_DPC_ROUTINE             LJB_DXGK_DpcRoutine;
+DXGKDDI_QUERY_CHILD_RELATIONS   LJB_DXGK_QueryChildRelations;
+DXGKDDI_QUERY_CHILD_STATUS      LJB_DXGK_QueryChildStatus;
+DXGKDDI_QUERY_DEVICE_DESCRIPTOR LJB_DXGK_QueryDeviceDescriptor;
+DXGKDDI_SET_POWER_STATE         LJB_DXGK_SetPowerState;
+DXGKDDI_NOTIFY_ACPI_EVENT       LJB_DXGK_NotifyAcpiEvent;
+DXGKDDI_RESET_DEVICE            LJB_DXGK_ResetDevice;
+DXGKDDI_QUERYADAPTERINFO        LJB_DXGK_QueryAdapterInfo;
+DXGKDDI_CREATEDEVICE            LJB_DXGK_CreateDevice;
+DXGKDDI_CREATEALLOCATION        LJB_DXGK_CreateAllocation;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (
@@ -274,6 +334,18 @@ LJB_ADAPTER *
 LJB_DXGK_FindAdapterByDriverAdapter(
     __in PVOID hAdapter
     );
+
+LJB_DEVICE *
+LJB_DXGK_FindDevice(
+    __in HANDLE     hDevice
+    );
+
+LJB_ALLOCATION *
+LJB_DXGK_FindAllocation(
+    __in LJB_ADAPTER*   Adapter,
+    __in HANDLE         hAllocation
+    );
+
 #define FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter) LJB_DXGK_FindAdapterByDriverAdapter(hAdapter)
 
 _C_END

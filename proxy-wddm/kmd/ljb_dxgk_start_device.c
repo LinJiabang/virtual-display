@@ -25,7 +25,7 @@
 #endif
 
 /*
- * Function: LJB_DXGK_AddDevice
+ * Function: LJB_DXGK_StartDevice
  *
  * Description:
  * The DxgkDdiStartDevice function prepares a display adapter to receive I/O
@@ -124,8 +124,12 @@ LJB_DXGK_StartDevice(
         sizeof(Adapter->PciVendorId),
         &BytesRead
         );
-    *NumberOfVideoPresentSources += USB_MONITOR_MAX;
-    *NumberOfChildren += USB_MONITOR_MAX;
+
+    if (*NumberOfVideoPresentSources != 0)
+    {
+        *NumberOfVideoPresentSources += USB_MONITOR_MAX;
+        *NumberOfChildren += USB_MONITOR_MAX;
+    }
 
     DBG_PRINT(Adapter, DBGLVL_INFO,
         (__FUNCTION__

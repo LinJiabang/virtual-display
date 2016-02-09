@@ -115,6 +115,9 @@ LJB_DXGK_AddDevice(
     Adapter->hAdapter = *MiniportDeviceContext;
     Adapter->ClientDriverData = ClientDriverData;
 
+    InitializeListHead(&Adapter->AllocationListHead);
+    KeInitializeSpinLock(&Adapter->AllocationListLock);
+
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     InsertTailList(&GlobalDriverData.ClientAdapterListHead, &Adapter->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientAdapterListLock, oldIrql);
