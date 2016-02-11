@@ -35,3 +35,21 @@ SOURCES=                                                    \
     ljb_dxgk_query_adapter_info.c                           \
     ljb_dxgk_create_device.c                                \
     ljb_dxgk_create_allocation.c                            \
+    ljb_dxgk_destroy_allocation.c                           \
+    ljb_dxgk_describe_allocation.c                          \
+    ljb_dxgk_get_std_allocation_drv_data.c                  \
+    ljb_dxgk_acquire_swizzling_range.c                      \
+    ljb_dxgk_release_swizzling_range.c                      \
+    ljb_dxgk_patch.c                                        \
+    ljb_dxgk_submit_command.c                               \
+    ljb_dxgk_preempt_command.c                              \
+    ljb_dxgk_build_paging_buffer.c                          \
+    ljb_dxgk_set_pointer_position.c                         \
+    ljb_dxgk_set_pointer_shape.c                            \
+    ljb_dxgk_reset_from_timeout.c                           \
+    ljb_dxgk_escape.c                                       \
+    ljb_dxgk_query_current_fence.c                          \
+    ljb_dxgk_is_supported_vidpn.c                           \
+    ljb_dxgk_enum_vidpn_cofunc_modality.c                   \
+    ljb_dxgk_set_vidpn_source_address.c                     \
+    ljb_dxgk_set_vidpn_source_visibility.c                  \
