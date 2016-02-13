@@ -53,3 +53,13 @@ SOURCES=                                                    \
     ljb_dxgk_enum_vidpn_cofunc_modality.c                   \
     ljb_dxgk_set_vidpn_source_address.c                     \
     ljb_dxgk_set_vidpn_source_visibility.c                  \
+    ljb_dxgk_commit_vidpn.c                                 \
+    ljb_dxgk_recommend.c                                    \
+    ljb_dxgk_get_scan_line.c                                \
+    ljb_dxgk_control_interrupt.c                            \
+    ljb_dxgk_create_overlay.c                               \
+    ljb_dxgk_destroy_device.c                               \
+    ljb_dxgk_open_allocation.c                              \
+    ljb_dxgk_close_allocation.c                             \
+    ljb_dxgk_create_context.c                               \
+    ljb_dxgk_render.c                                       \

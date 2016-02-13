@@ -20,13 +20,6 @@
  */
 #include "ljb_proxykmd.h"
 
-#ifdef ALLOC_PRAGMA
-#pragma alloc_text (PAGE, LJB_DXGK_AddDevice0)
-#pragma alloc_text (PAGE, LJB_DXGK_AddDevice1)
-#pragma alloc_text (PAGE, LJB_DXGK_AddDevice2)
-#pragma alloc_text (PAGE, LJB_DXGK_AddDevice3)
-#endif
-
 /*
  * Function: LJB_DXGK_AddDevice
  *
@@ -137,8 +130,6 @@ LJB_DXGK_AddDevice0(
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
 
-    PAGED_CODE();
-
     /*
      * find the ClientDriverData with DxgkAddDeviceTag == 0
      */
@@ -182,8 +173,6 @@ LJB_DXGK_AddDevice1(
     LIST_ENTRY *                listEntry;
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
-
-    PAGED_CODE();
 
     /*
      * find the ClientDriverData with DxgkAddDeviceTag == 1
@@ -229,8 +218,6 @@ LJB_DXGK_AddDevice2(
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
 
-    PAGED_CODE();
-
     /*
      * find the ClientDriverData with DxgkAddDeviceTag == 2
      */
@@ -274,8 +261,6 @@ LJB_DXGK_AddDevice3(
     LIST_ENTRY *                listEntry;
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
-
-    PAGED_CODE();
 
     /*
      * find the ClientDriverData with DxgkAddDeviceTag == 2

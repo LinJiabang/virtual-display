@@ -92,6 +92,14 @@ DriverEntry(
     KeInitializeSpinLock(&GlobalDriverData.ClientAdapterListLock);
     GlobalDriverData.ClientAdapterListCount = 0;
 
+    InitializeListHead(&GlobalDriverData.ClientDeviceListHead);
+    KeInitializeSpinLock(&GlobalDriverData.ClientDeviceListLock);
+    GlobalDriverData.ClientDeviceListCount = 0;
+
+    InitializeListHead(&GlobalDriverData.ClientContextListHead);
+    KeInitializeSpinLock(&GlobalDriverData.ClientContextListLock);
+    GlobalDriverData.ClientDeviceListCount = 0;
+
     /*
      * Initialize DriverBindingPool, DriverBindingHead, DriverBindingCount
      */

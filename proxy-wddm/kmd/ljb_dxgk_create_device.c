@@ -25,6 +25,16 @@
 #endif
 
 /*
+ * forward declartion
+ */
+static VOID
+LJB_DXGK_CreateDevicePostProcessing(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_DEVICE *           MyDevice,
+    __in DXGKARG_CREATEDEVICE * pCreateDevice
+    );
+
+/*
  * Function: LJB_DXGK_CreateDevice
  *
  * Description:
@@ -72,7 +82,6 @@ LJB_DXGK_CreateDevice(
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     LJB_DEVICE *                        MyDevice;
     NTSTATUS                            ntStatus;
-    KIRQL                               oldIrql;
 
     PAGED_CODE();
 
@@ -112,6 +121,21 @@ LJB_DXGK_CreateDevice(
         return ntStatus;
     }
 
+    LJB_DXGK_CreateDevicePostProcessing(Adapter, MyDevice, pCreateDevice);
+    return ntStatus;
+}
+
+static VOID
+LJB_DXGK_CreateDevicePostProcessing(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_DEVICE *           MyDevice,
+    __in DXGKARG_CREATEDEVICE * pCreateDevice
+    )
+{
+    KIRQL                               oldIrql;
+
+    UNREFERENCED_PARAMETER(Adapter);
+
     /*
      * track what the driver returns.
      */
@@ -129,8 +153,6 @@ LJB_DXGK_CreateDevice(
         MyDevice->hRTDevice,
         MyDevice->CreateDevice.Flags.Value
         ));
-
-    return ntStatus;
 }
 
 LJB_DEVICE *

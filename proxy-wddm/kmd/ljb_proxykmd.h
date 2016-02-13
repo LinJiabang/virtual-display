@@ -199,6 +199,10 @@ typedef struct _LJB_GLOBAL_DRIVER_DATA
     LONG                                ClientDeviceListCount;
     KSPIN_LOCK                          ClientDeviceListLock;
 
+    LIST_ENTRY                          ClientContextListHead;
+    LONG                                ClientContextListCount;
+    KSPIN_LOCK                          ClientContextListLock;
+
     LJB_DRIVER_BINDING_TAG              DriverBindingPool[4];
     LIST_ENTRY                          DriverBindingHead;
     LONG                                DriverBindingCount;
@@ -279,6 +283,23 @@ typedef struct _LJB_DEVICE
     DXGK_DEVICEINFO         DeviceInfo;
 } LJB_DEVICE;
 
+/*
+ * created by DxgkDdiCreateContext
+ */
+typedef struct _LJB_CONTEXT
+{
+    LIST_ENTRY              ListEntry;
+    LJB_ADAPTER *           Adapter;
+    LJB_DEVICE *            MyDevice;
+    DXGKARG_CREATECONTEXT   CreateContext;
+
+    /*
+     * output from miniport driver
+     */
+    HANDLE                  hContext;        // miniport driver output
+    DXGK_CONTEXTINFO        ContextInfo;
+} LJB_CONTEXT;
+
 typedef struct _LJB_ALLOCATION
 {
     LIST_ENTRY              ListEntry;
@@ -342,6 +363,19 @@ DXGKDDI_ISSUPPORTEDVIDPN                LJB_DXGK_IsSupportedVidPn;
 DXGKDDI_ENUMVIDPNCOFUNCMODALITY         LJB_DXGK_EnumVidPnCofuncModality;
 DXGKDDI_SETVIDPNSOURCEADDRESS           LJB_DXGK_SetVidPnSourceAddress;
 DXGKDDI_SETVIDPNSOURCEVISIBILITY        LJB_DXGK_SetVidPnSourceVisibility;
+DXGKDDI_COMMITVIDPN                     LJB_DXGK_CommitVidPn;
+DXGKDDI_UPDATEACTIVEVIDPNPRESENTPATH    LJB_DXGK_UpdateActiveVidPnPresentPath;
+DXGKDDI_RECOMMENDMONITORMODES           LJB_DXGK_RecommendMonitorModes;
+DXGKDDI_RECOMMENDVIDPNTOPOLOGY          LJB_DXGK_RecommendVidPnTopology;
+DXGKDDI_GETSCANLINE                     LJB_DXGK_GetScanLine;
+DXGKDDI_CONTROLINTERRUPT                LJB_DXGK_ControlInterrupt;
+DXGKDDI_CREATEOVERLAY                   LJB_DXGK_CreateOverlay;
+DXGKDDI_DESTROYDEVICE                   LJB_DXGK_DestroyDevice;
+DXGKDDI_OPENALLOCATIONINFO              LJB_DXGK_OpenAllocation;
+DXGKDDI_CLOSEALLOCATION                 LJB_DXGK_CloseAllocation;
+DXGKDDI_RENDER                          LJB_DXGK_Render;
+DXGKDDI_CREATECONTEXT                   LJB_DXGK_CreateContext;
+DXGKDDI_DESTROYCONTEXT                  LJB_DXGK_DestroyContext;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (
@@ -357,6 +391,11 @@ LJB_DXGK_FindAdapterByDriverAdapter(
 LJB_DEVICE *
 LJB_DXGK_FindDevice(
     __in HANDLE     hDevice
+    );
+
+LJB_CONTEXT *
+LJB_DXGK_FindContext(
+    __in HANDLE     hContext
     );
 
 LJB_ALLOCATION *

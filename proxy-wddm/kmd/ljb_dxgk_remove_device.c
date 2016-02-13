@@ -25,6 +25,14 @@
 #endif
 
 /*
+ * forward declaration
+ */
+static VOID
+LJB_DXGK_RemoveDevicePostProcessing(
+    __in LJB_ADAPTER *  Adaper
+    );
+
+/*
  * Function: LJB_DXGK_RemoveDevice
  *
  * Description:
@@ -65,6 +73,20 @@ LJB_DXGK_RemoveDevice(
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
     }
 
+    return ntStatus;
+}
+
+static VOID
+LJB_DXGK_RemoveDevicePostProcessing(
+    __in LJB_ADAPTER *  Adapter
+    )
+{
+    KIRQL                               oldIrql;
+    LJB_DEVICE *                        MyDevice;
+    LIST_ENTRY *                        listHead;
+    LIST_ENTRY *                        listNext;
+    LIST_ENTRY *                        listEntry;
+
     /*
      * remove any LBJ_DEVICE associated with Adapter
      */
@@ -88,5 +110,4 @@ LJB_DXGK_RemoveDevice(
     RemoveEntryList(&Adapter->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientAdapterListLock, oldIrql);
     LJB_PROXYKMD_FreePool(Adapter);
-    return ntStatus;
 }

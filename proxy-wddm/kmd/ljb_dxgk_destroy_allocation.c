@@ -13,6 +13,15 @@
 #endif
 
 /*
+ * forward declaration
+ */
+static VOID
+LJB_DXGK_DestroyAllocationPostProcessing(
+    __in LJB_ADAPTER *                      Adapter,
+    _In_ const DXGKARG_DESTROYALLOCATION *  pDestroyAllocation
+    );
+
+/*
  * Function: LJB_DXGK_DestroyAllocation
  *
  * Description:
@@ -53,12 +62,6 @@ LJB_DXGK_DestroyAllocation(
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     NTSTATUS                            ntStatus;
-    KIRQL                               oldIrql;
-    LJB_ALLOCATION *                    MyAllocation;
-    LIST_ENTRY *                        listHead;
-    LIST_ENTRY *                        listNext;
-    LIST_ENTRY *                        listEntry;
-    UINT                                i;
 
     PAGED_CODE();
 
@@ -72,6 +75,24 @@ LJB_DXGK_DestroyAllocation(
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
     }
 
+    LJB_DXGK_DestroyAllocationPostProcessing(Adapter, pDestroyAllocation);
+
+    return ntStatus;
+}
+
+static VOID
+LJB_DXGK_DestroyAllocationPostProcessing(
+    __in LJB_ADAPTER *                      Adapter,
+    _In_ const DXGKARG_DESTROYALLOCATION *  pDestroyAllocation
+    )
+{
+    LIST_ENTRY * CONST  listHead = &Adapter->AllocationListHead;;
+    LJB_ALLOCATION *    MyAllocation;
+    LIST_ENTRY *        listNext;
+    LIST_ENTRY *        listEntry;
+    KIRQL               oldIrql;
+    UINT                i;
+
     /*
      * remove any LBJ_ALLOCATION associated with hAllocation
      */
@@ -79,7 +100,6 @@ LJB_DXGK_DestroyAllocation(
     {
         HANDLE CONST hAllocation = pDestroyAllocation->pAllocationList + i;
 
-        listHead = &Adapter->AllocationListHead;
         KeAcquireSpinLock(&Adapter->AllocationListLock, &oldIrql);
         for (listEntry = listHead->Flink;
              listEntry != listHead;
@@ -96,5 +116,4 @@ LJB_DXGK_DestroyAllocation(
         KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
     }
 
-    return ntStatus;
 }
