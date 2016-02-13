@@ -58,11 +58,6 @@ LJB_DXGK_RemoveDevice(
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     NTSTATUS                            ntStatus;
-    KIRQL                               oldIrql;
-    LJB_DEVICE *                        MyDevice;
-    LIST_ENTRY *                        listHead;
-    LIST_ENTRY *                        listNext;
-    LIST_ENTRY *                        listEntry;
 
     PAGED_CODE();
 
