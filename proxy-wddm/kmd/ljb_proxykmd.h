@@ -4,19 +4,7 @@
  * Author: Lin Jiabang (lin.jiabang@gmail.com)
  *     Copyright (C) 2016  Lin Jiabang
  *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  This program is NOT free software. Any unlicensed usage is prohbited.
  */
 
 #ifndef _LJB_PROXYKMD_H_
@@ -52,9 +40,12 @@
 #define IOCTL_GET_DXGK_INITIALIZE_DISPLAY_ONLY  0x230043
 #define IOCTL_GET_DXGK_INITIALIZE_WIN8          0x230047
 
-#define USB_MONITOR_MAX                 6
-#define INBOX_MONITOR_MAX               64
-#define SEGMENT_DESC_MAX                16
+#define MAX_NUM_OF_USB_MONITOR          6
+#define MAX_NUM_OF_INBOX_MONITOR        64
+#define MAX_NUM_OF_SEGMENT_DESC         16
+#define MAX_NUM_OF_POWER_COMPONENTS     32
+#define MAX_NUM_OF_NODE                 32
+#define MAX_NUM_OF_ENGINE               8
 
 /*
  * PoolTag macro
@@ -224,6 +215,16 @@ typedef struct _LJB_CLIENT_DRIVER_DATA
     DRIVER_INITIALIZATION_DATA              DriverInitData;
 }   LJB_CLIENT_DRIVER_DATA;
 
+typedef struct _LJB_ENGINE_INFO
+{
+    ULONGLONG                               DependentNodeOrdinalMask;
+    DXGK_ENGINESTATUS                       EngineStatus;
+    ULONG                                   LastSubmittedFenceId;
+    ULONG                                   LastCompletedFenceId;
+    ULONG                                   LastPreemptedFenceId;
+    ULONG                                   LastAbortedFenceId;
+}   LJB_ENGINE_INFO;
+
 typedef struct _LJB_ADAPTER
 {
     LIST_ENTRY                              ListEntry;
@@ -244,8 +245,8 @@ typedef struct _LJB_ADAPTER
     /*
      * information obtained from DxgkDdiQueryChildRelations/DxgkDdiQueryChildStatus
      */
-    DXGK_CHILD_DESCRIPTOR                   ChildRelations[INBOX_MONITOR_MAX];
-    BOOLEAN                                 ChildConnectionStatus[INBOX_MONITOR_MAX];
+    DXGK_CHILD_DESCRIPTOR                   ChildRelations[MAX_NUM_OF_INBOX_MONITOR];
+    BOOLEAN                                 ChildConnectionStatus[MAX_NUM_OF_INBOX_MONITOR];
     D3DDDI_VIDEO_PRESENT_TARGET_ID          UsbTargetIdBase;
     ULONG                                   ActualNumberOfChildren;
 
@@ -254,7 +255,7 @@ typedef struct _LJB_ADAPTER
      */
     DXGK_DRIVERCAPS                         DriverCaps;
     DXGK_QUERYSEGMENTOUT                    SegmentOut;
-    DXGK_SEGMENTDESCRIPTOR                  SegmentDescriptors[SEGMENT_DESC_MAX];
+    DXGK_SEGMENTDESCRIPTOR                  SegmentDescriptors[MAX_NUM_OF_SEGMENT_DESC];
 
     /*
      * allocations created by DxgkDdiCreateAllocations
@@ -262,6 +263,17 @@ typedef struct _LJB_ADAPTER
     LIST_ENTRY                              AllocationListHead;
     KSPIN_LOCK                              AllocationListLock;
     LONG                                    AllocationListCount;
+
+    /*
+     * track power component Fstate
+     */
+    UINT                                    FState[MAX_NUM_OF_POWER_COMPONENTS];
+    
+    /*
+     * Engine information
+     */
+    LJB_ENGINE_INFO                         EngineInfo[MAX_NUM_OF_NODE][MAX_NUM_OF_ENGINE];
+
 
 }   LJB_ADAPTER;
 
@@ -374,8 +386,23 @@ DXGKDDI_DESTROYDEVICE                   LJB_DXGK_DestroyDevice;
 DXGKDDI_OPENALLOCATIONINFO              LJB_DXGK_OpenAllocation;
 DXGKDDI_CLOSEALLOCATION                 LJB_DXGK_CloseAllocation;
 DXGKDDI_RENDER                          LJB_DXGK_Render;
+DXGKDDI_RENDERKM                        LJB_DXGK_RenderKm;
+DXGKDDI_PRESENT                         LJB_DXGK_Present;
 DXGKDDI_CREATECONTEXT                   LJB_DXGK_CreateContext;
 DXGKDDI_DESTROYCONTEXT                  LJB_DXGK_DestroyContext;
+DXGKDDI_QUERYVIDPNHWCAPABILITY          LJB_DXGK_QueryVidPnHWCapability;
+
+/*
+ * Win8 or above DDI
+ */
+DXGKDDISETPOWERCOMPONENTFSTATE          LJB_DXGK_SetPowerComponentFState;
+DXGKDDI_QUERYDEPENDENTENGINEGROUP       LJB_DXGK_QueryDependentEngineGroup;
+DXGKDDI_QUERYENGINESTATUS               LJB_DXGK_QueryEngineStatus;
+DXGKDDI_RESETENGINE                     LJB_DXGK_ResetEngine;
+DXGKDDI_STOP_DEVICE_AND_RELEASE_POST_DISPLAY_OWNERSHIP
+                                        LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership;
+DXGKDDI_SYSTEM_DISPLAY_ENABLE           LJB_DXGK_SystemDisplayEnable;
+DXGKDDI_SYSTEM_DISPLAY_WRITE            LJB_DXGK_SystemDisplayWrite;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (

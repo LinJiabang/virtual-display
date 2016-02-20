@@ -142,7 +142,7 @@ LJB_DXGK_QueryChildRelations(
      * enumerate USB monitors
      */
     for (i = Adapter->ActualNumberOfChildren;
-         i < Adapter->ActualNumberOfChildren + USB_MONITOR_MAX;
+         i < Adapter->ActualNumberOfChildren + MAX_NUM_OF_USB_MONITOR;
          i++)
     {
         ChildDescriptor = ChildRelations + i;

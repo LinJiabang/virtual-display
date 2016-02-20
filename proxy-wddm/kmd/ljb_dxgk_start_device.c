@@ -127,8 +127,8 @@ LJB_DXGK_StartDevice(
 
     if (*NumberOfVideoPresentSources != 0)
     {
-        *NumberOfVideoPresentSources += USB_MONITOR_MAX;
-        *NumberOfChildren += USB_MONITOR_MAX;
+        *NumberOfVideoPresentSources += MAX_NUM_OF_USB_MONITOR;
+        *NumberOfChildren += MAX_NUM_OF_USB_MONITOR;
     }
 
     DBG_PRINT(Adapter, DBGLVL_INFO,

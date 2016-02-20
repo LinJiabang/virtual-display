@@ -4,19 +4,7 @@
  * Author: Lin Jiabang (lin.jiabang@gmail.com)
  *     Copyright (C) 2016  Lin Jiabang
  *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *  This program is NOT free software. Any unlicensed usage is prohbited.
  */
 #include "ljb_proxykmd.h"
 
@@ -196,7 +184,7 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN7    DriverInitTableWin7 =
     &LJB_DXGK_OpenAllocation,
     &LJB_DXGK_CloseAllocation,
     &LJB_DXGK_Render,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_Present,
+    &LJB_DXGK_Present,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_UpdateOverlay,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FlipOverlay,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_DestroyOverlay,
@@ -220,9 +208,9 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN7    DriverInitTableWin7 =
     NULL,                   /* DxgkDdiMovePageDirectory */
     NULL,                   /* DxgkDdiSubmitRender */
     NULL,                   /* DxgkDdiCreateAllocation2 */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RenderKm,
+    &LJB_DXGK_RenderKm,
     NULL,                   /* VOID* Reserved; */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryVidPnHWCapability
+    &LJB_DXGK_QueryVidPnHWCapability
 };
 
 /*
@@ -487,7 +475,7 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin8 =
     &LJB_DXGK_OpenAllocation,
     &LJB_DXGK_CloseAllocation,
     &LJB_DXGK_Render,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_Present,
+    &LJB_DXGK_Present,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_UpdateOverlay,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FlipOverlay,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_DestroyOverlay,
@@ -511,20 +499,20 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin8 =
     NULL,                   /* DxgkDdiMovePageDirectory */
     NULL,                   /* DxgkDdiSubmitRender */
     NULL,                   /* DxgkDdiCreateAllocation2 */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RenderKm,
+    &LJB_DXGK_RenderKm,
     NULL,                   /* VOID* Reserved; */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryVidPnHWCapability,
+    &LJB_DXGK_QueryVidPnHWCapability,
 
     /*
      *(DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WIN8)
      */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetPowerComponentFState,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryDependentEngineGroup,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryEngineStatus,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_ResetEngine,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SystemDisplayEnable,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SystemDisplayWrite,
+    &LJB_DXGK_SetPowerComponentFState,
+    &LJB_DXGK_QueryDependentEngineGroup,
+    &LJB_DXGK_QueryEngineStatus,
+    &LJB_DXGK_ResetEngine,
+    &LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership,
+    &LJB_DXGK_SystemDisplayEnable,
+    &LJB_DXGK_SystemDisplayWrite,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CancelCommand,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetChildContainerId,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_PowerRuntimeControlRequest,
@@ -821,7 +809,7 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
     &LJB_DXGK_OpenAllocation,
     &LJB_DXGK_CloseAllocation,
     &LJB_DXGK_Render,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_Present,
+    &LJB_DXGK_Present,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_UpdateOverlay,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FlipOverlay,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_DestroyOverlay,
@@ -845,20 +833,20 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
     NULL,                   /* DxgkDdiMovePageDirectory */
     NULL,                   /* DxgkDdiSubmitRender */
     NULL,                   /* DxgkDdiCreateAllocation2 */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RenderKm,
+    &LJB_DXGK_RenderKm,
     NULL,                   /* VOID* Reserved; */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryVidPnHWCapability,
+    &LJB_DXGK_QueryVidPnHWCapability,
 
     /*
      *(DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WIN8)
      */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetPowerComponentFState,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryDependentEngineGroup,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_QueryEngineStatus,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_ResetEngine,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SystemDisplayEnable,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SystemDisplayWrite,
+    &LJB_DXGK_SetPowerComponentFState,
+    &LJB_DXGK_QueryDependentEngineGroup,
+    &LJB_DXGK_QueryEngineStatus,
+    &LJB_DXGK_ResetEngine,
+    &LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership,
+    &LJB_DXGK_SystemDisplayEnable,
+    &LJB_DXGK_SystemDisplayWrite,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CancelCommand,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetChildContainerId,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_PowerRuntimeControlRequest,
@@ -1050,7 +1038,8 @@ LJB_DXGK_InitializeWin7(
      * NO INTERCEPT DDI:
      * DxgkDdiControlEtwLogging, DxgkDdiUnload, DxgkDdiQueryInterface,
      * DxgkDdiSetPalette, DxgkDdiCollectDbgInfo, DxgkDdiRecommendFunctionalVidPn,
-     * DxgkDdiStopCapture
+     * DxgkDdiStopCapture, DxgkDdiUpdateOverlay, DxgkDdiFlipOverlay, DxgkDdiDestroyOverlay,
+     * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm
      */
     MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
     MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
@@ -1059,6 +1048,12 @@ LJB_DXGK_InitializeWin7(
     MyDriverInitData.DxgkDdiCollectDbgInfo = DriverInitializationData->DxgkDdiCollectDbgInfo;
     MyDriverInitData.DxgkDdiRecommendFunctionalVidPn = DriverInitializationData->DxgkDdiRecommendFunctionalVidPn;
     MyDriverInitData.DxgkDdiStopCapture = DriverInitializationData->DxgkDdiStopCapture;
+    MyDriverInitData.DxgkDdiUpdateOverlay = DriverInitializationData->DxgkDdiUpdateOverlay;
+    MyDriverInitData.DxgkDdiFlipOverlay = DriverInitializationData->DxgkDdiFlipOverlay;
+    MyDriverInitData.DxgkDdiDestroyOverlay = DriverInitializationData->DxgkDdiDestroyOverlay;
+    MyDriverInitData.DxgkDdiLinkDevice = DriverInitializationData->DxgkDdiLinkDevice;
+    MyDriverInitData.DxgkDdiSetDisplayPrivateDriverFormat  = DriverInitializationData->DxgkDdiSetDisplayPrivateDriverFormat;
+    MyDriverInitData.DxgkDdiRenderKm = DriverInitializationData->DxgkDdiRenderKm;
 
     LJB_FilterPointers(
         (PVOID *) &MyDriverInitData,
@@ -1203,7 +1198,8 @@ LJB_DXGK_InitializeWin8(
      * NO INTERCEPT DDI:
      * DxgkDdiControlEtwLogging, DxgkDdiUnload, DxgkDdiQueryInterface,
      * DxgkDdiSetPalette, DxgkDdiCollectDbgInfo, DxgkDdiRecommendFunctionalVidPn,
-     * DxgkDdiStopCapture
+     * DxgkDdiStopCapture, DxgkDdiUpdateOverlay, DxgkDdiFlipOverlay, DxgkDdiDestroyOverlay,
+     * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm
      */
     MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
     MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
@@ -1212,6 +1208,12 @@ LJB_DXGK_InitializeWin8(
     MyDriverInitData.DxgkDdiCollectDbgInfo = DriverInitializationData->DxgkDdiCollectDbgInfo;
     MyDriverInitData.DxgkDdiRecommendFunctionalVidPn = DriverInitializationData->DxgkDdiRecommendFunctionalVidPn;
     MyDriverInitData.DxgkDdiStopCapture = DriverInitializationData->DxgkDdiStopCapture;
+    MyDriverInitData.DxgkDdiUpdateOverlay = DriverInitializationData->DxgkDdiUpdateOverlay;
+    MyDriverInitData.DxgkDdiFlipOverlay = DriverInitializationData->DxgkDdiFlipOverlay;
+    MyDriverInitData.DxgkDdiDestroyOverlay = DriverInitializationData->DxgkDdiDestroyOverlay;
+    MyDriverInitData.DxgkDdiLinkDevice = DriverInitializationData->DxgkDdiLinkDevice;
+    MyDriverInitData.DxgkDdiSetDisplayPrivateDriverFormat  = DriverInitializationData->DxgkDdiSetDisplayPrivateDriverFormat;
+    MyDriverInitData.DxgkDdiRenderKm = DriverInitializationData->DxgkDdiRenderKm;
 
     LJB_FilterPointers(
         (PVOID *) &MyDriverInitData,
