@@ -513,19 +513,19 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin8 =
     &LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership,
     &LJB_DXGK_SystemDisplayEnable,
     &LJB_DXGK_SystemDisplayWrite,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CancelCommand,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetChildContainerId,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_PowerRuntimeControlRequest,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_NotifySurpriseRemoval,
+    &LJB_DXGK_CancelCommand,
+    &LJB_DXGK_GetChildContainerId,
+    &LJB_DXGK_PowerRuntimeControlRequest,
+    &LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay,
+    &LJB_DXGK_NotifySurpriseRemoval,
 
     /*
      * (DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WDDM1_3)
      */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetNodeMetadata,
+    &LJB_DXGK_GetNodeMetadata,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetPowerPState,        // DxgkDdiSetPowerPState: This member is reserved and should be set to zero.
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_ControlInterrupt2,     // MSDN says this shall be zero, but Dxgkrnl.sys is calling into it!
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CheckMultiPlaneOverlaySupport,
+    &LJB_DXGK_ControlInterrupt2,     // MSDN says this shall be zero, but Dxgkrnl.sys is calling into it!
+    &LJB_DXGK_CheckMultiPlaneOverlaySupport,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CalibrateGpuClock,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FormatHistoryBuffer,
 
@@ -753,7 +753,7 @@ typedef struct _DRIVER_INITIALIZATION_DATA_WIN10 {
 
 } DRIVER_INITIALIZATION_DATA_WIN10;
 
-static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
+static CONST DRIVER_INITIALIZATION_DATA_WIN10   DriverInitTableWin10 =
 {
     DXGKDDI_INTERFACE_VERSION,
     &LJB_DXGK_AddDevice0,
@@ -847,19 +847,19 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
     &LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership,
     &LJB_DXGK_SystemDisplayEnable,
     &LJB_DXGK_SystemDisplayWrite,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CancelCommand,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetChildContainerId,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_PowerRuntimeControlRequest,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_NotifySurpriseRemoval,
+    &LJB_DXGK_CancelCommand,
+    &LJB_DXGK_GetChildContainerId,
+    &LJB_DXGK_PowerRuntimeControlRequest,
+    &LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay,
+    &LJB_DXGK_NotifySurpriseRemoval,
 
     /*
      * (DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WDDM1_3)
      */
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetNodeMetadata,
+    &LJB_DXGK_GetNodeMetadata,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetPowerPState,        // DxgkDdiSetPowerPState: This member is reserved and should be set to zero.
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_ControlInterrupt2,     // MSDN says this shall be zero, but Dxgkrnl.sys is calling into it!
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CheckMultiPlaneOverlaySupport,
+    &LJB_DXGK_ControlInterrupt2,     // MSDN says this shall be zero, but Dxgkrnl.sys is calling into it!
+    &LJB_DXGK_CheckMultiPlaneOverlaySupport,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CalibrateGpuClock,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FormatHistoryBuffer,
 
@@ -867,15 +867,15 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin10 =
      * DXGKDDI_INTERFACE_VERSION >= DXGKDDI_INTERFACE_VERSION_WDDM2_0
      */
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_RenderGdi,                                    //DxgkDdiRenderGdi
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SubmitVirtual,                                //DxgkDdiSubmitCommandVirtual
+    &LJB_DXGK_SubmitCommandVirtual,                                //DxgkDdiSubmitCommandVirtual
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetRootPageTable,                             //DxgkDdiSetRootPageTable
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_GetRootPageTableSize,                         //DxgkDdiGetRootPageTableSize
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_MapCpuHostAperture,                           //DxgkDdiMapCpuHostAperture
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_UnmapCpuHostAperture,                         //DxgkDdiUnmapCpuHostAperture
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CheckMultiPlaneOverlaySupport2,               //DxgkDdiCheckMultiPlaneOverlaySupport2
+    &LJB_DXGK_CheckMultiPlaneOverlaySupport2,               //DxgkDdiCheckMultiPlaneOverlaySupport2
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CreateProcess,                                //DxgkDdiCreateProcess
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_DestroyProcess,                               //DxgkDdiDestroyProcess
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay2,  //DxgkDdiSetVidPnSourceAddressWithMultiPlaneOverlay2
+    &LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay2,  //DxgkDdiSetVidPnSourceAddressWithMultiPlaneOverlay2
     NULL,               //Reserved1
     NULL,               //Reserved2
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_PowerRuntimeSetDeviceHandle,                  //DxgkDdiPowerRuntimeSetDeviceHandle
@@ -1039,7 +1039,8 @@ LJB_DXGK_InitializeWin7(
      * DxgkDdiControlEtwLogging, DxgkDdiUnload, DxgkDdiQueryInterface,
      * DxgkDdiSetPalette, DxgkDdiCollectDbgInfo, DxgkDdiRecommendFunctionalVidPn,
      * DxgkDdiStopCapture, DxgkDdiUpdateOverlay, DxgkDdiFlipOverlay, DxgkDdiDestroyOverlay,
-     * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm
+     * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm,
+     * DxgkDdiSetPowerPState, DxgkDdiCalibrateGpuClock,DxgkDdiFormatHistoryBuffer
      */
     MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
     MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
@@ -1054,6 +1055,23 @@ LJB_DXGK_InitializeWin7(
     MyDriverInitData.DxgkDdiLinkDevice = DriverInitializationData->DxgkDdiLinkDevice;
     MyDriverInitData.DxgkDdiSetDisplayPrivateDriverFormat  = DriverInitializationData->DxgkDdiSetDisplayPrivateDriverFormat;
     MyDriverInitData.DxgkDdiRenderKm = DriverInitializationData->DxgkDdiRenderKm;
+
+    /*
+     * WDDM1.3 or above
+     */
+    if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM1_3)
+    {
+    MyDriverInitData.DxgkDdiSetPowerPState = DriverInitializationData->DxgkDdiSetPowerPState;
+    MyDriverInitData.DxgkDdiCalibrateGpuClock = DriverInitializationData->DxgkDdiCalibrateGpuClock;
+    MyDriverInitData.DxgkDdiFormatHistoryBuffer = DriverInitializationData->DxgkDdiFormatHistoryBuffer;
+    }
+    /*
+     * WDDM2.0 or above
+     */
+    if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0_PREVIEW)
+    {
+    MyDriverInitData.DxgkDdiRenderGdi = DriverInitializationData->DxgkDdiRenderGdi;
+    }
 
     LJB_FilterPointers(
         (PVOID *) &MyDriverInitData,
@@ -1199,7 +1217,8 @@ LJB_DXGK_InitializeWin8(
      * DxgkDdiControlEtwLogging, DxgkDdiUnload, DxgkDdiQueryInterface,
      * DxgkDdiSetPalette, DxgkDdiCollectDbgInfo, DxgkDdiRecommendFunctionalVidPn,
      * DxgkDdiStopCapture, DxgkDdiUpdateOverlay, DxgkDdiFlipOverlay, DxgkDdiDestroyOverlay,
-     * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm
+     * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm,
+     * DxgkDdiCalibrateGpuClock
      */
     MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
     MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
@@ -1214,6 +1233,23 @@ LJB_DXGK_InitializeWin8(
     MyDriverInitData.DxgkDdiLinkDevice = DriverInitializationData->DxgkDdiLinkDevice;
     MyDriverInitData.DxgkDdiSetDisplayPrivateDriverFormat  = DriverInitializationData->DxgkDdiSetDisplayPrivateDriverFormat;
     MyDriverInitData.DxgkDdiRenderKm = DriverInitializationData->DxgkDdiRenderKm;
+
+    /*
+     * WDDM1.3 or above
+     */
+    if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM1_3)
+    {
+    MyDriverInitData.DxgkDdiSetPowerPState = DriverInitializationData->DxgkDdiSetPowerPState;
+    MyDriverInitData.DxgkDdiCalibrateGpuClock = DriverInitializationData->DxgkDdiCalibrateGpuClock;
+    MyDriverInitData.DxgkDdiFormatHistoryBuffer = DriverInitializationData->DxgkDdiFormatHistoryBuffer;
+    }
+    /*
+     * WDDM2.0 or above
+     */
+    if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0_PREVIEW)
+    {
+    MyDriverInitData.DxgkDdiRenderGdi = DriverInitializationData->DxgkDdiRenderGdi;
+    }
 
     LJB_FilterPointers(
         (PVOID *) &MyDriverInitData,

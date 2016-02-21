@@ -62,8 +62,6 @@ LJB_DXGK_PreemptCommand(
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     NTSTATUS                            ntStatus;
 
-    PAGED_CODE();
-
     ntStatus = (*DriverInitData->DxgkDdiPreemptCommand)(
         hAdapter,
         pPreemptCommand

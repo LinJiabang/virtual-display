@@ -77,3 +77,39 @@ LJB_DXGK_ControlInterrupt(
 
     return ntStatus;
 }
+
+/*
+ * Function: LJB_DXGK_ControlInterrupt2
+ *
+ * Description:
+ * undocumented.
+ *
+ * Return Value:
+ * undocumented
+ */
+NTSTATUS
+LJB_DXGK_ControlInterrupt2(
+    _In_ const HANDLE                   hAdapter,
+    IN_CONST_DXGKARG_CONTROLINTERRUPT2  InterruptControl
+    )
+{
+    LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter);
+    LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
+    DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
+    NTSTATUS                            ntStatus;
+
+    /*
+     * FIXME: more processing required
+     */
+    ntStatus = (*DriverInitData->DxgkDdiControlInterrupt2)(
+        hAdapter,
+        InterruptControl
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+    }
+
+    return ntStatus;
+}

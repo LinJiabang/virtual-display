@@ -268,11 +268,12 @@ typedef struct _LJB_ADAPTER
      * track power component Fstate
      */
     UINT                                    FState[MAX_NUM_OF_POWER_COMPONENTS];
-    
+
     /*
      * Engine information
      */
     LJB_ENGINE_INFO                         EngineInfo[MAX_NUM_OF_NODE][MAX_NUM_OF_ENGINE];
+    DXGKARG_GETNODEMETADATA                 NodeMetaData[MAX_NUM_OF_NODE];
 
 
 }   LJB_ADAPTER;
@@ -403,6 +404,23 @@ DXGKDDI_STOP_DEVICE_AND_RELEASE_POST_DISPLAY_OWNERSHIP
                                         LJB_DXGK_StopDeviceAndReleasePostDisplayOwnership;
 DXGKDDI_SYSTEM_DISPLAY_ENABLE           LJB_DXGK_SystemDisplayEnable;
 DXGKDDI_SYSTEM_DISPLAY_WRITE            LJB_DXGK_SystemDisplayWrite;
+DXGKDDI_CANCELCOMMAND                   LJB_DXGK_CancelCommand;
+DXGKDDI_GET_CHILD_CONTAINER_ID          LJB_DXGK_GetChildContainerId;
+DXGKDDIPOWERRUNTIMECONTROLREQUEST       LJB_DXGK_PowerRuntimeControlRequest;
+DXGKDDI_CHECKMULTIPLANEOVERLAYSUPPORT   LJB_DXGK_CheckMultiPlaneOverlaySupport;
+DXGKDDI_SETVIDPNSOURCEADDRESSWITHMULTIPLANEOVERLAY
+                                        LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay;
+DXGKDDI_NOTIFY_SURPRISE_REMOVAL         LJB_DXGK_NotifySurpriseRemoval;
+DXGKDDI_GETNODEMETADATA                 LJB_DXGK_GetNodeMetadata;
+DXGKDDI_CONTROLINTERRUPT2               LJB_DXGK_ControlInterrupt2;
+
+/*
+ * WDDM 2.0 DDI
+ */
+DXGKDDI_SUBMITCOMMANDVIRTUAL            LJB_DXGK_SubmitCommandVirtual;
+DXGKDDI_CHECKMULTIPLANEOVERLAYSUPPORT2  LJB_DXGK_CheckMultiPlaneOverlaySupport2;
+DXGKDDI_SETVIDPNSOURCEADDRESSWITHMULTIPLANEOVERLAY2
+                                        LJB_DXGK_SetVidPnSourceAddressWithMultiPlaneOverlay2;
 
 NTSTATUS
 LJB_PROXYKMD_PassDown (

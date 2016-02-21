@@ -72,4 +72,11 @@ SOURCES=                                                        \
     ljb_dxgk_stop_device_and_release_post_display_ownership.c   \
     ljb_dxgk_system_display_enable.c                            \
     ljb_dxgk_system_display_write.c                             \
+    ljb_dxgk_cancel_command.c                                   \
+    ljb_dxgk_get_child_container_id.c                           \
+    ljb_dxgk_power_runtime_control_request.c                    \
+    ljb_dxgk_multiplane_overlay.c                               \
+    ljb_dxgk_notify_surprise_removal.c                          \
+    ljb_dxgk_get_node_meta_data.c                               \
+    ljb_dxgk_submit_command_virtual.c                           \
 
