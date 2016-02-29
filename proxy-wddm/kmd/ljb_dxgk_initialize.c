@@ -526,7 +526,7 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN8   DriverInitTableWin8 =
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetPowerPState,        // DxgkDdiSetPowerPState: This member is reserved and should be set to zero.
     &LJB_DXGK_ControlInterrupt2,     // MSDN says this shall be zero, but Dxgkrnl.sys is calling into it!
     &LJB_DXGK_CheckMultiPlaneOverlaySupport,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CalibrateGpuClock,
+    &LJB_DXGK_CalibrateGpuClock,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FormatHistoryBuffer,
 
     NULL,               //NotImplemented0
@@ -860,7 +860,7 @@ static CONST DRIVER_INITIALIZATION_DATA_WIN10   DriverInitTableWin10 =
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_SetPowerPState,        // DxgkDdiSetPowerPState: This member is reserved and should be set to zero.
     &LJB_DXGK_ControlInterrupt2,     // MSDN says this shall be zero, but Dxgkrnl.sys is calling into it!
     &LJB_DXGK_CheckMultiPlaneOverlaySupport,
-    NULL, // NOT YET IMPLEMENTED &LJB_DXGK_CalibrateGpuClock,
+    &LJB_DXGK_CalibrateGpuClock,
     NULL, // NOT YET IMPLEMENTED &LJB_DXGK_FormatHistoryBuffer,
 
     /*
@@ -1040,7 +1040,7 @@ LJB_DXGK_InitializeWin7(
      * DxgkDdiSetPalette, DxgkDdiCollectDbgInfo, DxgkDdiRecommendFunctionalVidPn,
      * DxgkDdiStopCapture, DxgkDdiUpdateOverlay, DxgkDdiFlipOverlay, DxgkDdiDestroyOverlay,
      * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm,
-     * DxgkDdiSetPowerPState, DxgkDdiCalibrateGpuClock,DxgkDdiFormatHistoryBuffer
+     * DxgkDdiSetPowerPState, DxgkDdiFormatHistoryBuffer
      */
     MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
     MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
@@ -1062,15 +1062,26 @@ LJB_DXGK_InitializeWin7(
     if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM1_3)
     {
     MyDriverInitData.DxgkDdiSetPowerPState = DriverInitializationData->DxgkDdiSetPowerPState;
-    MyDriverInitData.DxgkDdiCalibrateGpuClock = DriverInitializationData->DxgkDdiCalibrateGpuClock;
     MyDriverInitData.DxgkDdiFormatHistoryBuffer = DriverInitializationData->DxgkDdiFormatHistoryBuffer;
     }
     /*
-     * WDDM2.0 or above
+     * WDDM2.0 or above: DxgkDdiRenderGdi, DxgkDdiUnmapCpuHostAperture,
+     * DxgkDdiSetRootPageTable, DxgkDdiGetRootPageTableSize, DxgkDdiMapCpuHostAperture,
+     * DxgkDdiCreateProcess, DxgkDdiDestroyProcess, DxgkDdiPowerRuntimeSetDeviceHandle,
+     * DxgkDdiSetStablePowerState, DxgkDdiSetVideoProtectedRegion
      */
     if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0_PREVIEW)
     {
     MyDriverInitData.DxgkDdiRenderGdi = DriverInitializationData->DxgkDdiRenderGdi;
+    MyDriverInitData.DxgkDdiSetRootPageTable = DriverInitializationData->DxgkDdiSetRootPageTable;
+    MyDriverInitData.DxgkDdiGetRootPageTableSize = DriverInitializationData->DxgkDdiGetRootPageTableSize;
+    MyDriverInitData.DxgkDdiMapCpuHostAperture = DriverInitializationData->DxgkDdiMapCpuHostAperture;
+    MyDriverInitData.DxgkDdiUnmapCpuHostAperture = DriverInitializationData->DxgkDdiUnmapCpuHostAperture;
+    MyDriverInitData.DxgkDdiCreateProcess = DriverInitializationData->DxgkDdiCreateProcess;
+    MyDriverInitData.DxgkDdiDestroyProcess = DriverInitializationData->DxgkDdiDestroyProcess;
+    MyDriverInitData.DxgkDdiPowerRuntimeSetDeviceHandle = DriverInitializationData->DxgkDdiPowerRuntimeSetDeviceHandle;
+    MyDriverInitData.DxgkDdiSetStablePowerState = DriverInitializationData->DxgkDdiSetStablePowerState;
+    MyDriverInitData.DxgkDdiSetVideoProtectedRegion = DriverInitializationData->DxgkDdiSetVideoProtectedRegion;
     }
 
     LJB_FilterPointers(
@@ -1218,7 +1229,7 @@ LJB_DXGK_InitializeWin8(
      * DxgkDdiSetPalette, DxgkDdiCollectDbgInfo, DxgkDdiRecommendFunctionalVidPn,
      * DxgkDdiStopCapture, DxgkDdiUpdateOverlay, DxgkDdiFlipOverlay, DxgkDdiDestroyOverlay,
      * DxgkDdiLinkDevice,DxgkDdiSetDisplayPrivateDriverFormat, DxgkDdiRenderKm,
-     * DxgkDdiCalibrateGpuClock
+     * DxgkDdiSetPowerPState, DxgkDdiFormatHistoryBuffer
      */
     MyDriverInitData.DxgkDdiControlEtwLogging = DriverInitializationData->DxgkDdiControlEtwLogging;
     MyDriverInitData.DxgkDdiUnload = DriverInitializationData->DxgkDdiUnload;
@@ -1240,15 +1251,26 @@ LJB_DXGK_InitializeWin8(
     if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM1_3)
     {
     MyDriverInitData.DxgkDdiSetPowerPState = DriverInitializationData->DxgkDdiSetPowerPState;
-    MyDriverInitData.DxgkDdiCalibrateGpuClock = DriverInitializationData->DxgkDdiCalibrateGpuClock;
     MyDriverInitData.DxgkDdiFormatHistoryBuffer = DriverInitializationData->DxgkDdiFormatHistoryBuffer;
     }
     /*
-     * WDDM2.0 or above
+     * WDDM2.0 or above: DxgkDdiRenderGdi, DxgkDdiUnmapCpuHostAperture,
+     * DxgkDdiSetRootPageTable, DxgkDdiGetRootPageTableSize, DxgkDdiMapCpuHostAperture,
+     * DxgkDdiCreateProcess, DxgkDdiDestroyProcess, DxgkDdiPowerRuntimeSetDeviceHandle,
+     * DxgkDdiSetStablePowerState, DxgkDdiSetVideoProtectedRegion
      */
     if (DriverInitializationData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0_PREVIEW)
     {
     MyDriverInitData.DxgkDdiRenderGdi = DriverInitializationData->DxgkDdiRenderGdi;
+    MyDriverInitData.DxgkDdiSetRootPageTable = DriverInitializationData->DxgkDdiSetRootPageTable;
+    MyDriverInitData.DxgkDdiGetRootPageTableSize = DriverInitializationData->DxgkDdiGetRootPageTableSize;
+    MyDriverInitData.DxgkDdiMapCpuHostAperture = DriverInitializationData->DxgkDdiMapCpuHostAperture;
+    MyDriverInitData.DxgkDdiUnmapCpuHostAperture = DriverInitializationData->DxgkDdiUnmapCpuHostAperture;
+    MyDriverInitData.DxgkDdiCreateProcess = DriverInitializationData->DxgkDdiCreateProcess;
+    MyDriverInitData.DxgkDdiDestroyProcess = DriverInitializationData->DxgkDdiDestroyProcess;
+    MyDriverInitData.DxgkDdiPowerRuntimeSetDeviceHandle = DriverInitializationData->DxgkDdiPowerRuntimeSetDeviceHandle;
+    MyDriverInitData.DxgkDdiSetStablePowerState = DriverInitializationData->DxgkDdiSetStablePowerState;
+    MyDriverInitData.DxgkDdiSetVideoProtectedRegion = DriverInitializationData->DxgkDdiSetVideoProtectedRegion;
     }
 
     LJB_FilterPointers(

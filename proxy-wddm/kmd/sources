@@ -78,5 +78,7 @@ SOURCES=                                                        \
     ljb_dxgk_multiplane_overlay.c                               \
     ljb_dxgk_notify_surprise_removal.c                          \
     ljb_dxgk_get_node_meta_data.c                               \
+    ljb_dxgk_calibrate_gpu_clock.c                              \
     ljb_dxgk_submit_command_virtual.c                           \
+    
 

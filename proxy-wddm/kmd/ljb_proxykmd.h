@@ -223,6 +223,7 @@ typedef struct _LJB_ENGINE_INFO
     ULONG                                   LastCompletedFenceId;
     ULONG                                   LastPreemptedFenceId;
     ULONG                                   LastAbortedFenceId;
+    DXGKARG_CALIBRATEGPUCLOCK               CalibrateGpuClock;
 }   LJB_ENGINE_INFO;
 
 typedef struct _LJB_ADAPTER
@@ -413,6 +414,7 @@ DXGKDDI_SETVIDPNSOURCEADDRESSWITHMULTIPLANEOVERLAY
 DXGKDDI_NOTIFY_SURPRISE_REMOVAL         LJB_DXGK_NotifySurpriseRemoval;
 DXGKDDI_GETNODEMETADATA                 LJB_DXGK_GetNodeMetadata;
 DXGKDDI_CONTROLINTERRUPT2               LJB_DXGK_ControlInterrupt2;
+DXGKDDI_CALIBRATEGPUCLOCK               LJB_DXGK_CalibrateGpuClock;
 
 /*
  * WDDM 2.0 DDI
