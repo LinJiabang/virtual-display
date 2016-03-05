@@ -6,7 +6,8 @@ INCLUDES = ..\include;
 MSC_WARNING_LEVEL= /W4 /WX
 
 
-TARGETLIBS= $(DDK_LIB_PATH)\aux_klib.lib
+TARGETLIBS= $(DDK_LIB_PATH)\aux_klib.lib;$(DDK_LIB_PATH)\displib.lib
+
 SOURCES=                                                        \
     ljb_proxykmd_add_device.c                                   \
     ljb_proxykmd_dispatch_create.c                              \
@@ -80,5 +81,5 @@ SOURCES=                                                        \
     ljb_dxgk_get_node_meta_data.c                               \
     ljb_dxgk_calibrate_gpu_clock.c                              \
     ljb_dxgk_submit_command_virtual.c                           \
-    
+
 

@@ -29,6 +29,15 @@
 #endif
 
 /*
+ * undocumented API exported from WDK10 displib
+ */
+NTSTATUS DlpLoadDxgkrnl(
+    __out PFILE_OBJECT *     DxgkFileObject,
+    __out PDEVICE_OBJECT *   DxgkDeviceObject
+    );
+VOID DlpUnloadDxgkrnl(VOID);
+
+/*
  * This routine tries to load dxgkrnl.sys, and obtains the DxgkDeviceObject.
  * If theDxgkDeviceObject is successfully retrieved, create an filter device
  * object and attach on top of it.
@@ -45,38 +54,39 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
     DEVICE_OBJECT *                 DxgkDeviceObject;
     FILE_OBJECT *                   DxgkFileObject;
     DEVICE_OBJECT *                 FilterDeviceObject;
-    UNICODE_STRING                  DxgkDevName;
-    UNICODE_STRING                  DxgkSvcName;
+    //UNICODE_STRING                  DxgkDevName;
+    //UNICODE_STRING                  DxgkSvcName;
     NTSTATUS                        ntStatus;
 
-    RtlInitUnicodeString(&DxgkDevName, DXGK_DEV_NAME);
-    RtlInitUnicodeString(&DxgkSvcName, DXGK_SVC_NAME);
+    ntStatus = DlpLoadDxgkrnl(&DxgkFileObject, &DxgkDeviceObject);
 
-    ntStatus = ZwLoadDriver(&DxgkSvcName);
-    if ((!NT_SUCCESS(ntStatus) && ntStatus != STATUS_IMAGE_ALREADY_LOADED))
-    {
-        KdPrint(("?" __FUNCTION__ ": "
-            "ZwLoadDriver failed with ntStatus(%08x)\n",
-            ntStatus
-            ));
-        return ntStatus;
-    }
-
-    ntStatus = IoGetDeviceObjectPointer(
-        &DxgkDevName,
-        FILE_ALL_ACCESS,
-        &DxgkFileObject,
-        &DxgkDeviceObject
-        );
-    if (!NT_SUCCESS(ntStatus))
-    {
-        KdPrint(("?" __FUNCTION__ ": "
-            "IoGetDeviceObjectPointer failed with ntStatus(%08x)\n",
-            ntStatus
-            ));
-        (VOID) ZwUnloadDriver(&DxgkSvcName);
-        return ntStatus;
-    }
+    //RtlInitUnicodeString(&DxgkDevName, DXGK_DEV_NAME);
+    //RtlInitUnicodeString(&DxgkSvcName, DXGK_SVC_NAME);
+    //ntStatus = ZwLoadDriver(&DxgkSvcName);
+    //if ((!NT_SUCCESS(ntStatus) && ntStatus != STATUS_IMAGE_ALREADY_LOADED))
+    //{
+    //    KdPrint(("?" __FUNCTION__ ": "
+    //        "ZwLoadDriver failed with ntStatus(%08x)\n",
+    //        ntStatus
+    //        ));
+    //    return ntStatus;
+    //}
+    //
+    //ntStatus = IoGetDeviceObjectPointer(
+    //    &DxgkDevName,
+    //    FILE_ALL_ACCESS,
+    //    &DxgkFileObject,
+    //    &DxgkDeviceObject
+    //    );
+    //if (!NT_SUCCESS(ntStatus))
+    //{
+    //    KdPrint(("?" __FUNCTION__ ": "
+    //        "IoGetDeviceObjectPointer failed with ntStatus(%08x)\n",
+    //        ntStatus
+    //        ));
+    //    (VOID) ZwUnloadDriver(&DxgkSvcName);
+    //    return ntStatus;
+    //}
 
     KdPrint(( __FUNCTION__ ": DxgkDeviceObject(%p), DxgkFileObject(%p)\n",
         DxgkDeviceObject,
@@ -99,7 +109,8 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
             ntStatus
             ));
         ObDereferenceObject(DxgkFileObject);
-        (VOID) ZwUnloadDriver(&DxgkSvcName);
+        //(VOID) ZwUnloadDriver(&DxgkSvcName);
+        DlpUnloadDxgkrnl();
         return ntStatus;
     }
 
@@ -121,7 +132,8 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
             ));
         IoDeleteDevice(FilterDeviceObject);
         ObDereferenceObject(DxgkFileObject);
-        (VOID) ZwUnloadDriver(&DxgkSvcName);
+        //(VOID) ZwUnloadDriver(&DxgkSvcName);
+        DlpUnloadDxgkrnl();
         return STATUS_UNSUCCESSFUL;
     }
 
