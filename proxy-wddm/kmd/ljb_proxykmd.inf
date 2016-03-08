@@ -1,0 +1,93 @@
+;    ljb_proxykmd.INF
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%LJBSoftware%
+DriverVer=09/21/2009,6.0.5736.1
+CatalogFile=ljb_proxykmd.cat
+
+[DestinationDirs]
+DefaultDestDir              = 12
+ljb_proxykmd.CopyFiles      = 12                ; drivers
+ljb_umd.CopyFiles           = 11                ; system32
+ljb_umd_wow.CopyFiles       = 10, SysWow64      ; x64-specific
+
+[SourceDisksNames.x86]
+1=%DiskId1%, ljb_proxykmd.sys,,\x86
+;; NOT YET IMPLEMENTED 1=%DiskId1%, ljb_umd.dll,,\x86
+
+
+[SourceDisksNames.amd64]
+1=%DiskId1%, ljb_proxykmd.sys,,\x64
+;; NOT YET IMPLEMENTED 1=%DiskId1%, ljb_umd.dll,,\x64
+;; NOT YET IMPLEMENTED 1=%DiskId1%, ljb_umd32.dll,,\x64
+
+
+[SourceDisksFiles.x86]
+ljb_proxykmd.sys    = 1
+;; NOT YET IMPLEMENTED ljb_umd.dll    = 1
+
+
+[SourceDisksFiles.amd64]
+ljb_proxykmd.sys    = 1
+;; NOT YET IMPLEMENTEDljb_proxyumd.dll    = 1
+;; NOT YET IMPLEMENTEDljb_proxyumd32.dll  = 1
+
+
+;*****************************************
+; Table of contents  Install Section
+;*****************************************
+
+[Manufacturer]
+%LJBSoftware%=LJB_PROXY_DISPLAY, NTx86, NTamd64
+
+[LJB_PROXY_DISPLAY.NTx86]
+%ljb_proxykmd.DeviceDesc%=ljb_proxykmd.Install, root\ljb_proxykmd
+
+[LJB_PROXY_DISPLAY.NTamd64]
+%ljb_proxykmd.DeviceDesc%=ljb_proxykmd.Install, root\ljb_proxykmd
+
+[ljb_proxykmd.Install.NT]
+AddReg=ljb_proxykmd.Install.AddReg
+CopyFiles=ljb_proxykmd.CopyFiles, ljb_umd.CopyFiles
+
+[ljb_proxykmd.Install.NTamd64]
+AddReg=ljb_proxykmd.Install.AddReg
+CopyFiles=ljb_proxykmd.CopyFiles, ljb_umd.CopyFiles, ljb_umd_wow.CopyFiles
+
+[ljb_proxykmd.Install.AddReg]
+HKR,, DebugLevel, 0x10001, 0x001f
+
+[ljb_proxykmd.CopyFiles]
+ljb_proxykmd.sys
+
+[ljb_umd.CopyFiles]
+; NOT YET IMPLEMENTED ljb_umd.dll
+
+[ljb_umd_wow.CopyFiles]
+; NOT YET IMPLEMENTED ljb_proxyumd32.dll, ljb_proxyumd32.dll,, 0x00004000 ; COPYFLG_IN_USE_TRY_RENAME
+
+;
+; Service Installation
+;
+[ljb_proxykmd.Install.NT.Services]
+AddService = ljb_proxykmd, 0x00000002, ljb_proxykmd.Service
+
+[ljb_proxykmd.Install.NTAMD64.Services]
+AddService = ljb_proxykmd, 0x00000002, ljb_proxykmd.Service
+
+[ljb_proxykmd.Service]
+DisplayName    = %ljb_proxykmd.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 0               ; SERVICE_BOOT_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\ljb_proxykmd.sys
+LoadOrderGroup = Extended Base
+
+[Strings]
+LJBSoftware = "LJB Software."
+DiskId1 = "LJB Proxy Display Installation Disk"
+ljb_proxykmd.DeviceDesc = "LJB Proxy Display Adapter"
+ljb_proxykmd.SVCDESC = "LJB Proxy Display Driver"
+
