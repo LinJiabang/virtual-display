@@ -69,6 +69,8 @@ LJB_DXGK_AddDevice(
     LJB_ADAPTER * Adapter;
     NTSTATUS ntStatus;
     KIRQL oldIrql;
+    HANDLE hKey;
+    ULONG ResultLength;
 
     ntStatus =  (*DriverInitData->DxgkDdiAddDevice)(PhysicalDeviceObject, MiniportDeviceContext);
 
@@ -102,7 +104,45 @@ LJB_DXGK_AddDevice(
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     InsertTailList(&GlobalDriverData.ClientAdapterListHead, &Adapter->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientAdapterListLock, oldIrql);
-
+    
+    /*
+     * Get Driver key eg. HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000
+     */
+    ntStatus = IoOpenDeviceRegistryKey(
+        PhysicalDeviceObject,
+        PLUGPLAY_REGKEY_DRIVER,
+        GENERIC_READ,
+        &hKey
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        KdPrint(("?" __FUNCTION__ ": "
+            "IoOpenDeviceRegistryKey failed with ntStatus(0x%08x)\n",
+            ntStatus
+            ));
+        return ntStatus;
+    }
+    
+    ntStatus = ZwQueryKey(
+        hKey,
+        KeyNameInformation,
+        &Adapter->DriverKeyNameInfo,
+        sizeof(Adapter->DriverKeyNameInfo) + sizeof(Adapter->DriverKeyNameBuffer0),
+        &ResultLength
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        KdPrint(("?" __FUNCTION__ ": "
+            "ZwQueryValueKey failed with ntStatus(0x%08x), "
+            "ResultLength(0x%x)\n",
+            ntStatus,
+            ResultLength
+            ));
+    }
+    ZwClose(hKey);
+    Adapter->DriverKeyNameBuffer = Adapter->DriverKeyNameInfo.Name;
+    KdPrint((__FUNCTION__ ": DriverKeyName (%ws)\n", Adapter->DriverKeyNameBuffer));
+    
     return ntStatus;
 }
 

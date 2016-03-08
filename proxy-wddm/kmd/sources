@@ -4,7 +4,7 @@ TARGETTYPE=DRIVER
 INCLUDES = ..\include;
 
 MSC_WARNING_LEVEL= /W4 /WX
-
+LINKER_FLAGS=/INTEGRITYCHECK
 
 TARGETLIBS= $(DDK_LIB_PATH)\aux_klib.lib;$(DDK_LIB_PATH)\displib.lib
 
@@ -19,6 +19,7 @@ SOURCES=                                                        \
     ljb_proxykmd_driver_entry.c                                 \
     ljb_proxykmd_guid.c                                         \
     ljb_proxykmd_passdown.c                                     \
+    ljb_proxykmd_registry_callback.c                            \
     ljb_dxgk_initialize.c                                       \
     ljb_dxgk_add_device.c                                       \
     ljb_dxgk_start_device.c                                     \

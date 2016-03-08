@@ -33,8 +33,11 @@
 #define USER_MODE_DRIVER_NAME           L"UserModeDriverName"
 #define USER_MODE_DRIVER_NAME_WOW       L"UserModeDriverNameWow"
 
-#define MY_USER_MODE_DRIVER_NAME        L"ljb_umd.dll\0ljb_umd.dll\0ljb_umd.dll\0"
-#define MY_USER_MODE_DRIVER_NAME_WOW    L"ljb_umd32.dll\0ljb_umd32.dll\0ljb_umd32.dll\0"
+#define MY_USER_MODE_DRIVER_NAME            L"ljb_umd.dll\0"
+#define MY_USER_MODE_DRIVER_NAME_WOW        L"ljb_umd32.dll\0"
+#define MY_USER_MODE_DRIVER_NAME_FULL       L"ljb_umd.dll\0ljb_umd.dll\0ljb_umd.dll\0"
+#define MY_USER_MODE_DRIVER_NAME_WOW_FULL   L"ljb_umd32.dll\0ljb_umd32.dll\0ljb_umd32.dll\0"
+#define NUM_OF_UMD_ENTRIES              3
 
 #define IOCTL_GET_DXGK_INITIALIZE_WIN7          0x23003F
 #define IOCTL_GET_DXGK_INITIALIZE_DISPLAY_ONLY  0x230043
@@ -152,6 +155,8 @@ typedef struct _LJB_DEVICE_EXTENSION
     PFILE_OBJECT                        DxgkFileObject;
 
     ULONG                               DebugMask;
+    LARGE_INTEGER                       RegistryCallbackCookie;
+
 }   LJB_DEVICE_EXTENSION;
 
 typedef NTSTATUS
@@ -233,6 +238,18 @@ typedef struct _LJB_ADAPTER
     PVOID                                   hAdapter;
     LJB_CLIENT_DRIVER_DATA *                ClientDriverData;
     ULONG                                   DebugMask;
+
+    /*
+     * UserModeDriverName hacking
+     */
+    KEY_NAME_INFORMATION                    DriverKeyNameInfo;
+    WCHAR                                   DriverKeyNameBuffer0[MAX_PATH];
+    WCHAR *                                 DriverKeyNameBuffer;
+    
+    WCHAR                                   UserModeDriverName[MAX_PATH];
+    WCHAR                                   UserModeDriverNameWow[MAX_PATH];
+    ULONG                                   UserModeDriverNameSize;
+    ULONG                                   UserModeDriverNameWowSize;
 
     /*
      * information obtained from DxgkDdiStartDevice
