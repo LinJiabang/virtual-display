@@ -137,12 +137,6 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
         return STATUS_UNSUCCESSFUL;
     }
 
-    /*
-     * after we attach a filter to the dxgk device object, we no longer
-     * need a reference to dxgk device object. Dereference it here
-     */
-    ObDereferenceObject(DxgkFileObject);
-
     KdPrint((__FUNCTION__ ": "
         "Successfully attach to lower device(%p).\n",
         FilterDeviceExtension->NextLowerDriver
@@ -162,6 +156,12 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
     FilterDeviceObject->DeviceType = FilterDeviceExtension->NextLowerDriver->DeviceType;
     FilterDeviceObject->Characteristics = FilterDeviceExtension->NextLowerDriver->Characteristics;
     FilterDeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
+
+    /*
+     * after we attach a filter to the dxgk device object, we no longer
+     * need a reference to dxgk device object. Dereference it here
+     */
+    ObDereferenceObject(DxgkFileObject);
 
     return ntStatus;
 }
