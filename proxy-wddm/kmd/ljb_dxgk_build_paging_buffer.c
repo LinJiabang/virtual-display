@@ -291,7 +291,7 @@ LJB_DXGK_BuildPagingBuffer(
         hAdapter,
         pBuildPagingBuffer
         );
-    if (!NT_SUCCESS(ntStatus))
+    if (!NT_SUCCESS(ntStatus) && ntStatus != STATUS_GRAPHICS_INSUFFICIENT_DMA_BUFFER)
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
