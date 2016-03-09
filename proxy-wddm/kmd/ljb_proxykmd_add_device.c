@@ -49,6 +49,8 @@ LJB_PROXYKMD_LoadAndAttachDxgkWork(
     LJB_DEVICE_EXTENSION * CONST    DeviceExtension = Context;
     NTSTATUS                        ntStatus;
 
+    DBG_UNREFERENCED_LOCAL_VARIABLE(DeviceExtension);
+
     ASSERT(DeviceExtension == DeviceObject->DeviceExtension &&
            DeviceExtension->DeviceObject == DeviceObject);
 
