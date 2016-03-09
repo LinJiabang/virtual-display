@@ -61,7 +61,7 @@ REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.pdb             
 REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x64\ljb_umd.pdb             %BIN%\pdb\fre\x64\
 REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.pdb             %BIN%\pdb\fre\x64\ljb_umd32.pdb
 
-xcopy /s /I testcert %BIN%\testcert
+xcopy /s /I /Y testcert %BIN%\testcert
 REM
 REM run INF2CAT
 REM

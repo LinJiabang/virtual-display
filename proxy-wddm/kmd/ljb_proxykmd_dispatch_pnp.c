@@ -108,7 +108,7 @@ LJB_PROXYKMD_DetachAndRemoveFilter(
         IoDetachDevice (DeviceExtension->NextLowerDriver);
     IoDeleteDevice(FilterDeviceObject);
 }
-    
+
 NTSTATUS
 FilterStartCompletionRoutine(
     PDEVICE_OBJECT   DeviceObject,
@@ -320,9 +320,11 @@ Return Value:
                 FALSE
                 );
             RtlFreeUnicodeString(&DeviceExtension->InterfaceName);
-            
             if (DeviceExtension->FilterDeviceObject != NULL)
             {
+                KdPrint((__FUNCTION__
+                    ": IRP_MN_STOP_DEVICE : DetachAndRemove Filter Device\n"
+                    ));
                 LJB_PROXYKMD_DetachAndRemoveFilter(
                     DeviceExtension->FilterDeviceObject
                     );
@@ -388,7 +390,7 @@ Return Value:
             //
             RESTORE_PREVIOUS_PNP_STATE(DeviceExtension);
         }
-        
+
         status = STATUS_SUCCESS; // We must not fail this IRP.
         break;
 

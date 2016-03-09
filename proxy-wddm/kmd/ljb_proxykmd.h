@@ -245,7 +245,7 @@ typedef struct _LJB_ADAPTER
     KEY_NAME_INFORMATION                    DriverKeyNameInfo;
     WCHAR                                   DriverKeyNameBuffer0[MAX_PATH];
     WCHAR *                                 DriverKeyNameBuffer;
-    
+
     WCHAR                                   UserModeDriverName[MAX_PATH];
     WCHAR                                   UserModeDriverNameWow[MAX_PATH];
     ULONG                                   UserModeDriverNameSize;
@@ -354,6 +354,19 @@ DRIVER_DISPATCH             LJB_PROXYKMD_DispatchIoctl;
 DRIVER_DISPATCH             LJB_PROXYKMD_PassDown;
 DRIVER_UNLOAD               LJB_PROXYKMD_Unload;
 
+NTSTATUS
+LJB_PROXYKMD_CreateAndAttachDxgkFilter(
+    __in PDRIVER_OBJECT     DriverObject,
+    __in DEVICE_OBJECT *    DeviceObject
+    );
+
+// from ljb_proxykmd_utility.c
+VOID
+LJB_PROXYKMD_DelayMs(
+    __in LONG  DelayInMs
+    );
+
+// DXGK related.
 DXGK_INTIALIZE                          LJB_DXGK_InitializeWin7;
 DXGK_INTIALIZE                          LJB_DXGK_InitializeWin8;
 DXGKDDI_ADD_DEVICE                      LJB_DXGK_AddDevice0;

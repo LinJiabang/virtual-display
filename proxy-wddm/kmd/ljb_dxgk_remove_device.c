@@ -55,6 +55,7 @@ LJB_DXGK_RemoveDevice(
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
     }
+    LJB_DXGK_RemoveDevicePostProcessing(Adapter);
 
     return ntStatus;
 }
@@ -92,5 +93,11 @@ LJB_DXGK_RemoveDevicePostProcessing(
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     RemoveEntryList(&Adapter->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientAdapterListLock, oldIrql);
+    InterlockedDecrement(&GlobalDriverData.ClientAdapterListCount);
+    KdPrint((__FUNCTION__ ": Adapter(%p) released, ClientAdapterListCount=%u\n",
+        Adapter,
+        GlobalDriverData.ClientAdapterListCount
+        ));
+
     LJB_PROXYKMD_FreePool(Adapter);
 }

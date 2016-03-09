@@ -36,13 +36,41 @@ NTSTATUS DlpLoadDxgkrnl(
     __out PDEVICE_OBJECT *   DxgkDeviceObject
     );
 VOID DlpUnloadDxgkrnl(VOID);
+static IO_WORKITEM_ROUTINE_EX               LJB_PROXYKMD_LoadAndAttachDxgkWork;
+
+static VOID
+LJB_PROXYKMD_LoadAndAttachDxgkWork(
+    _In_     PVOID        IoObject,
+    _In_opt_ PVOID        Context,
+    _In_     PIO_WORKITEM IoWorkItem
+    )
+{
+    PDEVICE_OBJECT CONST            DeviceObject = IoObject;
+    LJB_DEVICE_EXTENSION * CONST    DeviceExtension = Context;
+    NTSTATUS                        ntStatus;
+
+    ASSERT(DeviceExtension == DeviceObject->DeviceExtension &&
+           DeviceExtension->DeviceObject == DeviceObject);
+
+    ntStatus = LJB_PROXYKMD_CreateAndAttachDxgkFilter(
+        GlobalDriverData.DriverObject,
+        DeviceObject
+        );
+
+    if (!NT_SUCCESS(ntStatus))
+    {
+        KdPrint(("?" __FUNCTION__ ": unable to attach Dxgk, ntStatus(0x%08x)?\n",
+            ntStatus));
+    }
+
+    IoFreeWorkItem(IoWorkItem);
+}
 
 /*
  * This routine tries to load dxgkrnl.sys, and obtains the DxgkDeviceObject.
  * If theDxgkDeviceObject is successfully retrieved, create an filter device
  * object and attach on top of it.
  */
-static
 NTSTATUS
 LJB_PROXYKMD_CreateAndAttachDxgkFilter(
     __in PDRIVER_OBJECT     DriverObject,
@@ -57,8 +85,34 @@ LJB_PROXYKMD_CreateAndAttachDxgkFilter(
     //UNICODE_STRING                  DxgkDevName;
     //UNICODE_STRING                  DxgkSvcName;
     NTSTATUS                        ntStatus;
+    ULONG                           RetryCount;
 
-    ntStatus = DlpLoadDxgkrnl(&DxgkFileObject, &DxgkDeviceObject);
+    RetryCount = 0;
+    while (RetryCount < 100)
+    {
+        ntStatus = DlpLoadDxgkrnl(&DxgkFileObject, &DxgkDeviceObject);
+        if ((!NT_SUCCESS(ntStatus) && ntStatus != STATUS_IMAGE_ALREADY_LOADED))
+        {
+            KdPrint(("?" __FUNCTION__ ": "
+                "DlpLoadDxgkrnl failed with ntStatus(%08x)\n",
+                ntStatus
+                ));
+            LJB_PROXYKMD_DelayMs(10);
+            RetryCount++;
+
+            if (RetryCount >= 100)
+            {
+                KdPrint(("?" __FUNCTION__ ": give up retry!\n"));
+                return ntStatus;
+            }
+        }
+        else
+        {
+            // Either ntStatus is SUCCESS case, or is STATUS_IMAGE_ALREADY_LOADED
+            break;
+        }
+    }
+
 
     //RtlInitUnicodeString(&DxgkDevName, DXGK_DEV_NAME);
     //RtlInitUnicodeString(&DxgkSvcName, DXGK_SVC_NAME);
@@ -350,31 +404,51 @@ LJB_PROXYKMD_AddDevice(
 
     /*
      * We might get loaded during boot or during installation.
+     * We always get STATUS_OBJECT_PATH_NOT_FOUND when we call DlpLoadDxgkrnl
+     * during boot time in AddDevice context. We need to defer the call to
+     * DlpLoadDxgkrnl at other timing.
      * If Dxgkrnl.sys isn't yet loaded, we wait until it is loaded before
      * attaching a filter object to it. If it is already loaded, attach our
      * filter object
      */
-    if (!LJB_PROXYKMD_IsDxgknlLoaded(DeviceObject))
+    if (LJB_PROXYKMD_IsDxgknlLoaded(DeviceObject))
     {
+        ntStatus = LJB_PROXYKMD_CreateAndAttachDxgkFilter(
+            DriverObject,
+            DeviceObject
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            KdPrint(("?"__FUNCTION__
+                ": LJB_PROXYKMD_CreateAndAttachDxgkFilter failed (0x%08x)\n",
+                ntStatus
+                ));
+            IoDetachDevice (DeviceExtension->NextLowerDriver);
+            IoDeleteDevice(DeviceObject);
+            return ntStatus;
+        }
     }
-
-    /*
-     * now that the Dxgkrnl is loaded, create and attach our filter
-     */
-    ntStatus = LJB_PROXYKMD_CreateAndAttachDxgkFilter(
-        DriverObject,
-        DeviceObject
-        );
-    if (!NT_SUCCESS(ntStatus))
+    else
     {
-        KdPrint(("?" __FUNCTION__ ": "
-            "LJB_PROXYKMD_CreateAndAttachDxgkFilter failed with ntStatus(0x%08x)?\n",
-            ntStatus
-            ));
-        RtlFreeUnicodeString(&DeviceExtension->InterfaceName);
-        IoDetachDevice (DeviceExtension->NextLowerDriver);
-        IoDeleteDevice(DeviceObject);
-        return ntStatus;
+        PIO_WORKITEM    IoWorkItem;
+
+        IoWorkItem = IoAllocateWorkItem(DeviceObject);
+        if (IoWorkItem == NULL)
+        {
+            KdPrint(("?"__FUNCTION__
+                ": unable to allocate IoWorkItem\n"));
+            IoDetachDevice (DeviceExtension->NextLowerDriver);
+            IoDeleteDevice(DeviceObject);
+            return ntStatus;
+        }
+
+        IoQueueWorkItemEx(
+            IoWorkItem,
+            &LJB_PROXYKMD_LoadAndAttachDxgkWork,
+            DelayedWorkQueue,
+            DeviceExtension
+            );
+
     }
 
     IoInitializeRemoveLock (

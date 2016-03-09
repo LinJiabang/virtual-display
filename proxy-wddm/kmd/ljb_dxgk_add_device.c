@@ -97,6 +97,7 @@ LJB_DXGK_AddDevice(
     Adapter->PhysicalDeviceObject = PhysicalDeviceObject;
     Adapter->hAdapter = *MiniportDeviceContext;
     Adapter->ClientDriverData = ClientDriverData;
+    Adapter->DebugMask = DBGLVL_DEFAULT;
 
     InitializeListHead(&Adapter->AllocationListHead);
     KeInitializeSpinLock(&Adapter->AllocationListLock);
@@ -104,7 +105,8 @@ LJB_DXGK_AddDevice(
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     InsertTailList(&GlobalDriverData.ClientAdapterListHead, &Adapter->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientAdapterListLock, oldIrql);
-    
+    InterlockedIncrement(&GlobalDriverData.ClientAdapterListCount);
+
     /*
      * Get Driver key eg. HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000
      */
@@ -122,7 +124,7 @@ LJB_DXGK_AddDevice(
             ));
         return ntStatus;
     }
-    
+
     ntStatus = ZwQueryKey(
         hKey,
         KeyNameInformation,
@@ -142,7 +144,7 @@ LJB_DXGK_AddDevice(
     ZwClose(hKey);
     Adapter->DriverKeyNameBuffer = Adapter->DriverKeyNameInfo.Name;
     KdPrint((__FUNCTION__ ": DriverKeyName (%ws)\n", Adapter->DriverKeyNameBuffer));
-    
+
     return ntStatus;
 }
 
@@ -153,7 +155,7 @@ LJB_DXGK_AddDevice0(
     )
 {
     LJB_CLIENT_DRIVER_DATA *    ClientDriverData;
-    LIST_ENTRY * CONST          listHead = &GlobalDriverData.DriverBindingHead;
+    LIST_ENTRY * CONST          listHead = &GlobalDriverData.ClientDriverListHead;
     LIST_ENTRY *                listEntry;
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
@@ -162,7 +164,7 @@ LJB_DXGK_AddDevice0(
      * find the ClientDriverData with DxgkAddDeviceTag == 0
      */
     ClientDriverData = NULL;
-    KeAcquireSpinLock(&GlobalDriverData.DriverBindingLock, &oldIrql);
+    KeAcquireSpinLock(&GlobalDriverData.ClientDriverListLock, &oldIrql);
     for (listEntry = listHead->Flink;
          listEntry != listHead;
          listEntry = listEntry->Flink)
@@ -180,7 +182,7 @@ LJB_DXGK_AddDevice0(
             break;
         }
     }
-    KeReleaseSpinLock(&GlobalDriverData.DriverBindingLock, oldIrql);
+    KeReleaseSpinLock(&GlobalDriverData.ClientDriverListLock, oldIrql);
 
     ntStatus = STATUS_UNSUCCESSFUL;
     if (ClientDriverData != NULL)
@@ -197,7 +199,7 @@ LJB_DXGK_AddDevice1(
     )
 {
     LJB_CLIENT_DRIVER_DATA *    ClientDriverData;
-    LIST_ENTRY * CONST          listHead = &GlobalDriverData.DriverBindingHead;
+    LIST_ENTRY * CONST          listHead = &GlobalDriverData.ClientDriverListHead;
     LIST_ENTRY *                listEntry;
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
@@ -206,7 +208,7 @@ LJB_DXGK_AddDevice1(
      * find the ClientDriverData with DxgkAddDeviceTag == 1
      */
     ClientDriverData = NULL;
-    KeAcquireSpinLock(&GlobalDriverData.DriverBindingLock, &oldIrql);
+    KeAcquireSpinLock(&GlobalDriverData.ClientDriverListLock, &oldIrql);
     for (listEntry = listHead->Flink;
          listEntry != listHead;
          listEntry = listEntry->Flink)
@@ -224,7 +226,7 @@ LJB_DXGK_AddDevice1(
             break;
         }
     }
-    KeReleaseSpinLock(&GlobalDriverData.DriverBindingLock, oldIrql);
+    KeReleaseSpinLock(&GlobalDriverData.ClientDriverListLock, oldIrql);
 
     ntStatus = STATUS_UNSUCCESSFUL;
     if (ClientDriverData != NULL)
@@ -241,7 +243,7 @@ LJB_DXGK_AddDevice2(
     )
 {
     LJB_CLIENT_DRIVER_DATA *    ClientDriverData;
-    LIST_ENTRY * CONST          listHead = &GlobalDriverData.DriverBindingHead;
+    LIST_ENTRY * CONST          listHead = &GlobalDriverData.ClientDriverListHead;
     LIST_ENTRY *                listEntry;
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
@@ -250,7 +252,7 @@ LJB_DXGK_AddDevice2(
      * find the ClientDriverData with DxgkAddDeviceTag == 2
      */
     ClientDriverData = NULL;
-    KeAcquireSpinLock(&GlobalDriverData.DriverBindingLock, &oldIrql);
+    KeAcquireSpinLock(&GlobalDriverData.ClientDriverListLock, &oldIrql);
     for (listEntry = listHead->Flink;
          listEntry != listHead;
          listEntry = listEntry->Flink)
@@ -268,7 +270,7 @@ LJB_DXGK_AddDevice2(
             break;
         }
     }
-    KeReleaseSpinLock(&GlobalDriverData.DriverBindingLock, oldIrql);
+    KeReleaseSpinLock(&GlobalDriverData.ClientDriverListLock, oldIrql);
 
     ntStatus = STATUS_UNSUCCESSFUL;
     if (ClientDriverData != NULL)
@@ -285,7 +287,7 @@ LJB_DXGK_AddDevice3(
     )
 {
     LJB_CLIENT_DRIVER_DATA *    ClientDriverData;
-    LIST_ENTRY * CONST          listHead = &GlobalDriverData.DriverBindingHead;
+    LIST_ENTRY * CONST          listHead = &GlobalDriverData.ClientDriverListHead;
     LIST_ENTRY *                listEntry;
     KIRQL                       oldIrql;
     NTSTATUS                    ntStatus;
@@ -294,7 +296,7 @@ LJB_DXGK_AddDevice3(
      * find the ClientDriverData with DxgkAddDeviceTag == 2
      */
     ClientDriverData = NULL;
-    KeAcquireSpinLock(&GlobalDriverData.DriverBindingLock, &oldIrql);
+    KeAcquireSpinLock(&GlobalDriverData.ClientDriverListLock, &oldIrql);
     for (listEntry = listHead->Flink;
          listEntry != listHead;
          listEntry = listEntry->Flink)
@@ -312,7 +314,7 @@ LJB_DXGK_AddDevice3(
             break;
         }
     }
-    KeReleaseSpinLock(&GlobalDriverData.DriverBindingLock, oldIrql);
+    KeReleaseSpinLock(&GlobalDriverData.ClientDriverListLock, oldIrql);
 
     ntStatus = STATUS_UNSUCCESSFUL;
     if (ClientDriverData != NULL)
