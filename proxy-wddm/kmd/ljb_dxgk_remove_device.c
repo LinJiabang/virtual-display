@@ -65,11 +65,11 @@ LJB_DXGK_RemoveDevicePostProcessing(
     __in LJB_ADAPTER *  Adapter
     )
 {
-    KIRQL                               oldIrql;
-    LJB_DEVICE *                        MyDevice;
-    LIST_ENTRY *                        listHead;
-    LIST_ENTRY *                        listNext;
-    LIST_ENTRY *                        listEntry;
+    KIRQL           oldIrql;
+    LJB_DEVICE *    MyDevice;
+    LIST_ENTRY *    listHead;
+    LIST_ENTRY *    listNext;
+    LIST_ENTRY *    listEntry;
 
     /*
      * remove any LBJ_DEVICE associated with Adapter
@@ -89,6 +89,37 @@ LJB_DXGK_RemoveDevicePostProcessing(
         }
     }
     KeReleaseSpinLock(&GlobalDriverData.ClientDeviceListLock, oldIrql);
+
+    /*
+     * released any allocation
+     */
+    listHead = &Adapter->AllocationListHead;
+    KeAcquireSpinLock(&Adapter->AllocationListLock, &oldIrql);
+    while (!IsListEmpty(listHead))
+    {
+        LJB_ALLOCATION *    MyAllocation;
+
+        listEntry = RemoveHeadList(listHead);
+        MyAllocation = CONTAINING_RECORD(listEntry, LJB_ALLOCATION, ListEntry);
+
+        DBG_PRINT(Adapter, DBGLVL_ALLOCATION,
+            (__FUNCTION__ ": MyAllocation(%p)/hAllocation(%p) released\n",
+            MyAllocation,
+            MyAllocation->hAllocation
+            ));
+        //RemoveEntryList(listEntry);
+        LJB_PROXYKMD_FreePool(MyAllocation);
+    }
+    KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
+
+    /*
+     * FIXME: Release ClientDriverData should occur when the last driver instance is removed.
+     * For now, assume there is only one device per driver.
+     */
+    KeAcquireSpinLock(&GlobalDriverData.ClientDriverListLock, &oldIrql);
+    RemoveEntryList(&Adapter->ClientDriverData->ListEntry);
+    LJB_PROXYKMD_FreePool(Adapter->ClientDriverData);
+    KeReleaseSpinLock(&GlobalDriverData.ClientDriverListLock, oldIrql);
 
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     RemoveEntryList(&Adapter->ListEntry);

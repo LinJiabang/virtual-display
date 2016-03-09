@@ -96,7 +96,7 @@ LJB_PROXYKMD_GetPoolZero(
 #define DBGLVL_FENCEID      (1 << 7)
 #define DBGLVL_VIDPN        (1 << 8)
 #define DBGLVL_VSYNC        (1 << 9)
-#define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER)
+#define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER | DBGLVL_ALLOCATION)
 
 #if (DBG)
 #define DBG_PRINT(adapter, mask, arg)           \
@@ -465,6 +465,11 @@ LJB_DXGK_FindAdapterByDriverAdapter(
     __in PVOID hAdapter
     );
 
+LJB_ADAPTER *
+LJB_DXGK_FindAdapterByDriverAdapterAtDIRQL(
+    __in PVOID hAdapter
+    );
+
 LJB_DEVICE *
 LJB_DXGK_FindDevice(
     __in HANDLE     hDevice
@@ -482,6 +487,7 @@ LJB_DXGK_FindAllocation(
     );
 
 #define FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter) LJB_DXGK_FindAdapterByDriverAdapter(hAdapter)
+#define FIND_ADAPTER_AT_DIRQL(hAdapter) LJB_DXGK_FindAdapterByDriverAdapterAtDIRQL(hAdapter)
 
 _C_END
 

@@ -12,6 +12,12 @@
 #pragma alloc_text (PAGE, LJB_DXGK_CreateAllocation)
 #endif
 
+static VOID
+LJB_DXGK_CreateAllocationPostProcessing(
+    _In_    const HANDLE                   hAdapter,
+    _Inout_       DXGKARG_CREATEALLOCATION *pCreateAllocation
+    );
+
 /*
  * Function: LJB_DXGK_CreateAllocation
  *
@@ -106,8 +112,6 @@ LJB_DXGK_CreateAllocation(
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     NTSTATUS                            ntStatus;
-    KIRQL                               oldIrql;
-    UINT                                i;
 
     PAGED_CODE();
 
@@ -121,6 +125,21 @@ LJB_DXGK_CreateAllocation(
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
         return ntStatus;
     }
+
+    LJB_DXGK_CreateAllocationPostProcessing(hAdapter, pCreateAllocation);
+
+    return ntStatus;
+}
+
+static VOID
+LJB_DXGK_CreateAllocationPostProcessing(
+    _In_    const HANDLE                   hAdapter,
+    _Inout_       DXGKARG_CREATEALLOCATION *pCreateAllocation
+    )
+{
+    LJB_ADAPTER * CONST Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter);
+    KIRQL               oldIrql;
+    UINT                i;
 
     for (i = 0; i < pCreateAllocation->NumAllocations; i++)
     {
@@ -143,9 +162,13 @@ LJB_DXGK_CreateAllocation(
         KeAcquireSpinLock(&Adapter->AllocationListLock, &oldIrql);
         InsertTailList(&Adapter->AllocationListHead, &MyAllocation->ListEntry);
         KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
-    }
 
-    return ntStatus;
+        DBG_PRINT(Adapter, DBGLVL_ALLOCATION,
+            (__FUNCTION__ ": MyAllocation(%p)/hAllocation(%p) allocated\n",
+            MyAllocation,
+            MyAllocation->hAllocation
+            ));
+    }
 }
 
 LJB_ALLOCATION *

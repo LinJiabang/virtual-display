@@ -353,3 +353,31 @@ LJB_DXGK_FindAdapterByDriverAdapter(
 
     return Adapter;
 }
+
+LJB_ADAPTER *
+LJB_DXGK_FindAdapterByDriverAdapterAtDIRQL(
+    __in PVOID hAdapter
+    )
+{
+    LIST_ENTRY * CONST  listHead = &GlobalDriverData.ClientAdapterListHead;
+    LIST_ENTRY *        listEntry;
+    LJB_ADAPTER *       Adapter;
+
+    Adapter = NULL;
+
+    for (listEntry = listHead->Flink;
+         listEntry != listHead;
+         listEntry = listEntry->Flink)
+    {
+        LJB_ADAPTER * thisAdapter;
+
+        thisAdapter = CONTAINING_RECORD(listEntry, LJB_ADAPTER, ListEntry);
+        if (thisAdapter->hAdapter == hAdapter)
+        {
+            Adapter = thisAdapter;
+            break;
+        }
+    }
+
+    return Adapter;
+}

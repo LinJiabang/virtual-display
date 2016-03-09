@@ -98,7 +98,7 @@ LJB_DXGK_DestroyAllocationPostProcessing(
      */
     for (i = 0; i < pDestroyAllocation->NumAllocations; i++)
     {
-        HANDLE CONST hAllocation = pDestroyAllocation->pAllocationList + i;
+        HANDLE CONST hAllocation = pDestroyAllocation->pAllocationList[i];
 
         KeAcquireSpinLock(&Adapter->AllocationListLock, &oldIrql);
         for (listEntry = listHead->Flink;
@@ -109,6 +109,11 @@ LJB_DXGK_DestroyAllocationPostProcessing(
             MyAllocation = CONTAINING_RECORD(listEntry, LJB_ALLOCATION, ListEntry);
             if (MyAllocation->hAllocation == hAllocation)
             {
+                DBG_PRINT(Adapter, DBGLVL_ALLOCATION,
+                    (__FUNCTION__ ": MyAllocation(%p)/hAllocation(%p) released\n",
+                    MyAllocation,
+                    MyAllocation->hAllocation
+                    ));
                 RemoveEntryList(listEntry);
                 LJB_PROXYKMD_FreePool(MyAllocation);
             }

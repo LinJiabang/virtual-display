@@ -54,39 +54,10 @@ LJB_DXGK_InterruptRoutine(
     _In_       ULONG MessageNumber
     )
 {
-    LIST_ENTRY * CONST          listHead = &GlobalDriverData.ClientAdapterListHead;
-    LIST_ENTRY *                listEntry;
-    LJB_ADAPTER *               Adapter;
-    LJB_CLIENT_DRIVER_DATA *    ClientDriverData;
-    DRIVER_INITIALIZATION_DATA* DriverInitData;
-    BOOLEAN                     retValue;
-
-    Adapter = NULL;
-    for (listEntry = listHead->Flink;
-         listEntry != listHead;
-         listEntry = listEntry->Flink)
-    {
-        LJB_ADAPTER * thisAdapter;
-
-        thisAdapter = CONTAINING_RECORD(listEntry, LJB_ADAPTER, ListEntry);
-        if (thisAdapter->hAdapter == MiniportDeviceContext)
-        {
-            Adapter = thisAdapter;
-            break;
-        }
-    }
-
-    if (Adapter == NULL)
-    {
-        KdPrint(("?" __FUNCTION__
-            ": no Adapter found for MiniportDeviceContext(%p)\n",
-            MiniportDeviceContext
-            ));
-        return FALSE;
-    }
-
-    ClientDriverData = Adapter->ClientDriverData;
-    DriverInitData = &ClientDriverData->DriverInitData;
+    LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_AT_DIRQL(MiniportDeviceContext);
+    LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
+    DRIVER_INITIALIZATION_DATA* CONST   DriverInitData = &ClientDriverData->DriverInitData;
+    BOOLEAN                             retValue;
 
     retValue = (*DriverInitData->DxgkDdiInterruptRoutine)(
         MiniportDeviceContext,

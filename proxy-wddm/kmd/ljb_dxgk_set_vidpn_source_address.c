@@ -104,7 +104,7 @@ LJB_DXGK_SetVidPnSourceAddress(
     _In_ const DXGKARG_SETVIDPNSOURCEADDRESS *pSetVidPnSourceAddress
     )
 {
-    LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter);
+    LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_AT_DIRQL(hAdapter);
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     NTSTATUS                            ntStatus;
