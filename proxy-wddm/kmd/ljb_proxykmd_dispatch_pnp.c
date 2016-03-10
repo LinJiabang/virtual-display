@@ -394,6 +394,73 @@ Return Value:
         status = STATUS_SUCCESS; // We must not fail this IRP.
         break;
 
+    case IRP_MN_QUERY_DEVICE_RELATIONS:
+        /*
+         * Handle RemovalRelations for FDO
+         * Any driver in the device stack can handle this type of relations query.
+         * A function or filter driver handles the IRP before passing it to the
+         * next lower driver. A bus driver handles the IRP and then completes it.
+         */
+        if (DeviceExtension->DeviceType == DEVICE_TYPE_FDO &&
+            irpStack->Parameters.QueryDeviceRelations.Type == RemovalRelations &&
+            GlobalDriverData.ClientAdapterListCount != 0)
+        {
+            PDEVICE_RELATIONS CONST OldRelations = (PDEVICE_RELATIONS)Irp->IoStatus.Information;
+            PDEVICE_RELATIONS NewRelations;
+            ULONG OldCount;
+            ULONG NewCount;
+            PLIST_ENTRY ListEntry;
+            PLIST_ENTRY ListHead;
+            UINT i;
+
+            /*
+             * Prepare new relations, and release old relations
+             */
+            OldCount = 0;
+            if (OldRelations != NULL)
+                OldCount = OldRelations->Count;
+
+            NewCount = OldCount + GlobalDriverData.ClientAdapterListCount;
+            NewRelations = ExAllocatePool(
+                PagedPool,
+                sizeof(DEVICE_RELATIONS) + (NewCount - 1) * sizeof(PDEVICE_OBJECT)
+                );
+
+            if (NewRelations == NULL)
+            {
+                status = STATUS_INSUFFICIENT_RESOURCES;
+                KdPrint(("?"__FUNCTION__": unable to allocate NewRelations\n"));
+                break;
+            }
+
+            RtlZeroMemory(NewRelations, sizeof(DEVICE_RELATIONS) + (NewCount - 1) * sizeof(PDEVICE_OBJECT));
+            for (i = 0; i < OldCount; i++)
+                NewRelations->Objects[i] = OldRelations->Objects[i];
+
+            if (OldRelations != NULL)
+                ExFreePool(OldRelations);
+
+            /*
+             * fill in our PDO list
+             */
+            ListHead = &GlobalDriverData.ClientAdapterListHead;
+            for (ListEntry = ListHead->Flink;
+                 ListEntry != ListHead;
+                 ListEntry = ListEntry->Flink)
+            {
+                LJB_ADAPTER * CONST Adapter = CONTAINING_RECORD(ListEntry, LJB_ADAPTER, ListEntry);
+
+                KdPrint((__FUNCTION__": Objects[%u] = PDO(%p)\n",
+                    i, Adapter->PhysicalDeviceObject));
+                NewRelations->Objects[i++] = Adapter->PhysicalDeviceObject;
+                ObReferenceObject(Adapter->PhysicalDeviceObject);
+            }
+            NewRelations->Count = NewCount;
+            Irp->IoStatus.Information = (ULONG_PTR) NewRelations;
+            status = STATUS_SUCCESS;
+        }
+        break;
+
     case IRP_MN_DEVICE_USAGE_NOTIFICATION:
 
         //
