@@ -323,7 +323,7 @@ Return Value:
             if (DeviceExtension->FilterDeviceObject != NULL)
             {
                 KdPrint((__FUNCTION__
-                    ": IRP_MN_STOP_DEVICE : DetachAndRemove Filter Device\n"
+                    ": IRP_MN_REMOVE_DEVICE : DetachAndRemove Filter Device\n"
                     ));
                 LJB_PROXYKMD_DetachAndRemoveFilter(
                     DeviceExtension->FilterDeviceObject

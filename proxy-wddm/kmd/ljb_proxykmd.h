@@ -96,7 +96,7 @@ LJB_PROXYKMD_GetPoolZero(
 #define DBGLVL_FENCEID      (1 << 7)
 #define DBGLVL_VIDPN        (1 << 8)
 #define DBGLVL_VSYNC        (1 << 9)
-#define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER | DBGLVL_ALLOCATION)
+#define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER)
 
 #if (DBG)
 #define DBG_PRINT(adapter, mask, arg)           \
@@ -252,6 +252,14 @@ typedef struct _LJB_ADAPTER
     ULONG                                   UserModeDriverNameWowSize;
 
     /*
+     * USB MONITOR PNP bookkeeping stuff
+     */
+    LIST_ENTRY                              PnpNodeListHead;
+    LONG                                    PnpNodeListCount;
+    KSPIN_LOCK                              PnpNodeListLock;
+
+    PVOID                                   NotificationHandle;
+    /*
      * information obtained from DxgkDdiStartDevice
      */
     DXGK_START_INFO                         DxgkStartInfo;
@@ -293,9 +301,7 @@ typedef struct _LJB_ADAPTER
     LJB_ENGINE_INFO                         EngineInfo[MAX_NUM_OF_NODE][MAX_NUM_OF_ENGINE];
     DXGKARG_GETNODEMETADATA                 NodeMetaData[MAX_NUM_OF_NODE];
 
-
 }   LJB_ADAPTER;
-
 
 /*
  * created by DxgkDdiCreateDevice
@@ -338,6 +344,19 @@ typedef struct _LJB_ALLOCATION
     HANDLE                  hAllocation;
     DXGK_ALLOCATIONINFO     AllocationInfo;
 } LJB_ALLOCATION;
+
+typedef struct _LJB_MONITOR_NODE
+{
+    LIST_ENTRY              ListEntry;
+    LJB_ADAPTER *           Adapter;
+    UNICODE_STRING          SymbolicLink;
+    WCHAR                   NameBuffer[MAX_PATH];
+    FILE_OBJECT *           FileObject;
+    DEVICE_OBJECT *         FDO;
+    DEVICE_OBJECT *         PDO;
+    PVOID                   NotificationHandle;
+} LJB_MONITOR_NODE;
+
 /*
  * C function declaration
  */
@@ -488,6 +507,43 @@ LJB_DXGK_FindAllocation(
 
 #define FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter) LJB_DXGK_FindAdapterByDriverAdapter(hAdapter)
 #define FIND_ADAPTER_AT_DIRQL(hAdapter) LJB_DXGK_FindAdapterByDriverAdapterAtDIRQL(hAdapter)
+
+DRIVER_NOTIFICATION_CALLBACK_ROUTINE    LBJ_PROXYKMD_PnpNotifyInterfaceChange;
+DRIVER_NOTIFICATION_CALLBACK_ROUTINE    LJB_PROXYKMD_PnpNotifyDeviceChange;
+
+NTSTATUS
+LJB_PROXYKMD_PnpStart(
+    __in LJB_ADAPTER *      Adapter
+    );
+
+VOID
+LJB_PROXYKMD_PnpStop(
+    __in LJB_ADAPTER *      Adapter
+    );
+
+LJB_MONITOR_NODE *
+LJB_PROXYKMD_FindMonitorNode(
+    __in LJB_ADAPTER *      Adapter,
+    __in PUNICODE_STRING    SymbolicLinkName
+    );
+
+IO_WORKITEM_ROUTINE_EX  LJB_PROXYKMD_OpenTargetDeviceWorkItem;
+
+NTSTATUS
+LJB_PROXYKMD_OpenTargetDevice(
+    __in LJB_MONITOR_NODE * MonitorMode
+    );
+
+NTSTATUS
+LJB_PROXYKMD_GetTargetDevicePdo(
+    __in PDEVICE_OBJECT DeviceObject,
+    __out PDEVICE_OBJECT *PhysicalDeviceObject
+    );
+
+VOID
+LJB_PROXYKMD_CloseTargetDevice(
+    __in __drv_freesMem(MonitorNode) LJB_MONITOR_NODE * MonitorNode
+    );
 
 _C_END
 
