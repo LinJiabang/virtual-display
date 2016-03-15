@@ -12,6 +12,7 @@
 
 #include <ntddk.h>
 #include <dispmprt.h>
+#include "ljb_monitor_interface.h"
 
 /*
  * C/CPP linkage macro.
@@ -37,7 +38,7 @@
 #define MY_USER_MODE_DRIVER_NAME_WOW        L"ljb_umd32.dll\0"
 #define MY_USER_MODE_DRIVER_NAME_FULL       L"ljb_umd.dll\0ljb_umd.dll\0ljb_umd.dll\0"
 #define MY_USER_MODE_DRIVER_NAME_WOW_FULL   L"ljb_umd32.dll\0ljb_umd32.dll\0ljb_umd32.dll\0"
-#define NUM_OF_UMD_ENTRIES              3
+#define NUM_OF_UMD_ENTRIES                  3
 
 #define IOCTL_GET_DXGK_INITIALIZE_WIN7          0x23003F
 #define IOCTL_GET_DXGK_INITIALIZE_DISPLAY_ONLY  0x230043
@@ -252,14 +253,6 @@ typedef struct _LJB_ADAPTER
     ULONG                                   UserModeDriverNameWowSize;
 
     /*
-     * USB MONITOR PNP bookkeeping stuff
-     */
-    LIST_ENTRY                              PnpNodeListHead;
-    LONG                                    PnpNodeListCount;
-    KSPIN_LOCK                              PnpNodeListLock;
-
-    PVOID                                   NotificationHandle;
-    /*
      * information obtained from DxgkDdiStartDevice
      */
     DXGK_START_INFO                         DxgkStartInfo;
@@ -267,6 +260,15 @@ typedef struct _LJB_ADAPTER
     ULONG                                   NumberOfVideoPresentSources;
     ULONG                                   NumberOfChildren;
     USHORT                                  PciVendorId;
+
+    /*
+     * USB MONITOR PNP bookkeeping stuff
+     */
+    LIST_ENTRY                              MonitorNodeListHead;
+    LONG                                    MonitorNodeListCount;
+    KSPIN_LOCK                              MonitorNodeListLock;
+    PVOID                                   NotificationHandle;
+    ULONG                                   MonitorNodeMask;
 
     /*
      * information obtained from DxgkDdiQueryChildRelations/DxgkDdiQueryChildStatus
@@ -301,6 +303,10 @@ typedef struct _LJB_ADAPTER
     LJB_ENGINE_INFO                         EngineInfo[MAX_NUM_OF_NODE][MAX_NUM_OF_ENGINE];
     DXGKARG_GETNODEMETADATA                 NodeMetaData[MAX_NUM_OF_NODE];
 
+    /*
+     * VidPn related
+     */
+    BOOLEAN                                 FirstVidPnArrived;
 }   LJB_ADAPTER;
 
 /*
@@ -355,6 +361,8 @@ typedef struct _LJB_MONITOR_NODE
     DEVICE_OBJECT *         FDO;
     DEVICE_OBJECT *         PDO;
     PVOID                   NotificationHandle;
+    ULONG                   ChildUid;
+    LJB_MONITOR_INTERFACE   MonitorInterface;
 } LJB_MONITOR_NODE;
 
 /*
