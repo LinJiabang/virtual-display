@@ -67,6 +67,10 @@ LJB_DXGK_CommitVidPn(
 
     PAGED_CODE();
 
+    if (!Adapter->FirstVidPnArrived)
+    {
+        Adapter->FirstVidPnArrived = TRUE;
+    }
     ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
         hAdapter,
         pCommitVidPn
