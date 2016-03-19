@@ -21,7 +21,6 @@ typedef struct _LJB_VIDPN_TOPOLOGY
     D3DKMDT_HVIDPNTOPOLOGY                  hVidPnTopology;
     SIZE_T                                  NumPaths;
     D3DKMDT_VIDPN_PRESENT_PATH *            pPaths;
-    LONG                                    ReferenceCount;
     } LJB_VIDPN_TOPOLOGY;
 
 typedef struct _LJB_VIDPN
@@ -120,6 +119,13 @@ LJB_VIDPN_AssignTargetModeSet(
     __in D3DKMDT_HVIDPN                         hVidPn,
     __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId,
     __in CONST D3DKMDT_HVIDPNTARGETMODESET      hVidPnTargetModeSet
+    );
+
+extern CONST DXGK_VIDPNTOPOLOGY_INTERFACE MyTopologyInterface;
+VOID
+LJB_VIDPN_TOPOLOGY_Initialize(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_VIDPN_TOPOLOGY *   VidPnTopology
     );
 
 _C_END

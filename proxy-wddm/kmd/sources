@@ -85,5 +85,6 @@ SOURCES=                                                        \
     ljb_dxgk_calibrate_gpu_clock.c                              \
     ljb_dxgk_submit_command_virtual.c                           \
     ljb_dxgk_vidpn_interface.c                                  \
+    ljb_dxgk_vidpn_topology.c                                   \
 
 

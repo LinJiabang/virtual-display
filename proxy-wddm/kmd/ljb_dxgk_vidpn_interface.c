@@ -157,11 +157,10 @@ LJB_VIDPN_GetTopology(
     __out CONST DXGK_VIDPNTOPOLOGY_INTERFACE**  ppVidPnTopologyInterface
     )
 {
-    LJB_VIDPN * CONST   MyVidPn = (LJB_VIDPN *) hVidPn;
-    LJB_ADAPTER * CONST Adapter = MyVidPn->Adapter;
-    NTSTATUS            ntStatus;
-
-    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+    LJB_VIDPN * CONST       MyVidPn = (LJB_VIDPN *) hVidPn;
+    LJB_ADAPTER * CONST     Adapter = MyVidPn->Adapter;
+    LJB_VIDPN_TOPOLOGY *    MyTopology;
+    NTSTATUS                ntStatus;
 
     /*
      * sanity check. If Magic number doesn't match, don't try to hack.
@@ -180,7 +179,20 @@ LJB_VIDPN_GetTopology(
     if (!NT_SUCCESS(ntStatus))
     {
         KdPrint(("?" __FUNCTION__": failed ntStatus(0x%08x)\n", ntStatus));
+        return ntStatus;
     }
+
+    MyTopology = &MyVidPn->Topology;
+    MyTopology->Adapter = Adapter;
+    MyTopology->VidPnTopologyInterface = *ppVidPnTopologyInterface;
+    MyTopology->hVidPnTopology = *phVidPnTopology;
+
+    LJB_VIDPN_TOPOLOGY_Initialize(Adapter, MyTopology);
+    *phVidPnTopology = (D3DKMDT_HVIDPNTOPOLOGY) MyTopology;
+    *ppVidPnTopologyInterface = &MyTopologyInterface;
+
+    DBG_PRINT(Adapter, DBGLVL_VIDPN,
+        (__FUNCTION__": return MyTopology(%p)\n", MyTopology));
     return ntStatus;
 }
 
