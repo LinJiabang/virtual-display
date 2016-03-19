@@ -27,6 +27,105 @@ CONST DXGK_VIDPN_INTERFACE  MyVidPnInterface =
 /*
  * Implementation
  */
+LJB_VIDPN *
+LJB_VIDPN_CreateVidPn(
+    __in LJB_ADAPTER *  Adapter,
+    __in D3DKMDT_HVIDPN hVidPn
+    )
+{
+    LJB_VIDPN *     MyVidPn;
+
+    MyVidPn = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_VIDPN));
+    if (MyVidPn != NULL)
+    {
+        MyVidPn->MagicBegin = LJB_VINPN_MAGIC;
+        MyVidPn->Adapter = Adapter;
+        MyVidPn->hVidPn = hVidPn;
+    }
+    return MyVidPn;
+}
+
+VOID
+LJB_VIDPN_DestroyVidPn(
+    __in LJB_VIDPN *    MyVidPn
+    )
+{
+    LJB_PROXYKMD_FreePool(MyVidPn);
+}
+
+/*
+ * Name : LJB_DXGKCB_QueryVidPnInterface
+ *
+ * Description:
+ * The DxgkCbQueryVidPnInterface function returns a pointer to a DXGK_VIDPN_INTERFACE
+ * structure. The structure contains pointers to functions that the display miniport
+ * driver can call to inspect and alter a VidPN object.
+ *
+ * The DXGK_VIDPN_INTERFACE structure contains pointers to functions that belong
+ * to the VidPn interface, which is implemented by the video present network (VidPN)
+ * manager.
+ * The display miniport driver calls DxgkCbQueryVidPnInterface to obtain a pointer
+ * to a DXGK_VIDPN_INTERFACE structure. The structure contains pointers to functions
+ * that the display miniport driver can call to inspect and alter a VidPN object.
+ *
+ * For more information about the VidPN interface, see VidPN Objects and Interfaces.
+ *
+ * Return Value:
+ * DxgkCbQueryVidPnInterface returns one of the following values:
+ * STATUS_SUCCESS
+ * The function succeeded.
+ * STATUS_INVALID_PARAMETER
+ * The value passed to ppVidPnInterface is not valid.
+ * STATUS_GRAPHICS_INVALID_VIDPN
+ * The handle passed to hVidPn is not valid.
+ * STATUS_NOT_SUPPORTED
+ * The interface version specified by VidPnInterfaceVersion is not supported.
+ */
+NTSTATUS
+LJB_DXGKCB_QueryVidPnInterface(
+    __in CONST D3DKMDT_HVIDPN               hVidPn,
+    __in CONST DXGK_VIDPN_INTERFACE_VERSION VidPnInterfaceVersion,
+    __out CONST DXGK_VIDPN_INTERFACE**      ppVidPnInterface
+    )
+{
+    LJB_VIDPN * CONST   MyVidPn = (LJB_VIDPN *) hVidPn;
+    LJB_ADAPTER *       Adapter;
+    DXGKRNL_INTERFACE * DxgkInterface;
+    NTSTATUS            ntStatus;
+
+    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+
+    /*
+     * sanity check. If Magic number doesn't match, don't try to hack.
+     */
+    if (MyVidPn->MagicBegin != LJB_VINPN_MAGIC)
+    {
+        KdPrint(("?" __FUNCTION__ ": not my vidpn object?\n"));
+        return STATUS_GRAPHICS_INVALID_VIDPN;
+    }
+
+    /*
+     * now MyVidPn is valid. Adapter, DxgkInterface, and call real DxgkCbQueryVidPnInterface
+     */
+    Adapter = MyVidPn->Adapter;
+    DxgkInterface = &Adapter->DxgkInterface;
+    MyVidPn->VidPnInterfaceVersion = VidPnInterfaceVersion;
+    ntStatus = (*DxgkInterface->DxgkCbQueryVidPnInterface)(
+        MyVidPn->hVidPn,
+        VidPnInterfaceVersion,
+        &MyVidPn->VidPnInterface
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR, ("?" __FUNCTION__": failed ntStatus(0x%08x)\n", ntStatus));
+        return ntStatus;
+    }
+
+    *ppVidPnInterface = &MyVidPnInterface;
+    DBG_PRINT(Adapter, DBGLVL_VIDPN, (__FUNCTION__": return MyVidPnInterface\n"));
+    return ntStatus;
+}
+
 
 /*
  * Name : LJB_VIDPN_GetTopology

@@ -14,6 +14,16 @@
  */
 #define LJB_VINPN_MAGIC     _MAKE_POOLTAG('V', 'I', 'D', 'P')
 
+typedef struct _LJB_VIDPN_TOPOLOGY
+    {
+    LJB_ADAPTER *                           Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE *    VidPnTopologyInterface;
+    D3DKMDT_HVIDPNTOPOLOGY                  hVidPnTopology;
+    SIZE_T                                  NumPaths;
+    D3DKMDT_VIDPN_PRESENT_PATH *            pPaths;
+    LONG                                    ReferenceCount;
+    } LJB_VIDPN_TOPOLOGY;
+
 typedef struct _LJB_VIDPN
 {
     ULONG                           MagicBegin;
@@ -21,12 +31,32 @@ typedef struct _LJB_VIDPN
     D3DKMDT_HVIDPN                  hVidPn;
     DXGK_VIDPN_INTERFACE_VERSION    VidPnInterfaceVersion;
     DXGK_VIDPN_INTERFACE *          VidPnInterface;
+
+    LJB_VIDPN_TOPOLOGY              Topology;
 }   LJB_VIDPN;
 
 /*
  * C function declaration
  */
 _C_BEGIN
+
+LJB_VIDPN *
+LJB_VIDPN_CreateVidPn(
+    __in LJB_ADAPTER *  Adapter,
+    __in D3DKMDT_HVIDPN hVidPn
+    );
+
+VOID
+LJB_VIDPN_DestroyVidPn(
+    __in LJB_VIDPN *    MyVidPn
+    );
+
+NTSTATUS
+LJB_DXGKCB_QueryVidPnInterface(
+    __in CONST D3DKMDT_HVIDPN               hVidPn,
+    __in CONST DXGK_VIDPN_INTERFACE_VERSION VidPnInterfaceVersion,
+    __out CONST DXGK_VIDPN_INTERFACE**      ppVidPnInterface
+    );
 
 NTSTATUS
 LJB_VIDPN_GetTopology(
