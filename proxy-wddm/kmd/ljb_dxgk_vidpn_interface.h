@@ -163,6 +163,12 @@ LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo(
     __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
     __out CONST D3DKMDT_VIDPN_PRESENT_PATH**    ppFirstVidPnPresentPathInfo
     );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY               hVidPnTopology,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo,
+    __out CONST D3DKMDT_VIDPN_PRESENT_PATH**        ppNextVidPnPresentPathInfo
+    );
 
 _C_END
 

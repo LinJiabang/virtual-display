@@ -17,7 +17,7 @@ CONST DXGK_VIDPNTOPOLOGY_INTERFACE  MyTopologyInterface =
     &LJB_VIDPN_TOPOLOGY_GetPathSourceFromTarget,
     &LJB_VIDPN_TOPOLOGY_AcquirePathInfo,
     &LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo,
-    NULL, //&LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo,
+    &LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo,
     NULL, //&LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo,
     NULL, //&LJB_VIDPN_TOPOLOGY_ReleasePathInfo,
     NULL, //&LJB_VIDPN_TOPOLOGY_CreateNewPathInfo,
@@ -579,5 +579,83 @@ LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo(
         }
     }
     ASSERT(i != MyTopology->NumPaths);
+    return ntStatus;
+}
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo
+ *
+ * Description:
+ * The pfnAcquireNextPathInfo function returns a descriptor of the next video
+ * present path in a specified VidPN topology, given the current path.
+ *
+ * When you have finished using the D3DKMDT_VIDPN_PRESENT_PATH structure, you must
+ * release the structure by calling pfnReleasePathInfo.
+ *
+ * You can enumerate all the paths that belong to a VidPN topology object by calling
+ * pfnAcquireFirstPathInfo and then making a sequence of calls to pfnAcquireNextPathInfo.
+ *
+ * Return Value
+ * The pfnAcquireNextPathInfo function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY               hVidPnTopology,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo,
+    __out CONST D3DKMDT_VIDPN_PRESENT_PATH**        ppNextVidPnPresentPathInfo
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST      MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST             Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    D3DKMDT_VIDPN_PRESENT_PATH *    pPresentPath;
+    D3DKMDT_VIDPN_PRESENT_PATH *    pNextPath;
+    ULONG                           i;
+    NTSTATUS                        ntStatus;
+
+    pPresentPath = NULL;
+    pNextPath = NULL;
+    for (i = 0; i < MyTopology->NumPaths; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * CONST pPath = MyTopology->pPaths + i;
+
+        if (pPath->VidPnSourceId == pVidPnPresentPathInfo->VidPnSourceId &&
+            pPath->VidPnTargetId == pVidPnPresentPathInfo->VidPnTargetId)
+        {
+            pPresentPath = pPath;
+            continue;
+        }
+
+        if (pPresentPath == NULL)
+            continue;
+
+        if (pPath->VidPnTargetId < Adapter->UsbTargetIdBase)
+        {
+            pNextPath = pPath;
+            break;
+        }
+    }
+
+    if (pNextPath != NULL)
+    {
+        ntStatus = (*VidPnTopologyInterface->pfnAcquirePathInfo)(
+                MyTopology->hVidPnTopology,
+                pNextPath->VidPnSourceId,
+                pNextPath->VidPnTargetId,
+                ppNextVidPnPresentPathInfo
+                );
+    }
+    else
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": "
+            "oops, no pNextPath?\n"
+            ));
+        ntStatus = STATUS_GRAPHICS_NO_MORE_ELEMENTS_IN_DATASET;
+    }
     return ntStatus;
 }
