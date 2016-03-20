@@ -50,6 +50,8 @@ LJB_VIDPN_DestroyVidPn(
     __in LJB_VIDPN *    MyVidPn
     )
 {
+    if (MyVidPn->Topology.pPaths != NULL)
+        LJB_PROXYKMD_FreePool(MyVidPn->Topology.pPaths);
     LJB_PROXYKMD_FreePool(MyVidPn);
 }
 

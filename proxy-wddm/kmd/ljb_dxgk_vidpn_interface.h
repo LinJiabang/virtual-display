@@ -127,6 +127,24 @@ LJB_VIDPN_TOPOLOGY_Initialize(
     __in LJB_ADAPTER *          Adapter,
     __in LJB_VIDPN_TOPOLOGY *   VidPnTopology
     );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_GetNumPaths(
+	__in CONST D3DKMDT_HVIDPNTOPOLOGY   hVidPnTopology,
+    __out SIZE_T*                       pNumPaths
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_GetNumPathsFromSource(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_SOURCE_ID   VidPnSourceId,
+    __out SIZE_T*                               pNumPathsFromSource
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_EnumPathTargetsFromSource(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_SOURCE_ID   VidPnSourceId,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH_INDEX VidPnPresentPathIndex,
+    __out D3DDDI_VIDEO_PRESENT_TARGET_ID*       pVidPnTargetId
+    );
 
 _C_END
 
