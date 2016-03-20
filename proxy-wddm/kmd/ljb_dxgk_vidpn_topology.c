@@ -14,9 +14,9 @@ CONST DXGK_VIDPNTOPOLOGY_INTERFACE  MyTopologyInterface =
     &LJB_VIDPN_TOPOLOGY_GetNumPaths,
     &LJB_VIDPN_TOPOLOGY_GetNumPathsFromSource,
     &LJB_VIDPN_TOPOLOGY_EnumPathTargetsFromSource,
-    NULL, //&LJB_VIDPN_TOPOLOGY_GetPathSourceFromTarget,
-    NULL, //&LJB_VIDPN_TOPOLOGY_AcquirePathInfo,
-    NULL, //&LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo,
+    &LJB_VIDPN_TOPOLOGY_GetPathSourceFromTarget,
+    &LJB_VIDPN_TOPOLOGY_AcquirePathInfo,
+    &LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo,
     NULL, //&LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo,
     NULL, //&LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo,
     NULL, //&LJB_VIDPN_TOPOLOGY_ReleasePathInfo,
@@ -395,4 +395,189 @@ LJB_VIDPN_TOPOLOGY_EnumPathTargetsFromSource(
         break;
     }
     return STATUS_SUCCESS;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_GetPathSourceFromTarget
+ *
+ * Description:
+ * The pfnGetPathSourceFromTarget function returns the identifier of the video
+ * present source that is associated with a specified video present target.
+ *
+ * A topology is a collection paths, each of which contains a (source, target)
+ * pair. A particular target belongs to at most one path, so given a target ID,
+ * there is at most one source associated with that target.
+ *
+ * VidPN source identifiers are assigned by the operating system. DxgkDdiStartDevice,
+ * implemented by the display miniport driver, returns the number N of video present
+ * sources supported by the display adapter. Then the operating system assigns
+ * identifiers 0, 1, 2, ¡K N - 1.
+ *
+ * VidPN target identifiers are assigned by the display miniport driver. DxgkDdiQueryChildRelations,
+ * implemented by the display miniport driver, returns an array of DXGK_CHILD_DESCRIPTOR
+ * structures, each of which contains an identifier.
+ *
+ * Return Value
+ * The pfnEnumPathTargetsFromSource function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ *  STATUS_INVALID_PARAMETER
+ *  The pointer supplied in pVidPnSourceId  was in valid.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_GetPathSourceFromTarget(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId,
+    __out D3DDDI_VIDEO_PRESENT_SOURCE_ID*       pVidPnSourceId
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST  MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST         Adapter = MyTopology->Adapter;
+    D3DKMDT_VIDPN_PRESENT_PATH *Path;
+    UINT                        i;
+
+    if (pVidPnSourceId == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,("?" __FUNCTION__": bad pVidPnSourceId\n"));
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    if (VidPnTargetId >= Adapter->UsbTargetIdBase)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR, ("?" __FUNCTION__": bad VidPnTargetId?\n"));
+        return STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY;
+    }
+
+    /*
+     * scan MyTopology->pPaths, and filter out paths that connects to USB target
+     */
+    for (i = 0; i < MyTopology->NumPaths; i++)
+    {
+        Path = MyTopology->pPaths + i;
+        if (Path->VidPnTargetId != VidPnTargetId)
+            continue;
+
+        *pVidPnSourceId = Path->VidPnSourceId;
+        break;
+    }
+    return STATUS_SUCCESS;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_AcquirePathInfo
+ *
+ * Description:
+ * The pfnAcquirePathInfo function returns a descriptor of the video present path
+ * specified by a video present source and a video present target within a particular
+ * VidPN topology.
+ *
+ * When you have finished using the D3DKMDT_VIDPN_PRESENT_PATH structure, you must
+ * release the structure by calling pfnReleasePathInfo.
+ *
+ * A path contains a (source, target) pair, and a topology is a collection of paths.
+ * This function returns a descriptor for the path, in a specified topology, that
+ * contains a specified (source, target) pair.
+ *
+ * You can enumerate all the paths that belong to a VidPN topology object by calling
+ * pfnAcquireFirstPathInfo and then making a sequence of calls to pfnAcquireNextPathInfo.
+ *
+ * VidPN source identifiers are assigned by the operating system. DxgkDdiStartDevice,
+ * implemented by the display miniport driver, returns the number N of video present
+ * sources supported by the display adapter. Then the operating system assigns
+ * identifiers 0, 1, 2, ¡K N - 1.
+ *
+ * VidPN target identifiers are assigned by the display miniport driver. DxgkDdiQueryChildRelations,
+ * implemented by the display miniport driver, returns an array of DXGK_CHILD_DESCRIPTOR
+ * structures, each of which contains an identifier.
+ *
+ * Return Value
+ * The pfnEnumPathTargetsFromSource function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AcquirePathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_SOURCE_ID   VidPnSourceId,
+    __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId,
+    __out CONST D3DKMDT_VIDPN_PRESENT_PATH**    pVidPnPresentPathInfo
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST  MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST         Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    NTSTATUS                    ntStatus;
+
+    if (VidPnTargetId >= Adapter->UsbTargetIdBase)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR, ("?" __FUNCTION__": bad VidPnTargetId?\n"));
+        return STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY;
+    }
+
+    ntStatus = (VidPnTopologyInterface->pfnAcquirePathInfo)(
+        MyTopology->hVidPnTopology,
+        VidPnSourceId,
+        VidPnTargetId,
+        pVidPnPresentPathInfo
+        );
+    return ntStatus;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo
+ *
+ * Description:
+ * The pfnAcquireFirstPathInfo structure returns a descriptor of the first path
+ * in a specified VidPN topology object.
+ *
+ * When you have finished using the D3DKMDT_VIDPN_PRESENT_PATH structure, you must
+ * release the structure by calling pfnReleasePathInfo.
+ *
+ * You can enumerate all the paths that belong to a VidPN topology object by calling
+ * pfnAcquireFirstPathInfo and then making a sequence of calls to pfnAcquireNextPathInfo.
+ *
+ * Return Value
+ * The pfnAcquireFirstPathInfo  function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __out CONST D3DKMDT_VIDPN_PRESENT_PATH**    ppFirstVidPnPresentPathInfo
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST  MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST         Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    D3DKMDT_VIDPN_PRESENT_PATH *Path;
+    UINT                        i;
+    NTSTATUS                    ntStatus;
+
+    ntStatus = STATUS_SUCCESS;
+    for (i = 0; i < MyTopology->NumPaths; i++)
+    {
+        Path = MyTopology->pPaths + i;
+        if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
+        {
+            ntStatus = (*VidPnTopologyInterface->pfnAcquirePathInfo)(
+                MyTopology->hVidPnTopology,
+                Path->VidPnSourceId,
+                Path->VidPnTargetId,
+                ppFirstVidPnPresentPathInfo
+                );
+            break;
+        }
+    }
+    ASSERT(i != MyTopology->NumPaths);
+    return ntStatus;
 }

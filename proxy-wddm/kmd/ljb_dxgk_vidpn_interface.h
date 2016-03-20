@@ -145,6 +145,24 @@ LJB_VIDPN_TOPOLOGY_EnumPathTargetsFromSource(
     __in CONST D3DKMDT_VIDPN_PRESENT_PATH_INDEX VidPnPresentPathIndex,
     __out D3DDDI_VIDEO_PRESENT_TARGET_ID*       pVidPnTargetId
     );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_GetPathSourceFromTarget(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId,
+    __out D3DDDI_VIDEO_PRESENT_SOURCE_ID*       pVidPnSourceId
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AcquirePathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_SOURCE_ID   VidPnSourceId,
+    __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId,
+    __out CONST D3DKMDT_VIDPN_PRESENT_PATH**    pVidPnPresentPathInfo
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __out CONST D3DKMDT_VIDPN_PRESENT_PATH**    ppFirstVidPnPresentPathInfo
+    );
 
 _C_END
 
