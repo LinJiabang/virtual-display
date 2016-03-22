@@ -18,11 +18,11 @@ CONST DXGK_VIDPNTOPOLOGY_INTERFACE  MyTopologyInterface =
     &LJB_VIDPN_TOPOLOGY_AcquirePathInfo,
     &LJB_VIDPN_TOPOLOGY_AcquireFirstPathInfo,
     &LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo,
-    NULL, //&LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo,
-    NULL, //&LJB_VIDPN_TOPOLOGY_ReleasePathInfo,
-    NULL, //&LJB_VIDPN_TOPOLOGY_CreateNewPathInfo,
-    NULL, //&LJB_VIDPN_TOPOLOGY_AddPath,
-    NULL, //&LJB_VIDPN_TOPOLOGY_RemovePath
+    &LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo,
+    &LJB_VIDPN_TOPOLOGY_ReleasePathInfo,
+    &LJB_VIDPN_TOPOLOGY_CreateNewPathInfo,
+    &LJB_VIDPN_TOPOLOGY_AddPath,
+    &LJB_VIDPN_TOPOLOGY_RemovePath
 };
 
 /*
@@ -657,5 +657,246 @@ LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo(
             ));
         ntStatus = STATUS_GRAPHICS_NO_MORE_ELEMENTS_IN_DATASET;
     }
+    return ntStatus;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo
+ *
+ * Description:
+ * The pfnUpdatePathSupportInfo function updates the transformation and copy
+ * protection support of a particular path in a specified VidPN topology.
+ *
+ * The display miniport driver's DxgkDdiEnumVidPnCofuncModality function calls
+ * pnfUpdatePathSupportInfo to report rotation, scaling, and copy protection
+ * support for each of the paths in a topology.
+ *
+ * Return Value
+ * The pfnUpdatePathSupportInfo function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ *  STATUS_INVALID_PARAMETER
+ *  An invalid parameter was supplied.
+ *  STATUS_ACCESS_DENIED
+ *  The path cannot be removed in the context of the current DDI call.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY               hVidPnTopology,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST      MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST             Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    NTSTATUS                        ntStatus;
+
+    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+
+    ASSERT(pVidPnPresentPathInfo->VidPnTargetId < Adapter->UsbTargetIdBase);
+    ntStatus = (VidPnTopologyInterface->pfnUpdatePathSupportInfo)(
+        MyTopology->hVidPnTopology,
+        pVidPnPresentPathInfo
+        );
+    return ntStatus;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_ReleasePathInfo
+ *
+ * Description:
+ * The pfnReleasePathInfo function releases a D3DKMDT_VIDPN_PRESENT_PATH structure
+ * that the VidPN manager previously provided to the display miniport driver.
+ *
+ * When you have finished using a D3DKMDT_VIDPN_PRESENT_PATH structure that you
+ * obtained by calling any of the following functions, you must release the structure
+ * by calling pfnReleasePathInfo.
+ *
+ * pfnAcquireFirstPathInfo
+ * pfnAcquireNextPathInfo
+ * pfnAcqirePathInfo
+ *
+ * If you obtain a D3DKMDT_VIDPN_PRESENT_PATH structure by calling pfnCreateNewPathInfo
+ * and then pass that structure to pfnAddPath, you do not need to release the
+ * structure.
+ *
+ * If you obtain a handle by calling pfnCreateNewPathInfo and then you decide not
+ * to add the new path to a topology, you must release the newly created structire
+ * by calling pfnReleasePathInfo.
+ *
+ * Return Value
+ * The pfnReleasePathInfo function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_PRESENT_PATH
+ *  The pointer supplied in pVidPnPresentPathInfo was invalid.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_ReleasePathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY               hVidPnTopology,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST      MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST             Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    NTSTATUS                        ntStatus;
+
+    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+
+    ASSERT(pVidPnPresentPathInfo->VidPnTargetId < Adapter->UsbTargetIdBase);
+    ntStatus = (VidPnTopologyInterface->pfnReleasePathInfo)(
+        MyTopology->hVidPnTopology,
+        pVidPnPresentPathInfo
+        );
+    return ntStatus;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_CreateNewPathInfo
+ *
+ * Description:
+ * The pfnCreateNewPathInfo function returns a pointer to a D3DKMDT_VIDPN_PRESENT_PATH
+ * structure that the display miniport driver populates before calling pfnAddPath.
+ *
+ * After you call pfnCreateNewPathInfo to obtain a D3DKMDT_VIDPN_PRESENT_PATH
+ * structure, you must do one, but not both, of the following:
+ *
+ *  Populate the structure and pass it to pfnAddPath.
+ *  Release the structure by calling pfnReleasePathInfo.
+ *
+ * Return Value
+ * The pfnReleasePathInfo function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_CreateNewPathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY   hVidPnTopology,
+    __out D3DKMDT_VIDPN_PRESENT_PATH**  ppNewVidPnPresentPathInfo
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST      MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST             Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    NTSTATUS                        ntStatus;
+
+    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+
+    ntStatus = (VidPnTopologyInterface->pfnCreateNewPathInfo)(
+        MyTopology->hVidPnTopology,
+        ppNewVidPnPresentPathInfo
+        );
+    return ntStatus;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_AddPath
+ *
+ * Description:
+ * The pfnAddPath function adds a video present path to a specified VidPN topology
+ * object.
+ *
+ * To add a path to a topology, the display miniport driver performs the following
+ * steps.
+ *
+ *  Call pfnCreateNewPathInfo to obtain a pointer to a D3DKMDT_VIDPN_PRESENT_PATH
+ *  structure allocated by the VidPN manager.
+ *
+ *  Populate the D3DKMDT_VIDPN_PRESENT_PATH structure with information about the
+ *  path, including video present source and target identifiers.
+ *
+ *  Call pfnAddPath to add the path to a topology.
+ *
+ * The VidPN manager allocates a D3DKMDT_VIDPN_PRESENT_PATH structure when you call
+ * pfnCreateNewPathInfo. If you add the path described by that structure to a
+ * topology, then you do not need to explicitly release the structure; pfnAddPath
+ * releases it.
+ *
+ * If you obtain a a D3DKMDT_VIDPN_PRESENT_PATH structure by calling pfnCreateNewPathInfo
+ * and then decide not to add that path to a topology, then you must explicity
+ * release the structure by calling pfnReleasePathInfo.
+ *
+ * Return Value
+ * The pfnReleasePathInfo function returns one of the following values:
+ *
+ *  STATUS_SUCCESS
+ *  The function succeeded.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology was invalid.
+ *  STATUS_ACCESS_DENIED
+ *  The path cannot be removed in the context of the current DDI call.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AddPath(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY       hVidPnTopology,
+    __in D3DKMDT_VIDPN_PRESENT_PATH* CONST  pVidPnPresentPath
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST      MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST             Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    NTSTATUS                        ntStatus;
+
+    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+
+    ntStatus = (VidPnTopologyInterface->pfnAddPath)(
+        MyTopology->hVidPnTopology,
+        pVidPnPresentPath
+        );
+    return ntStatus;
+}
+
+/*
+ * Name: LJB_VIDPN_TOPOLOGY_RemovePath
+ *
+ * Description:
+ * The pfnRemovePath function removes a video present path to a specified VidPN
+ * topology object
+ *
+ * Return Value
+ * The pfnRemovePath function returns one of the following values.
+ *
+ *  STATUS_SUCCESS
+ *  The specified video present path has been successfully removed from this VidPN
+ *  topology object.
+ *  STATUS_GRAPHICS_INVALID_VIDEO_PRESENT_SOURCE
+ *  The VidPN source identifier supplied in VidPnSourceId is invalid.
+ *  STATUS_GRAPHICS_INVALID_VIDEO_PRESENT_TARGET
+ *  The VidPN target identifier supplied in VidPnTargetId is invalid.
+ *  STATUS_GRAPHICS_INVALID_VIDPN_TOPOLOGY
+ *  The handle supplied in hVidPnTopology is invalid.
+ *  STATUS_ACCESS_DENIED
+ *  The path cannot be removed in the context of the current DDI call.
+ */
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_RemovePath(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_SOURCE_ID   VidPnSourceId,
+    __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId
+    )
+{
+    LJB_VIDPN_TOPOLOGY * CONST      MyTopology = (LJB_VIDPN_TOPOLOGY*) hVidPnTopology;
+    LJB_ADAPTER * CONST             Adapter = MyTopology->Adapter;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE * CONST VidPnTopologyInterface = MyTopology->VidPnTopologyInterface;
+    NTSTATUS                        ntStatus;
+
+    DBG_UNREFERENCED_LOCAL_VARIABLE(Adapter);
+    ASSERT(VidPnTargetId < Adapter->UsbTargetIdBase);
+
+    ntStatus = (VidPnTopologyInterface->pfnRemovePath)(
+        MyTopology->hVidPnTopology,
+        VidPnSourceId,
+        VidPnTargetId
+        );
     return ntStatus;
 }

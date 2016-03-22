@@ -169,6 +169,32 @@ LJB_VIDPN_TOPOLOGY_AcquireNextPathInfo(
     __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo,
     __out CONST D3DKMDT_VIDPN_PRESENT_PATH**        ppNextVidPnPresentPathInfo
     );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_UpdatePathSupportInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY               hVidPnTopology,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_ReleasePathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY               hVidPnTopology,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST    pVidPnPresentPathInfo
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_CreateNewPathInfo(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY   hVidPnTopology,
+    __out D3DKMDT_VIDPN_PRESENT_PATH**  ppNewVidPnPresentPathInfo
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_AddPath(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY       hVidPnTopology,
+    __in D3DKMDT_VIDPN_PRESENT_PATH* CONST  pVidPnPresentPath
+    );
+NTSTATUS
+LJB_VIDPN_TOPOLOGY_RemovePath(
+    __in CONST D3DKMDT_HVIDPNTOPOLOGY           hVidPnTopology,
+    __in CONST D3DDDI_VIDEO_PRESENT_SOURCE_ID   VidPnSourceId,
+    __in CONST D3DDDI_VIDEO_PRESENT_TARGET_ID   VidPnTargetId
+    );
 
 _C_END
 
