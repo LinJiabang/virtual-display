@@ -307,6 +307,10 @@ typedef struct _LJB_ADAPTER
      * VidPn related
      */
     BOOLEAN                                 FirstVidPnArrived;
+    DXGKARG_COMMITVIDPN                     LastCommitVidPn;
+    SIZE_T                                  NumPathsCommitted;
+    D3DKMDT_VIDPN_PRESENT_PATH              PathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
+
 }   LJB_ADAPTER;
 
 /*
@@ -551,6 +555,17 @@ LJB_PROXYKMD_GetTargetDevicePdo(
 VOID
 LJB_PROXYKMD_CloseTargetDevice(
     __in __drv_freesMem(MonitorNode) LJB_MONITOR_NODE * MonitorNode
+    );
+
+BOOLEAN
+LJB_DXGK_IsSourceConnectedToInboxTarget(
+    __in LJB_ADAPTER *                  Adapter,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    );
+BOOLEAN
+LJB_DXGK_IsSourceConnectedToUsbTarget(
+    __in LJB_ADAPTER *                  Adapter,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
     );
 
 _C_END

@@ -7,12 +7,19 @@
  *  This program is NOT free software. Any unlicensed usage is prohbited.
  */
 #include "ljb_proxykmd.h"
+#include "ljb_dxgk_vidpn_interface.h"
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (PAGE, LJB_DXGK_CommitVidPn)
 #pragma alloc_text (PAGE, LJB_DXGK_UpdateActiveVidPnPresentPath)
 #endif
 
+CONST CHAR * MonitorConnectivityCheckString[] =
+{
+    "D3DKMDT_MCC_UNINITIALIZED",
+    "D3DKMDT_MCC_IGNORE",
+    "D3DKMDT_MCC_ENFORCE",
+};
 /*
  * Function: LJB_DXGK_CommitVidPn
  *
@@ -63,25 +70,230 @@ LJB_DXGK_CommitVidPn(
     LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter);
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
+    DXGKARG_COMMITVIDPN                 MyCommitVidpn;
+    LJB_VIDPN *                         MyVidPn;
     NTSTATUS                            ntStatus;
+    UINT                                NumOfInboxTarget;
+    UINT                                NumOfUsbTarget;
+    BOOLEAN                             SourceIsConnectedToInboxTarget;
+    BOOLEAN                             SourceIsConnectedToUsbTarget;
 
     PAGED_CODE();
 
+    DBG_PRINT(Adapter, DBGLVL_FLOW,
+        (__FUNCTION__
+        ": hFunctionalVidPn(%p),AffectedVidPnSourceId(0x%x),MonitorConnectivityChecks(%s),"
+        "hPrimaryAllocation(%p),PathPowerTransition(%u),PathPoweredOff(%u)\n",
+        pCommitVidPn->hFunctionalVidPn,
+        pCommitVidPn->AffectedVidPnSourceId,
+        MonitorConnectivityCheckString[pCommitVidPn->MonitorConnectivityChecks],
+        pCommitVidPn->hPrimaryAllocation,
+        pCommitVidPn->Flags.PathPowerTransition,
+        pCommitVidPn->Flags.PathPoweredOff
+        ));
+
+    Adapter->LastCommitVidPn = *pCommitVidPn;
+    MyCommitVidpn = *pCommitVidPn;
     if (!Adapter->FirstVidPnArrived)
     {
         Adapter->FirstVidPnArrived = TRUE;
     }
-    ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
-        hAdapter,
-        pCommitVidPn
-        );
-    if (!NT_SUCCESS(ntStatus))
+
+    RtlZeroMemory(Adapter->PathsCommitted, sizeof(Adapter->PathsCommitted));
+    Adapter->NumPathsCommitted = 0;
+
+    /*
+     * If pCommitVidPn->hFunctionalVidPn is NULL, it is probably the system
+     * is going to S3/S4 state
+     */
+    if (pCommitVidPn->hFunctionalVidPn == NULL)
     {
-        DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        /*
+         * Check AffectedVidPnSourceId.
+         * The constant D3DDDI_ID_ALL or the identifier of a particular video present
+         * source in the VidPN. If this member is a source identifier, DxgkDdiCommitVidPn
+         * updates only the modes of the video present paths that originate at that
+         * source -- DxgkDdiCommitVidPn does not have to inspect paths that originate
+         * from other sources, because those paths are the same in the new VidPN
+         * as they are in the currently active VidPN. If this member is equal to
+         * D3DDDI_ID_ALL, DxgkDdiCommitVidPn must inspect and update the entire
+         * VidPN as a single transaction; that is, the entire new VidPN must be
+         * made active or the entire current VidPN must remain active.
+         *
+         * Since hFunctionalVidPn is NULL, we have no way to check if the AffectedVidPnSourceId
+         * connectivity.
+         */
+        ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
+            hAdapter,
+            pCommitVidPn
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        }
+        return ntStatus;
+    }
+
+    /*
+     * now the hFunctionalVidPn is valid, we further check AffectedVidPnSourceId.
+     * If the AffectedVidPnSourceId is connected ONLY to USB target (such as extended
+     * desktop mode), we don't want inbox driver to see this request.
+     * If AffectedVidPnSourceId is connected to both USB and inbox target,
+     * we need inbox driver to handle it as well.
+     * If AffectedVidPnSourceId isn't connected to USB target, just let inbox
+     * driver handle it.
+     * If AffectedVidPnSourceId is D3DDDI_ID_ALL, check if there is inbox target or not.
+     */
+    if (pCommitVidPn->AffectedVidPnSourceId == D3DDDI_ID_ALL)
+    {
+        MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pCommitVidPn->hFunctionalVidPn);
+        if (MyVidPn == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?"__FUNCTION__": no MyVidPn allocated.\n"));
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
+
+        NumOfInboxTarget = LJB_VIDPN_GetNumberOfInboxTarget(MyVidPn);
+        NumOfUsbTarget = LJB_VIDPN_GetNumberOfUsbTarget(MyVidPn);
+        DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__": NumOfInboxTarget(%u), NumOfUsbTarget(%u)\n",
+            NumOfInboxTarget, NumOfUsbTarget));
+
+        if (NumOfInboxTarget != 0)
+        {
+            MyCommitVidpn.hFunctionalVidPn = (D3DKMDT_HVIDPN) MyVidPn;
+            ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
+                hAdapter,
+                &MyCommitVidpn
+                );
+            if (!NT_SUCCESS(ntStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+                LJB_VIDPN_DestroyVidPn(MyVidPn);
+                return ntStatus;
+            }
+            LJB_VIDPN_DestroyVidPn(MyVidPn);
+        }
+
+        if (NumOfUsbTarget != 0)
+        {
+            /*
+             * NOT YET IMPLEMENTED. Send notification to USB target about the
+             * CommitVidPn event.
+             */
+            DBG_PRINT(Adapter, DBGLVL_FLOW,
+                (__FUNCTION__": Send CommitVidPn Notification to USB Target\n"
+                ));
+        }
+        return STATUS_SUCCESS;
+    }
+
+    /*
+     * AffectedVidPnSourceId != D3DDDI_ID_ALL
+     */
+    SourceIsConnectedToInboxTarget = LJB_DXGK_IsSourceConnectedToInboxTarget(
+        Adapter,
+        pCommitVidPn->AffectedVidPnSourceId
+        );
+    SourceIsConnectedToUsbTarget = LJB_DXGK_IsSourceConnectedToUsbTarget(
+        Adapter,
+        pCommitVidPn->AffectedVidPnSourceId
+        );
+
+    DBG_PRINT(Adapter, DBGLVL_FLOW,
+        (__FUNCTION__": SourceIsConnectedToInboxTarget(%u),SourceIsConnectedToUsbTarget(%u)\n",
+        SourceIsConnectedToInboxTarget,
+        SourceIsConnectedToUsbTarget
+        ));
+
+    /*
+     * If the affected Source is not connected to inbox target, don't let inbox driver
+     * see it.
+     */
+    ntStatus = STATUS_SUCCESS;
+    if (SourceIsConnectedToInboxTarget)
+    {
+        MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pCommitVidPn->hFunctionalVidPn);
+        if (MyVidPn == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?"__FUNCTION__": no MyVidPn allocated.\n"));
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
+
+        MyCommitVidpn.hFunctionalVidPn = (D3DKMDT_HVIDPN) MyVidPn;
+        ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
+            hAdapter,
+            &MyCommitVidpn
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+            LJB_VIDPN_DestroyVidPn(MyVidPn);
+            return ntStatus;
+        }
+        LJB_VIDPN_DestroyVidPn(MyVidPn);
+    }
+
+    if (SourceIsConnectedToUsbTarget)
+    {
+        /*
+         * NOT YET IMPLEMENTED
+         */
+         DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__": Send CommitVidPn Notification to USB Target\n"
+            ));
     }
 
     return ntStatus;
+}
+
+BOOLEAN
+LJB_DXGK_IsSourceConnectedToInboxTarget(
+    __in LJB_ADAPTER *                  Adapter,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    )
+{
+    UINT    i;
+
+    for (i = 0; i < Adapter->NumPathsCommitted; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * Path = Adapter->PathsCommitted + i;
+
+        if (Path->VidPnSourceId != VidPnSourceId)
+            continue;
+
+        if (Path->VidPnSourceId < Adapter->UsbTargetIdBase)
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+BOOLEAN
+LJB_DXGK_IsSourceConnectedToUsbTarget(
+    __in LJB_ADAPTER *                  Adapter,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    )
+{
+    UINT    i;
+
+    for (i = 0; i < Adapter->NumPathsCommitted; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * Path = Adapter->PathsCommitted + i;
+
+        if (Path->VidPnSourceId != VidPnSourceId)
+            continue;
+
+        if (Path->VidPnSourceId >= Adapter->UsbTargetIdBase)
+            return TRUE;
+    }
+
+    return FALSE;
 }
 
 /*
@@ -101,7 +313,7 @@ LJB_DXGK_CommitVidPn(
  *  of the active VidPN.
  *
  *  STATUS_GRAPHICS_PATH_CONTENT_GEOMETRY_TRANSFORMATION_NOT_SUPPORTED:
- *  The path does not support the content transformation specified by 
+ *  The path does not support the content transformation specified by
  *  pUpdateActiveVidPnPresentPathArg->VidPnPresentPathInfo.ContentTransformation.
  *
  *  The path does not support the gamma ramp specified by pUpdateActiveVidPnPresentPathArg->
@@ -113,13 +325,13 @@ LJB_DXGK_CommitVidPn(
  * content's geometry transformations, gamma ramps that are used to adjust the
  * presented content's brightness, and so on.
  *
- * Note   The display miniport driver's DxgkDdiUpdateActiveVidPnPresentPath 
+ * Note   The display miniport driver's DxgkDdiUpdateActiveVidPnPresentPath
  * function must support gamma ramps.
  *
  * Beginning with Windows 8, if the display miniport driver sets the SupportSmoothRotation
  * member of the DXGK_DRIVERCAPS structure, it must support updating the path rotation
- * on the adapter using the DxgkDdiUpdateActiveVidPnPresentPath function. The 
- * driver must always be able to set the path rotation during a call to the 
+ * on the adapter using the DxgkDdiUpdateActiveVidPnPresentPath function. The
+ * driver must always be able to set the path rotation during a call to the
  * DxgkDdiCommitVidPn function.
  *
  * The DxgkDdiUpdateActiveVidPnPresentPath function should be made pageable.
