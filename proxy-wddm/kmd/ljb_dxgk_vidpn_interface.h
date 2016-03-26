@@ -32,6 +32,14 @@ typedef struct _LJB_VIDPN
     DXGK_VIDPN_INTERFACE *          VidPnInterface;
 
     LJB_VIDPN_TOPOLOGY              Topology;
+
+    /*
+     * Prefetched Path for internal use. The total number of Paths is depended
+     * on the number of TargetId. We assume there are at most 64 targets in the system.
+     */
+    SIZE_T                          NumPaths;
+    D3DKMDT_VIDPN_PRESENT_PATH      Paths[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
+
 }   LJB_VIDPN;
 
 /*
@@ -47,6 +55,19 @@ LJB_VIDPN_CreateVidPn(
 
 VOID
 LJB_VIDPN_DestroyVidPn(
+    __in LJB_VIDPN *    MyVidPn
+    );
+
+NTSTATUS
+LJB_VIDPN_PrefetchTopology(
+    __in LJB_VIDPN *    MyVidPn
+    );
+UINT
+LJB_VIDPN_GetNumberOfUsbTarget(
+    __in LJB_VIDPN *    MyVidPn
+    );
+UINT
+LJB_VIDPN_GetNumberOfInboxTarget(
     __in LJB_VIDPN *    MyVidPn
     );
 

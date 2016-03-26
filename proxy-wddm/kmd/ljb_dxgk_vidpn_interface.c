@@ -34,6 +34,7 @@ LJB_VIDPN_CreateVidPn(
     )
 {
     LJB_VIDPN *     MyVidPn;
+    NTSTATUS        ntStatus;
 
     MyVidPn = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_VIDPN));
     if (MyVidPn != NULL)
@@ -41,6 +42,15 @@ LJB_VIDPN_CreateVidPn(
         MyVidPn->MagicBegin = LJB_VINPN_MAGIC;
         MyVidPn->Adapter = Adapter;
         MyVidPn->hVidPn = hVidPn;
+    }
+
+    ntStatus = LJB_VIDPN_PrefetchTopology(MyVidPn);
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__": unable te prefetch topology?\n"));
+        LJB_VIDPN_DestroyVidPn(MyVidPn);
+        MyVidPn = NULL;
     }
     return MyVidPn;
 }
@@ -53,6 +63,197 @@ LJB_VIDPN_DestroyVidPn(
     if (MyVidPn->Topology.pPaths != NULL)
         LJB_PROXYKMD_FreePool(MyVidPn->Topology.pPaths);
     LJB_PROXYKMD_FreePool(MyVidPn);
+}
+
+NTSTATUS
+LJB_VIDPN_PrefetchTopology(
+    __in LJB_VIDPN *    MyVidPn
+    )
+{
+    LJB_ADAPTER * CONST                 Adapter = MyVidPn->Adapter;
+    DXGKRNL_INTERFACE * CONST           DxgkInterface = &Adapter->DxgkInterface;
+    CONST DXGK_VIDPN_INTERFACE *        VidPnInterface;
+    D3DKMDT_HVIDPNTOPOLOGY              hVidPnTopology;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE* VidPnTopologyInterface;
+    CONST D3DKMDT_VIDPN_PRESENT_PATH *  PrevPath;
+    CONST D3DKMDT_VIDPN_PRESENT_PATH *  ThisPath;
+    NTSTATUS                            ntStatus;
+    ULONG                               i;
+
+    MyVidPn->NumPaths = 0;
+    ntStatus = (*DxgkInterface->DxgkCbQueryVidPnInterface)(
+        MyVidPn->hVidPn,
+        DXGK_VIDPN_INTERFACE_VERSION_V1,
+        &VidPnInterface
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?"__FUNCTION__": DxgkCbQueryVidPnInterface failed with ntStatus(0x%x)",
+            ntStatus));
+        return ntStatus;
+    }
+
+    /*
+     * query topology
+     */
+    ntStatus = (*VidPnInterface->pfnGetTopology)(
+        MyVidPn->hVidPn,
+        &hVidPnTopology,
+        &VidPnTopologyInterface
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?"__FUNCTION__": pfnGetTopology failed with ntStatus(0x%x)",
+            ntStatus));
+        return ntStatus;
+    }
+
+    ntStatus = (*VidPnTopologyInterface->pfnGetNumPaths)(
+        hVidPnTopology,
+        &MyVidPn->NumPaths
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?"__FUNCTION__": pfnGetNumPaths failed with ntStatus(0x%x)",
+            ntStatus));
+        return ntStatus;
+    }
+
+    /*
+     * Query each paths.
+     */
+    PrevPath = NULL;
+    ThisPath = NULL;
+    for (i = 0; i < MyVidPn->NumPaths; i++)
+    {
+        if (i == 0)
+        {
+            ntStatus = (*VidPnTopologyInterface->pfnAcquireFirstPathInfo)(
+                hVidPnTopology,
+                &ThisPath
+                );
+            if (!NT_SUCCESS(ntStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": "
+                    "pfnAcquireFirstPathInfo failed with ntStatus(0x%08x)?\n",
+                    ntStatus
+                    ));
+                break;
+            }
+            if (ThisPath == NULL)
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": "
+                    "pfnAcquireFirstPathInfo return NULL for ThisPath?\n"
+                    ));
+                break;
+            }
+        }
+        else
+        {
+            ntStatus = (*VidPnTopologyInterface->pfnAcquireNextPathInfo)(
+                hVidPnTopology,
+                PrevPath,
+                &ThisPath
+                );
+            if (!NT_SUCCESS(ntStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": "
+                    "pfnAcquireNextPathInfo failed with ntStatus(0x%08x)?\n",
+                    ntStatus
+                    ));
+                break;
+            }
+
+            if (ThisPath == NULL)
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": "
+                    "pfnAcquireNextPathInfo return NULL for ThisPath?\n"
+                    ));
+                break;
+            }
+
+            ntStatus = (*VidPnTopologyInterface->pfnReleasePathInfo)(
+                hVidPnTopology,
+                PrevPath
+                );
+            if (!NT_SUCCESS(ntStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": "
+                    "pfnReleasePathInfo failed with ntStatus(0x%08x)?\n",
+                    ntStatus
+                    ));
+                break;
+            }
+        }
+        PrevPath = ThisPath;
+        MyVidPn->Paths[i] = *ThisPath;
+    } /* end of for loop */
+
+    /*
+     * Release the last queried pPath
+     */
+    ntStatus =(*VidPnTopologyInterface->pfnReleasePathInfo)(
+        hVidPnTopology,
+        PrevPath
+        );
+    if (!NT_SUCCESS(ntStatus))
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": "
+            "pfnReleasePathInfo failed with ntStatus(0x%08x)?\n",
+            ntStatus
+            ));
+    }
+
+    return ntStatus;
+}
+
+UINT
+LJB_VIDPN_GetNumberOfUsbTarget(
+    __in LJB_VIDPN *    MyVidPn
+    )
+{
+    LJB_ADAPTER * CONST Adapter = MyVidPn->Adapter;
+    UINT                i;
+    UINT                NumOfUsbTarget;
+
+    NumOfUsbTarget = 0;
+    for (i = 0; i < MyVidPn->NumPaths; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * CONST Path = MyVidPn->Paths + i;
+
+        if (Path->VidPnTargetId >= Adapter->UsbTargetIdBase)
+            NumOfUsbTarget++;
+    }
+    return NumOfUsbTarget;
+}
+
+UINT
+LJB_VIDPN_GetNumberOfInboxTarget(
+    __in LJB_VIDPN *    MyVidPn
+    )
+{
+    LJB_ADAPTER * CONST Adapter = MyVidPn->Adapter;
+    UINT                i;
+    UINT                NumOfInboxTarget;
+
+    NumOfInboxTarget = 0;
+    for (i = 0; i < MyVidPn->NumPaths; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * CONST Path = MyVidPn->Paths + i;
+
+        if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
+            NumOfInboxTarget++;
+    }
+    return NumOfInboxTarget;
 }
 
 /*

@@ -7,10 +7,19 @@
  *  This program is NOT free software. Any unlicensed usage is prohbited.
  */
 #include "ljb_proxykmd.h"
+#include "ljb_dxgk_vidpn_interface.h"
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (PAGE, LJB_DXGK_EnumVidPnCofuncModality)
 #endif
+
+static
+NTSTATUS
+LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
+    __in LJB_ADAPTER *                              Adapter,
+    __in LJB_VIDPN *                                MyVidPn,
+    IN_CONST_PDXGKARG_ENUMVIDPNCOFUNCMODALITY_CONST pEnumCofuncModality
+    );
 
 /*
  * Function: LJB_DXGK_EnumVidPnCofuncModality
@@ -53,18 +62,79 @@ LJB_DXGK_EnumVidPnCofuncModality(
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
     NTSTATUS                            ntStatus;
+    LJB_VIDPN *                         MyVidPn;
+    DXGKARG_ENUMVIDPNCOFUNCMODALITY     MyEnumVidPnCoFuncModality;
+    UINT                                NumOfInboxTarget;
+    UINT                                NumOfUsbTarget;
 
     PAGED_CODE();
 
-    ntStatus = (*DriverInitData->DxgkDdiEnumVidPnCofuncModality)(
-        hAdapter,
-        pEnumCofuncModality
-        );
-    if (!NT_SUCCESS(ntStatus))
+    MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pEnumCofuncModality->hConstrainingVidPn);
+
+    if (MyVidPn == NULL)
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+            ("?"__FUNCTION__": no MyVidPn allocated.\n"));
+        return STATUS_INSUFFICIENT_RESOURCES;
     }
+
+    ntStatus = STATUS_SUCCESS;
+    /*
+     * decide if we need to pass the call to inbox driver.
+     * if there are inbox target attached, we need to pass the call to inbox driver.
+     * If there are usb target attached, we need to process the call.
+     * If this is NULL topology, let inbox driver handle it.
+     */
+    NumOfInboxTarget = LJB_VIDPN_GetNumberOfInboxTarget(MyVidPn);
+    NumOfUsbTarget = LJB_VIDPN_GetNumberOfUsbTarget(MyVidPn);
+    if (NumOfInboxTarget != 0 || NumOfUsbTarget == 0)
+    {
+        MyEnumVidPnCoFuncModality = *pEnumCofuncModality;
+        MyEnumVidPnCoFuncModality.hConstrainingVidPn = (D3DKMDT_HVIDPN) MyVidPn;
+        ntStatus = (*DriverInitData->DxgkDdiEnumVidPnCofuncModality)(
+            hAdapter,
+            &MyEnumVidPnCoFuncModality
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+            goto Exit;
+        }
+    }
+
+    if (NumOfUsbTarget != 0)
+    {
+        ntStatus = LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
+            Adapter, MyVidPn, pEnumCofuncModality);
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": LJB_DXGK_EnumVidPnCofuncModalityPostProcessing failed?\n"));
+        }
+    }
+
+Exit:
+    LJB_VIDPN_DestroyVidPn(MyVidPn);
+
+    return ntStatus;
+}
+
+static
+NTSTATUS
+LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
+    __in LJB_ADAPTER *                              Adapter,
+    __in LJB_VIDPN *                                MyVidPn,
+    IN_CONST_PDXGKARG_ENUMVIDPNCOFUNCMODALITY_CONST pEnumCofuncModality
+    )
+{
+    NTSTATUS        ntStatus;
+
+    // NOT YET Implemented
+    UNREFERENCED_PARAMETER(Adapter);
+    UNREFERENCED_PARAMETER(MyVidPn);
+    UNREFERENCED_PARAMETER(pEnumCofuncModality);
+    ntStatus = STATUS_SUCCESS;
 
     return ntStatus;
 }
