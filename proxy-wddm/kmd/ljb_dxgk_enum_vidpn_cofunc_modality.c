@@ -70,7 +70,6 @@ LJB_DXGK_EnumVidPnCofuncModality(
     PAGED_CODE();
 
     MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pEnumCofuncModality->hConstrainingVidPn);
-
     if (MyVidPn == NULL)
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
@@ -79,6 +78,7 @@ LJB_DXGK_EnumVidPnCofuncModality(
     }
 
     ntStatus = STATUS_SUCCESS;
+
     /*
      * decide if we need to pass the call to inbox driver.
      * if there are inbox target attached, we need to pass the call to inbox driver.
