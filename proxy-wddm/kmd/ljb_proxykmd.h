@@ -367,6 +367,7 @@ typedef struct _LJB_MONITOR_NODE
     PVOID                   NotificationHandle;
     ULONG                   ChildUid;
     LJB_MONITOR_INTERFACE   MonitorInterface;
+    LONG                    ReferenceCount;
 } LJB_MONITOR_NODE;
 
 /*
@@ -543,7 +544,7 @@ IO_WORKITEM_ROUTINE_EX  LJB_PROXYKMD_OpenTargetDeviceWorkItem;
 
 NTSTATUS
 LJB_PROXYKMD_OpenTargetDevice(
-    __in LJB_MONITOR_NODE * MonitorMode
+    __in LJB_MONITOR_NODE * MonitorNode
     );
 
 NTSTATUS
@@ -555,6 +556,16 @@ LJB_PROXYKMD_GetTargetDevicePdo(
 VOID
 LJB_PROXYKMD_CloseTargetDevice(
     __in __drv_freesMem(MonitorNode) LJB_MONITOR_NODE * MonitorNode
+    );
+
+LJB_MONITOR_NODE *
+LJB_GetMonitorNodeFromChildUid(
+    __in LJB_ADAPTER *      Adapter,
+    __in ULONG              ChildUid
+    );
+VOID
+LJB_DereferenceMonitorNode(
+    __in LJB_MONITOR_NODE * MonitorNode
     );
 
 BOOLEAN

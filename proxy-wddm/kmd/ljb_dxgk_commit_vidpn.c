@@ -20,6 +20,22 @@ CONST CHAR * MonitorConnectivityCheckString[] =
     "D3DKMDT_MCC_IGNORE",
     "D3DKMDT_MCC_ENFORCE",
 };
+
+static
+VOID
+LJB_NotifyCommitVidPnToSingleTarget(
+    __in LJB_ADAPTER *                      Adapter,
+    __in PVOID                              hPrimaryAllocation,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH*  Path
+    );
+
+static
+VOID
+LJB_NotifyCommitVidPnToAllUsbTargets(
+    __in LJB_ADAPTER *  Adapter,
+    __in PVOID          hPrimaryAllocation
+    );
+
 /*
  * Function: LJB_DXGK_CommitVidPn
  *
@@ -180,13 +196,7 @@ LJB_DXGK_CommitVidPn(
 
         if (NumOfUsbTarget != 0)
         {
-            /*
-             * NOT YET IMPLEMENTED. Send notification to USB target about the
-             * CommitVidPn event.
-             */
-            DBG_PRINT(Adapter, DBGLVL_FLOW,
-                (__FUNCTION__": Send CommitVidPn Notification to USB Target\n"
-                ));
+            LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn->hPrimaryAllocation);
         }
         return STATUS_SUCCESS;
     }
@@ -212,6 +222,8 @@ LJB_DXGK_CommitVidPn(
     /*
      * If the affected Source is not connected to inbox target, don't let inbox driver
      * see it.
+     * FIXME: need to take care of topology transition: from extended view to
+     * 2nd screen only view??
      */
     ntStatus = STATUS_SUCCESS;
     if (SourceIsConnectedToInboxTarget)
@@ -241,12 +253,7 @@ LJB_DXGK_CommitVidPn(
 
     if (SourceIsConnectedToUsbTarget)
     {
-        /*
-         * NOT YET IMPLEMENTED
-         */
-         DBG_PRINT(Adapter, DBGLVL_FLOW,
-            (__FUNCTION__": Send CommitVidPn Notification to USB Target\n"
-            ));
+        LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn->hPrimaryAllocation);
     }
 
     return ntStatus;
@@ -342,22 +349,120 @@ LJB_DXGK_UpdateActiveVidPnPresentPath(
     IN_CONST_PDXGKARG_UPDATEACTIVEVIDPNPRESENTPATH_CONST    pUpdateActiveVidPnPresentPath
     )
 {
-    LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter);
-    LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
-    DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
-    NTSTATUS                            ntStatus;
+    LJB_ADAPTER * CONST                     Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter);
+    LJB_CLIENT_DRIVER_DATA * CONST          ClientDriverData = Adapter->ClientDriverData;
+    DRIVER_INITIALIZATION_DATA * CONST      DriverInitData = &ClientDriverData->DriverInitData;
+    CONST D3DKMDT_VIDPN_PRESENT_PATH* CONST Path = &pUpdateActiveVidPnPresentPath->VidPnPresentPathInfo;
+    NTSTATUS                                ntStatus;
 
     PAGED_CODE();
 
-    ntStatus = (*DriverInitData->DxgkDdiUpdateActiveVidPnPresentPath)(
-        hAdapter,
-        pUpdateActiveVidPnPresentPath
-        );
-    if (!NT_SUCCESS(ntStatus))
+    if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
     {
-        DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        /*
+         * the target is to inbox monitor
+         */
+        ntStatus = (*DriverInitData->DxgkDdiUpdateActiveVidPnPresentPath)(
+            hAdapter,
+            pUpdateActiveVidPnPresentPath
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        }
+    }
+    else
+    {
+        /*
+         * targeting at USB monitor
+         */
+        DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__": FIXME, send notification to USB driver\n"));
+        ntStatus = STATUS_SUCCESS;
     }
 
     return ntStatus;
+}
+
+static
+VOID
+LJB_NotifyCommitVidPnToSingleTarget(
+    __in LJB_ADAPTER *                      Adapter,
+    __in PVOID                              hPrimaryAllocation,
+    __in CONST D3DKMDT_VIDPN_PRESENT_PATH*  Path
+    )
+{
+    LJB_MONITOR_NODE * MonitorNode;
+    LJB_COMMIT_VIDPN CommitVidPn;
+
+    MonitorNode = LJB_GetMonitorNodeFromChildUid(
+        Adapter, Path->VidPnTargetId
+        );
+    if (MonitorNode == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": couldn't find MonitorNode for ChildUid(0x%x)?\n",
+            Path->VidPnTargetId
+            ));
+        return;
+    }
+
+    if (MonitorNode->MonitorInterface.pfnGenericIoctl != NULL &&
+        MonitorNode->MonitorInterface.Context != NULL)
+    {
+        LJB_MONITOR_INTERFACE* CONST MonitorInterface = &MonitorNode->MonitorInterface;
+        NTSTATUS myStatus;
+
+        RtlZeroMemory(&CommitVidPn, sizeof(CommitVidPn));
+        CommitVidPn.CommitPath = *Path;
+
+        /*
+         * FIXME: setup Width, Height, Bpp according to hPrimaryAllocation
+         */
+        UNREFERENCED_PARAMETER(hPrimaryAllocation);
+        DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__": Send LJB_GENERIC_IOCTL_COMMIT_VIDPN UsbTargetId(0x%x)\n",
+            Path->VidPnTargetId
+            ));
+        myStatus = (*MonitorInterface->pfnGenericIoctl)(
+            MonitorInterface->Context,
+            LJB_GENERIC_IOCTL_COMMIT_VIDPN,
+            &CommitVidPn,
+            sizeof(CommitVidPn),
+            NULL,
+            0,
+            NULL
+            );
+        if (!NT_SUCCESS(myStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": failed with ntStatus(0x%x)?\n",
+                myStatus));
+        }
+    }
+    LJB_DereferenceMonitorNode(MonitorNode);
+}
+
+static
+VOID
+LJB_NotifyCommitVidPnToAllUsbTargets(
+    __in LJB_ADAPTER *  Adapter,
+    __in PVOID          hPrimaryAllocation
+    )
+{
+    CONST D3DKMDT_VIDPN_PRESENT_PATH* Path;
+    UINT i;
+
+    /*
+     * For every Path connected to USB target, send LJB_COMMIT_VIDPN
+     */
+    for (i = 0; i < Adapter->NumPathsCommitted; i++)
+    {
+        Path = Adapter->PathsCommitted + i;
+        if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
+            continue;
+
+        LJB_NotifyCommitVidPnToSingleTarget(Adapter, hPrimaryAllocation, Path);
+    }
 }

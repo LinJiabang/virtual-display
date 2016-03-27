@@ -191,6 +191,7 @@ LBJ_PROXYKMD_PnpNotifyInterfaceChange(
 
         MonitorNode->Adapter = Adapter;
         InitializeListHead(&MonitorNode->ListEntry);
+        MonitorNode->ReferenceCount = 1;
 
         //
         // Finally queue the Deviceinfo.
@@ -512,6 +513,7 @@ LJB_PROXYKM_QueryMonitorInterface(
 End:
     return ntStatus;
 }
+
 static VOID
 AssignChildUid(
     __in LJB_MONITOR_NODE * MonitorNode
@@ -539,6 +541,26 @@ AssignChildUid(
         }
     }
     KeReleaseSpinLock(&Adapter->MonitorNodeListLock, oldIrql);
+}
+
+static VOID
+ReleaseChildUid(
+    __in LJB_MONITOR_NODE * MonitorNode
+    )
+{
+    LJB_ADAPTER * CONST Adapter = MonitorNode->Adapter;
+    ULONG               ChildUid = MonitorNode->ChildUid;
+    ULONG CONST         Index = ChildUid - Adapter->UsbTargetIdBase;
+    KIRQL               oldIrql;
+
+    if (Index < MAX_NUM_OF_USB_MONITOR)
+    {
+        ULONG CONST Mask = (1 << Index);
+
+        KeAcquireSpinLock(&Adapter->MonitorNodeListLock, &oldIrql);
+        Adapter->MonitorNodeMask &= ~Mask;
+        KeReleaseSpinLock(&Adapter->MonitorNodeListLock, oldIrql);
+    }
 }
 
 NTSTATUS
@@ -664,7 +686,8 @@ LJB_PROXYKMD_CloseTargetDevice(
     __in __drv_freesMem(MonitorNode) LJB_MONITOR_NODE * MonitorNode
     )
 {
-    LJB_ADAPTER * CONST    Adapter = MonitorNode->Adapter;
+    LJB_ADAPTER * CONST             Adapter = MonitorNode->Adapter;
+    LJB_MONITOR_INTERFACE* CONST    MonitorInterface = &MonitorNode->MonitorInterface;
 
     PAGED_CODE();
 
@@ -673,6 +696,21 @@ LJB_PROXYKMD_CloseTargetDevice(
     DBG_PRINT(Adapter, DBGLVL_PNP,
         (__FUNCTION__ ":Closing %ws\n", MonitorNode->NameBuffer
         ));
+
+    /*
+     * Wait until ReferenceCount drop to 1
+     */
+    while (MonitorNode->ReferenceCount != 1)
+    {
+        LJB_PROXYKMD_DelayMs(10);
+    }
+    ReleaseChildUid(MonitorNode);
+    if (MonitorInterface->Context != NULL)
+    {
+        (*MonitorInterface->InterfaceDereference)(
+            MonitorInterface->Context);
+        MonitorInterface->Context = NULL;
+    }
 
     if (MonitorNode->FileObject)
     {
@@ -687,4 +725,45 @@ LJB_PROXYKMD_CloseTargetDevice(
         ObDereferenceObject(MonitorNode->PDO);
     }
     LJB_PROXYKMD_FreePool(MonitorNode);
+}
+
+LJB_MONITOR_NODE *
+LJB_GetMonitorNodeFromChildUid(
+    __in LJB_ADAPTER *      Adapter,
+    __in ULONG              ChildUid
+    )
+{
+    LIST_ENTRY * CONST  ListHead = &Adapter->MonitorNodeListHead;
+    LIST_ENTRY *        listEntry;
+    LJB_MONITOR_NODE *  MonitorNode;
+    KIRQL               oldIrql;
+
+    MonitorNode = NULL;
+    KeAcquireSpinLock(&Adapter->MonitorNodeListLock, &oldIrql);
+
+    for (listEntry = ListHead->Flink;
+         listEntry != ListHead;
+         listEntry = listEntry->Flink)
+    {
+        LJB_MONITOR_NODE * thisNode;
+
+        thisNode = CONTAINING_RECORD(listEntry, LJB_MONITOR_NODE, ListEntry);
+        if (thisNode->ChildUid == ChildUid)
+        {
+            MonitorNode = thisNode;
+            InterlockedIncrement(&MonitorNode->ReferenceCount);
+            break;
+        }
+    }
+    KeReleaseSpinLock(&Adapter->MonitorNodeListLock, oldIrql);
+
+    return MonitorNode;
+}
+
+VOID
+LJB_DereferenceMonitorNode(
+    __in LJB_MONITOR_NODE * MonitorNode
+    )
+{
+    InterlockedDecrement(&MonitorNode->ReferenceCount);
 }
