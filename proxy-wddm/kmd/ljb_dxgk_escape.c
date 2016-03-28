@@ -66,8 +66,10 @@ LJB_DXGK_Escape(
         );
     if (!NT_SUCCESS(ntStatus))
     {
-        DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        // Sometimes the ATI app might issue Escape to Intel KMD. Don't try to
+        // catch this error.
+        //DBG_PRINT(Adapter, DBGLVL_ERROR,
+        //    ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
     }
 
     return ntStatus;

@@ -98,8 +98,8 @@ LJB_DXGK_CommitVidPn(
     PAGED_CODE();
 
     DBG_PRINT(Adapter, DBGLVL_FLOW,
-        (__FUNCTION__
-        ": hFunctionalVidPn(%p),AffectedVidPnSourceId(0x%x),MonitorConnectivityChecks(%s),"
+        (__FUNCTION__":\n"
+        "hFunctionalVidPn(%p),AffectedVidPnSourceId(0x%x),MonitorConnectivityChecks(%s),\n"
         "hPrimaryAllocation(%p),PathPowerTransition(%u),PathPoweredOff(%u)\n",
         pCommitVidPn->hFunctionalVidPn,
         pCommitVidPn->AffectedVidPnSourceId,
@@ -115,6 +115,81 @@ LJB_DXGK_CommitVidPn(
     {
         Adapter->FirstVidPnArrived = TRUE;
     }
+
+    /*
+     * When 2 monitors are attached, "devcon restart =display" yields the following
+     * call sequences:
+     *
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0009A08B2B0),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
+     * hPrimaryAllocation(FFFFE0013664DA60),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(1)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0009A1939B0),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
+     * hPrimaryAllocation(FFFFE001366FE4A0),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(2)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: Path[1] = (0x1, 0x10101)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     *
+     *==========================================================================
+     * System Sleep yieds the following:
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0009F82A7D0),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(0000000000000000),PathPowerTransition(1),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(1)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x1, 0x10101)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(0),SourceIsConnectedToUsbTarget(0)
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0009F03A280),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(0000000000000000),PathPowerTransition(1),PathPoweredOff(0)
+     * ?LJB_VIDPN_PrefetchTopology: pfnReleasePathInfo failed with ntStatus(0xc01e0319)?
+     * ?LJB_VIDPN_CreateVidPn: unable te prefetch topology?
+     * ?LJB_DXGK_CommitVidPn: no MyVidPn allocated.
+     *
+     * So even if AffectedVidPnSourceId is not listed in the current topology,
+     * it might means that that particular VidPnSourceId is to be destroyed. We need
+     * to pass this topology to inbox driver.
+     *
+     * Resuming from system sleep:
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0009F308A20),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
+     * hPrimaryAllocation(FFFFE0012829C530),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(2)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x1, 0x10101)
+     * LJB_DXGK_CommitVidPn: Path[1] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC000A06A9970),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(0000000000000000),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(1)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(0),SourceIsConnectedToUsbTarget(0)
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC000A05567F0),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
+     * hPrimaryAllocation(FFFFE0012832AA60),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(1)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0016A3ED350),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
+     * hPrimaryAllocation(FFFFE0007750C010),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(2)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: Path[1] = (0x1, 0x10101)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     *
+     *==========================================================================
+     * When selecting "Show only on 2", the following occurs
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC00168467EC0),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(0000000000000000),PathPowerTransition(0),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(1)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x1, 0x10101)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(0),SourceIsConnectedToUsbTarget(0)
+     */
 
     RtlZeroMemory(Adapter->PathsCommitted, sizeof(Adapter->PathsCommitted));
     Adapter->NumPathsCommitted = 0;
@@ -173,10 +248,18 @@ LJB_DXGK_CommitVidPn(
     /*
      * Copy Paths from VidPn topology to PathsCommitted
      */
+    DBG_PRINT(Adapter, DBGLVL_FLOW,
+        (__FUNCTION__": NumPaths(%u)\n", MyVidPn->NumPaths));
     Adapter->NumPathsCommitted = MyVidPn->NumPaths;
     for (i = 0; i < MyVidPn->NumPaths; i++)
     {
         Adapter->PathsCommitted[i] = MyVidPn->Paths[i];
+        DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__": Path[%u] = (0x%x, 0x%x)\n",
+            i,
+            MyVidPn->Paths[i].VidPnSourceId,
+            MyVidPn->Paths[i].VidPnTargetId
+            ));
     }
 
     if (pCommitVidPn->AffectedVidPnSourceId == D3DDDI_ID_ALL)
@@ -229,25 +312,20 @@ LJB_DXGK_CommitVidPn(
         ));
 
     /*
-     * If the affected Source is not connected to inbox target, don't let inbox driver
-     * see it.
-     * FIXME: need to take care of topology transition: from extended view to
-     * 2nd screen only view??
+     * From the comments above, when putting the system to sleep, the AffectedVidPnSourceId
+     * is not listed in the current topology. We need to pass this to inbox driver.
      */
     ntStatus = STATUS_SUCCESS;
-    if (SourceIsConnectedToInboxTarget)
+    MyCommitVidpn.hFunctionalVidPn = (D3DKMDT_HVIDPN) MyVidPn;
+    ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
+        hAdapter,
+        &MyCommitVidpn
+        );
+    if (!NT_SUCCESS(ntStatus))
     {
-        MyCommitVidpn.hFunctionalVidPn = (D3DKMDT_HVIDPN) MyVidPn;
-        ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
-            hAdapter,
-            &MyCommitVidpn
-            );
-        if (!NT_SUCCESS(ntStatus))
-        {
-            DBG_PRINT(Adapter, DBGLVL_ERROR,
-                ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
-            goto Exit;
-        }
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        goto Exit;
     }
 
     if (SourceIsConnectedToUsbTarget)
