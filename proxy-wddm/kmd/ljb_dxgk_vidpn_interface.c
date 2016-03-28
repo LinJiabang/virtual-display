@@ -325,7 +325,6 @@ LJB_DXGKCB_QueryVidPnInterface(
     }
 
     *ppVidPnInterface = &MyVidPnInterface;
-    DBG_PRINT(Adapter, DBGLVL_VIDPN, (__FUNCTION__": return MyVidPnInterface\n"));
     return ntStatus;
 }
 
@@ -394,8 +393,6 @@ LJB_VIDPN_GetTopology(
     *phVidPnTopology = (D3DKMDT_HVIDPNTOPOLOGY) MyTopology;
     *ppVidPnTopologyInterface = &MyTopologyInterface;
 
-    DBG_PRINT(Adapter, DBGLVL_VIDPN,
-        (__FUNCTION__": return MyTopology(%p)\n", MyTopology));
     return ntStatus;
 }
 

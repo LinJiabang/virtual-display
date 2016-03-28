@@ -93,6 +93,7 @@ LJB_DXGK_CommitVidPn(
     UINT                                NumOfUsbTarget;
     BOOLEAN                             SourceIsConnectedToInboxTarget;
     BOOLEAN                             SourceIsConnectedToUsbTarget;
+    UINT                                i;
 
     PAGED_CODE();
 
@@ -161,16 +162,25 @@ LJB_DXGK_CommitVidPn(
      * driver handle it.
      * If AffectedVidPnSourceId is D3DDDI_ID_ALL, check if there is inbox target or not.
      */
+    MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pCommitVidPn->hFunctionalVidPn);
+    if (MyVidPn == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?"__FUNCTION__": no MyVidPn allocated.\n"));
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    /*
+     * Copy Paths from VidPn topology to PathsCommitted
+     */
+    Adapter->NumPathsCommitted = MyVidPn->NumPaths;
+    for (i = 0; i < MyVidPn->NumPaths; i++)
+    {
+        Adapter->PathsCommitted[i] = MyVidPn->Paths[i];
+    }
+
     if (pCommitVidPn->AffectedVidPnSourceId == D3DDDI_ID_ALL)
     {
-        MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pCommitVidPn->hFunctionalVidPn);
-        if (MyVidPn == NULL)
-        {
-            DBG_PRINT(Adapter, DBGLVL_ERROR,
-                ("?"__FUNCTION__": no MyVidPn allocated.\n"));
-            return STATUS_INSUFFICIENT_RESOURCES;
-        }
-
         NumOfInboxTarget = LJB_VIDPN_GetNumberOfInboxTarget(MyVidPn);
         NumOfUsbTarget = LJB_VIDPN_GetNumberOfUsbTarget(MyVidPn);
         DBG_PRINT(Adapter, DBGLVL_FLOW,
@@ -188,17 +198,16 @@ LJB_DXGK_CommitVidPn(
             {
                 DBG_PRINT(Adapter, DBGLVL_ERROR,
                     ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
-                LJB_VIDPN_DestroyVidPn(MyVidPn);
-                return ntStatus;
+                goto Exit;
             }
-            LJB_VIDPN_DestroyVidPn(MyVidPn);
         }
 
         if (NumOfUsbTarget != 0)
         {
             LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn->hPrimaryAllocation);
         }
-        return STATUS_SUCCESS;
+        ntStatus = STATUS_SUCCESS;
+        goto Exit;
     }
 
     /*
@@ -228,14 +237,6 @@ LJB_DXGK_CommitVidPn(
     ntStatus = STATUS_SUCCESS;
     if (SourceIsConnectedToInboxTarget)
     {
-        MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pCommitVidPn->hFunctionalVidPn);
-        if (MyVidPn == NULL)
-        {
-            DBG_PRINT(Adapter, DBGLVL_ERROR,
-                ("?"__FUNCTION__": no MyVidPn allocated.\n"));
-            return STATUS_INSUFFICIENT_RESOURCES;
-        }
-
         MyCommitVidpn.hFunctionalVidPn = (D3DKMDT_HVIDPN) MyVidPn;
         ntStatus = (*DriverInitData->DxgkDdiCommitVidPn)(
             hAdapter,
@@ -245,10 +246,8 @@ LJB_DXGK_CommitVidPn(
         {
             DBG_PRINT(Adapter, DBGLVL_ERROR,
                 ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
-            LJB_VIDPN_DestroyVidPn(MyVidPn);
-            return ntStatus;
+            goto Exit;
         }
-        LJB_VIDPN_DestroyVidPn(MyVidPn);
     }
 
     if (SourceIsConnectedToUsbTarget)
@@ -256,6 +255,8 @@ LJB_DXGK_CommitVidPn(
         LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn->hPrimaryAllocation);
     }
 
+Exit:
+    LJB_VIDPN_DestroyVidPn(MyVidPn);
     return ntStatus;
 }
 

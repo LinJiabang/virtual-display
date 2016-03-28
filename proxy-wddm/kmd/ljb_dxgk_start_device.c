@@ -7,6 +7,7 @@
  *  This program is NOT free software. Any unlicensed usage is prohbited.
  */
 #include "ljb_proxykmd.h"
+#include "ljb_dxgk_vidpn_interface.h"
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (PAGE, LJB_DXGK_StartDevice)
@@ -74,10 +75,17 @@ LJB_DXGK_StartDevice(
     LJB_ADAPTER * CONST                 Adapter = FIND_ADAPTER_BY_DRIVER_ADAPTER(MiniportDeviceContext);
     LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
     DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
+    DXGKRNL_INTERFACE                   TargetDxgkInterface;
     NTSTATUS                            ntStatus;
     ULONG                               BytesRead;
 
     PAGED_CODE();
+
+    /*
+     * Override DxgkCbQueryVidPnInterface with LJB_DXGKCB_QueryVidPnInterface
+     */
+    TargetDxgkInterface = *DxgkInterface;
+    TargetDxgkInterface.DxgkCbQueryVidPnInterface = &LJB_DXGKCB_QueryVidPnInterface;
 
     /*
      * pass the call to inbox driver
@@ -85,7 +93,7 @@ LJB_DXGK_StartDevice(
     ntStatus = (*DriverInitData->DxgkDdiStartDevice)(
         MiniportDeviceContext,
         DxgkStartInfo,
-        DxgkInterface,
+        &TargetDxgkInterface,
         NumberOfVideoPresentSources,
         NumberOfChildren
         );
@@ -127,5 +135,6 @@ LJB_DXGK_StartDevice(
         Adapter->NumberOfVideoPresentSources,
         Adapter->NumberOfChildren
         ));
+
     return ntStatus;
 }
