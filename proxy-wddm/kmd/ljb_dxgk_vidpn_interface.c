@@ -200,17 +200,20 @@ LJB_VIDPN_PrefetchTopology(
     /*
      * Release the last queried pPath
      */
-    ntStatus =(*VidPnTopologyInterface->pfnReleasePathInfo)(
-        hVidPnTopology,
-        PrevPath
-        );
-    if (!NT_SUCCESS(ntStatus))
+    if (PrevPath != NULL)
     {
-        DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": "
-            "pfnReleasePathInfo failed with ntStatus(0x%08x)?\n",
-            ntStatus
-            ));
+        ntStatus =(*VidPnTopologyInterface->pfnReleasePathInfo)(
+            hVidPnTopology,
+            PrevPath
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": "
+                "pfnReleasePathInfo failed with ntStatus(0x%08x)?\n",
+                ntStatus
+                ));
+        }
     }
 
     return ntStatus;

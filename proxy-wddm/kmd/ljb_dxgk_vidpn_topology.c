@@ -217,12 +217,10 @@ LJB_VIDPN_TOPOLOGY_GetNumPaths(
             NumPaths++;
         }
     }
-    ASSERT(NumPaths != 0);
-    if (NumPaths == 0)
-    {
-        DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": Check caller stack, avoid calling inbox driver if possible\n"));
-    }
+
+    /*
+     * It is absolutely legal to have null topology, don't check NumPaths == 0.
+     */
     *pNumPaths = NumPaths;
     return STATUS_SUCCESS;
 }
