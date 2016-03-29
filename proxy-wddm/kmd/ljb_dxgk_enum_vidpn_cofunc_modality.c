@@ -128,13 +128,289 @@ LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
     IN_CONST_PDXGKARG_ENUMVIDPNCOFUNCMODALITY_CONST pEnumCofuncModality
     )
 {
-    NTSTATUS        ntStatus;
+    DXGK_VIDPN_INTERFACE* CONST                 VidPnInterface = MyVidPn->VidPnInterface;
+    D3DKMDT_HVIDPNTOPOLOGY CONST                hVidPnTopology = MyVidPn->Topology.hVidPnTopology;
+    CONST DXGK_VIDPNTOPOLOGY_INTERFACE* CONST   VidPnTopologyInterface = MyVidPn->Topology.VidPnTopologyInterface;
+    D3DKMDT_HVIDPNSOURCEMODESET                 hVidPnSourceModeSet = NULL;
+    D3DKMDT_HVIDPNTARGETMODESET                 hVidPnTargetModeSet = NULL;
+    CONST DXGK_VIDPNSOURCEMODESET_INTERFACE*    pVidPnSourceModeSetInterface = NULL;
+    CONST DXGK_VIDPNTARGETMODESET_INTERFACE*    pVidPnTargetModeSetInterface = NULL;
+    CONST D3DKMDT_VIDPN_SOURCE_MODE*            pVidPnPinnedSourceModeInfo = NULL;
+    CONST D3DKMDT_VIDPN_TARGET_MODE*            pVidPnPinnedTargetModeInfo = NULL;
+    NTSTATUS                                    ntStatus;
+    NTSTATUS                                    TempStatus;
+    UINT                                        i;
 
-    // NOT YET Implemented
-    UNREFERENCED_PARAMETER(Adapter);
-    UNREFERENCED_PARAMETER(MyVidPn);
-    UNREFERENCED_PARAMETER(pEnumCofuncModality);
     ntStatus = STATUS_SUCCESS;
+    for (i = 0; i < MyVidPn->NumPaths; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * CONST ThisPath = MyVidPn->Paths + i;
+
+        if (ThisPath->VidPnTargetId < Adapter->UsbTargetIdBase)
+            continue;
+
+        // Get the Source Mode Set interface so the pinned mode can be retrieved
+        ntStatus = (*VidPnInterface->pfnAcquireSourceModeSet)(
+            pEnumCofuncModality->hConstrainingVidPn,
+            ThisPath->VidPnSourceId,
+            &hVidPnSourceModeSet,
+            &pVidPnSourceModeSetInterface);
+
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?"__FUNCTION__": pfnAcquireSourceModeSet failed with ntStatus(0x%08x)\n",
+                ntStatus));
+            break;
+        }
+
+        // Get the pinned mode, needed when VidPnSource isn't pivot, and when VidPnTarget isn't pivot
+        ntStatus = (*pVidPnSourceModeSetInterface->pfnAcquirePinnedModeInfo)(hVidPnSourceModeSet, &pVidPnPinnedSourceModeInfo);
+
+        // SOURCE MODES: If this source mode isn't the pivot point, do work on the source mode set
+        if (!((pEnumCofuncModality->EnumPivotType == D3DKMDT_EPT_VIDPNSOURCE) &&
+              (pEnumCofuncModality->EnumPivot.VidPnSourceId == ThisPath->VidPnSourceId)))
+        {
+            // If there's no pinned source add possible modes (otherwise they've already been added)
+            if (pVidPnPinnedSourceModeInfo == NULL)
+            {
+                // Release the acquired source mode set, since going to create a new one to put all modes in
+                ntStatus = (*VidPnInterface->pfnReleaseSourceModeSet)(pEnumCofuncModality->hConstrainingVidPn, hVidPnSourceModeSet);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        (__FUNCTION__": pfnReleaseSourceModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus
+                        ));
+                    break;
+                }
+                hVidPnSourceModeSet = NULL; // Successfully released it
+
+                // Create a new source mode set which will be added to the constraining VidPn with all the possible modes
+                ntStatus = (*VidPnInterface->pfnCreateNewSourceModeSet)(
+                    pEnumCofuncModality->hConstrainingVidPn,
+                    ThisPath->VidPnSourceId,
+                    &hVidPnSourceModeSet,
+                    &pVidPnSourceModeSetInterface);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?" __FUNCTION__
+                        ":pfnCreateNewSourceModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus
+                        ));
+                    break;
+                }
+
+                // Add the appropriate modes to the source mode set
+                {
+                    //ntStatus = AddSingleSourceMode(pVidPnSourceModeSetInterface, hVidPnSourceModeSet, ThisPath->VidPnSourceId);
+                }
+
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    break;
+                }
+
+                // Give DMM back the source modes just populated
+                ntStatus = (*VidPnInterface->pfnAssignSourceModeSet)(
+                    pEnumCofuncModality->hConstrainingVidPn,
+                    ThisPath->VidPnSourceId,
+                    hVidPnSourceModeSet
+                    );
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnAssignSourceModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus));
+                    break;
+                }
+                hVidPnSourceModeSet = 0; // Successfully assigned it (equivalent to releasing it)
+            }
+            else
+            {
+                // Release the pinned source mode as there's no other work to do
+                ntStatus = (*pVidPnSourceModeSetInterface->pfnReleaseModeInfo)(hVidPnSourceModeSet, pVidPnPinnedSourceModeInfo);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnReleaseModeInfo failed with ntStatus(0x%08x)\n",
+                        ntStatus
+                        ));
+                    break;
+                }
+                pVidPnPinnedSourceModeInfo = NULL; // Successfully released it
+
+                // Release the acquired source mode set, since it is no longer needed
+                ntStatus = (*VidPnInterface->pfnReleaseSourceModeSet)(pEnumCofuncModality->hConstrainingVidPn, hVidPnSourceModeSet);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnReleaseSourceModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus));
+                    break;
+                }
+                hVidPnSourceModeSet = NULL; // Successfully released it
+            }
+        }
+
+        // TARGET MODES: If this target mode isn't the pivot point, do work on the target mode set
+        if (!((pEnumCofuncModality->EnumPivotType == D3DKMDT_EPT_VIDPNTARGET) &&
+              (pEnumCofuncModality->EnumPivot.VidPnTargetId == ThisPath->VidPnTargetId)))
+        {
+            // Get the Target Mode Set interface so modes can be added if necessary
+            ntStatus = (*VidPnInterface->pfnAcquireTargetModeSet)(
+                pEnumCofuncModality->hConstrainingVidPn,
+                ThisPath->VidPnTargetId,
+                &hVidPnTargetModeSet,
+                &pVidPnTargetModeSetInterface
+                );
+            if (!NT_SUCCESS(ntStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?"__FUNCTION__": pfnAcquireTargetModeSet failed with ntStatus(0x%08x)\n",
+                    ntStatus
+                    ));
+                break;
+            }
+
+            ntStatus = (*pVidPnTargetModeSetInterface->pfnAcquirePinnedModeInfo)(hVidPnTargetModeSet, &pVidPnPinnedTargetModeInfo);
+            if (!NT_SUCCESS(ntStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?"__FUNCTION__":pfnAcquirePinnedModeInfo failed with ntStatus(0x%08x)\n",
+                    ntStatus
+                    ));
+                break;
+            }
+
+            // If there's no pinned target add possible modes (otherwise they've already been added)
+            if (pVidPnPinnedTargetModeInfo == NULL)
+            {
+                // Release the acquired target mode set, since going to create a new one to put all modes in
+                ntStatus = (*VidPnInterface->pfnReleaseTargetModeSet)(pEnumCofuncModality->hConstrainingVidPn, hVidPnTargetModeSet);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnReleaseTargetModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus
+                        ));
+                    break;
+                }
+                hVidPnTargetModeSet = NULL; // Successfully released it
+
+                // Create a new target mode set which will be added to the constraining VidPn with all the possible modes
+                ntStatus = (*VidPnInterface->pfnCreateNewTargetModeSet)(
+                    pEnumCofuncModality->hConstrainingVidPn,
+                    ThisPath->VidPnTargetId,
+                    &hVidPnTargetModeSet,
+                    &pVidPnTargetModeSetInterface);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__": pfnCreateNewTargetModeSet failed with ntStatus(0x%08x)",
+                        ntStatus
+                        ));
+                    break;
+                }
+
+                //ntStatus = AddSingleTargetMode(pVidPnTargetModeSetInterface, hVidPnTargetModeSet, pVidPnPinnedSourceModeInfo, ThisPath->VidPnSourceId);
+
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    break;
+                }
+
+                // Give DMM back the source modes just populated
+                ntStatus = (*VidPnInterface->pfnAssignTargetModeSet)(
+                    pEnumCofuncModality->hConstrainingVidPn,
+                    ThisPath->VidPnTargetId,
+                    hVidPnTargetModeSet
+                    );
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnAssignTargetModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus));
+                    break;
+                }
+                hVidPnTargetModeSet = NULL; // Successfully assigned it (equivalent to releasing it)
+            }
+            else
+            {
+                // Release the pinned target as there's no other work to do
+                ntStatus = (*pVidPnTargetModeSetInterface->pfnReleaseModeInfo)(hVidPnTargetModeSet, pVidPnPinnedTargetModeInfo);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnReleaseModeInfo failed with ntStatus(0x%08x)\n",
+                        ntStatus));
+                    break;
+                }
+                pVidPnPinnedTargetModeInfo = NULL; // Successfully released it
+
+                // Release the acquired target mode set, since it is no longer needed
+                ntStatus = (*VidPnInterface->pfnReleaseTargetModeSet)(pEnumCofuncModality->hConstrainingVidPn, hVidPnTargetModeSet);
+                if (!NT_SUCCESS(ntStatus))
+                {
+                    DBG_PRINT(Adapter, DBGLVL_ERROR,
+                        ("?"__FUNCTION__":pfnReleaseTargetModeSet failed with ntStatus(0x%08x)\n",
+                        ntStatus));
+                    break;
+                }
+                hVidPnTargetModeSet = 0; // Successfully released it
+            }
+        }// End: TARGET MODES
+
+        /*
+         * Update Rotation Support
+         */
+        ThisPath->ContentTransformation.RotationSupport.Identity   = 1;
+        ThisPath->ContentTransformation.RotationSupport.Rotate90   = 1;
+        ThisPath->ContentTransformation.RotationSupport.Rotate180  = 1;
+        ThisPath->ContentTransformation.RotationSupport.Rotate270  = 1;
+        ntStatus = (*VidPnTopologyInterface->pfnUpdatePathSupportInfo)(
+            hVidPnTopology,
+            ThisPath
+            );
+        if (!NT_SUCCESS(ntStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": "
+                "pfnUpdatePathSupportInfo failed with ntStatus(0x%08x)\n",
+                ntStatus
+                ));
+        }
+    }
+
+    /*
+     * Release any resources
+     */
+    if ((pVidPnSourceModeSetInterface != NULL) &&
+        (pVidPnPinnedSourceModeInfo != NULL))
+    {
+        TempStatus = (*pVidPnSourceModeSetInterface->pfnReleaseModeInfo)(hVidPnSourceModeSet, pVidPnPinnedSourceModeInfo);
+        ASSERT(NT_SUCCESS(TempStatus));
+    }
+
+    if ((pVidPnTargetModeSetInterface != NULL) &&
+        (pVidPnPinnedTargetModeInfo != NULL))
+    {
+        TempStatus = (*pVidPnTargetModeSetInterface->pfnReleaseModeInfo)(hVidPnTargetModeSet, pVidPnPinnedTargetModeInfo);
+        ASSERT(NT_SUCCESS(TempStatus));
+    }
+
+    if (hVidPnSourceModeSet != 0)
+    {
+        TempStatus = (*VidPnInterface->pfnReleaseSourceModeSet)(pEnumCofuncModality->hConstrainingVidPn, hVidPnSourceModeSet);
+        ASSERT(NT_SUCCESS(TempStatus));
+    }
+
+    if (hVidPnTargetModeSet != 0)
+    {
+        TempStatus = (*VidPnInterface->pfnReleaseTargetModeSet)(pEnumCofuncModality->hConstrainingVidPn, hVidPnTargetModeSet);
+        ASSERT(NT_SUCCESS(TempStatus));
+    }
 
     return ntStatus;
 }
