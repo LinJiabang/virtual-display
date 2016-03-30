@@ -121,5 +121,20 @@ typedef struct _LJB_PRIMARY_SURFACE
     PVOID                       SurfaceHandle;
 } LJB_PRIMARY_SURFACE;
 
+/*
+ * FUNCTION:
+ *  LJB_GENERIC_IOCTL_SET_VIDPN_SOURCE_VISIBLE
+ *
+ * Parameters:
+ *  InputBuffer = pointer to BOOLEAN
+ *  InputBufferSize = sizeof(BOOLEAN)
+ *  OutputBuffer = None
+ *  OutputBufferSize = 0
+ *  BytesReturned = don't care.
+ *
+ * Desciption:
+ *  Notifies the USB monitor driver about the monitor visibility.
+ */
+#define LJB_GENERIC_IOCTL_SET_VIDPN_SOURCE_VISIBLE      4
 
 #endif
