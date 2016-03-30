@@ -145,9 +145,8 @@ LJB_DXGK_CommitVidPn(
      * LJB_DXGK_CommitVidPn:
      * hFunctionalVidPn(FFFFC0009F03A280),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
      * hPrimaryAllocation(0000000000000000),PathPowerTransition(1),PathPoweredOff(0)
-     * ?LJB_VIDPN_PrefetchTopology: pfnReleasePathInfo failed with ntStatus(0xc01e0319)?
-     * ?LJB_VIDPN_CreateVidPn: unable te prefetch topology?
-     * ?LJB_DXGK_CommitVidPn: no MyVidPn allocated.
+     * LJB_DXGK_CommitVidPn: NumPaths(0)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(0),SourceIsConnectedToUsbTarget(0)
      *
      * So even if AffectedVidPnSourceId is not listed in the current topology,
      * it might means that that particular VidPnSourceId is to be destroyed. We need
@@ -155,27 +154,32 @@ LJB_DXGK_CommitVidPn(
      *
      * Resuming from system sleep:
      * LJB_DXGK_CommitVidPn:
-     * hFunctionalVidPn(FFFFC0009F308A20),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
-     * hPrimaryAllocation(FFFFE0012829C530),PathPowerTransition(0),PathPoweredOff(0)
+     * hFunctionalVidPn(FFFFC0000CF6B620),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(FFFFE00048533230),PathPowerTransition(0),PathPoweredOff(1)
      * LJB_DXGK_CommitVidPn: NumPaths(2)
      * LJB_DXGK_CommitVidPn: Path[0] = (0x1, 0x10101)
      * LJB_DXGK_CommitVidPn: Path[1] = (0x0, 0x3061b)
      * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     *
      * LJB_DXGK_CommitVidPn:
-     * hFunctionalVidPn(FFFFC000A06A9970),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
-     * hPrimaryAllocation(0000000000000000),PathPowerTransition(0),PathPoweredOff(0)
-     * LJB_DXGK_CommitVidPn: NumPaths(1)
+     * hFunctionalVidPn(FFFFC0000CF6B620),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(FFFFE000486D0A60),PathPowerTransition(0),PathPoweredOff(1)
+     * LJB_DXGK_CommitVidPn: NumPaths(2)
      * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
-     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(0),SourceIsConnectedToUsbTarget(0)
-     * LJB_DXGK_CommitVidPn:
-     * hFunctionalVidPn(FFFFC000A05567F0),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
-     * hPrimaryAllocation(FFFFE0012832AA60),PathPowerTransition(0),PathPoweredOff(0)
-     * LJB_DXGK_CommitVidPn: NumPaths(1)
-     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: Path[1] = (0x1, 0x10101)
      * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     *
      * LJB_DXGK_CommitVidPn:
-     * hFunctionalVidPn(FFFFC0016A3ED350),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_ENFORCE),
-     * hPrimaryAllocation(FFFFE0007750C010),PathPowerTransition(0),PathPoweredOff(0)
+     * hFunctionalVidPn(FFFFC0000D367510),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(FFFFE00048533230),PathPowerTransition(1),PathPoweredOff(0)
+     * LJB_DXGK_CommitVidPn: NumPaths(2)
+     * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
+     * LJB_DXGK_CommitVidPn: Path[1] = (0x1, 0x10101)
+     * LJB_DXGK_CommitVidPn: SourceIsConnectedToInboxTarget(1),SourceIsConnectedToUsbTarget(0)
+     *
+     * LJB_DXGK_CommitVidPn:
+     * hFunctionalVidPn(FFFFC0001875DCE0),AffectedVidPnSourceId(0x1),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
+     * hPrimaryAllocation(FFFFE000486D0A60),PathPowerTransition(1),PathPoweredOff(0)
      * LJB_DXGK_CommitVidPn: NumPaths(2)
      * LJB_DXGK_CommitVidPn: Path[0] = (0x0, 0x3061b)
      * LJB_DXGK_CommitVidPn: Path[1] = (0x1, 0x10101)
