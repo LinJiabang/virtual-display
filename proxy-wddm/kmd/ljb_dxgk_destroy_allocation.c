@@ -115,7 +115,7 @@ LJB_DXGK_DestroyAllocationPostProcessing(
                     MyAllocation->hAllocation
                     ));
                 RemoveEntryList(listEntry);
-                LJB_PROXYKMD_FreePool(MyAllocation);
+                LJB_FreePool(MyAllocation);
             }
         }
         KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);

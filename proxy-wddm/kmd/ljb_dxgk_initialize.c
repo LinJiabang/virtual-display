@@ -931,7 +931,7 @@ LJB_DXGK_InitializeWin7(
     if (DriverInitializationData->Version < DXGKDDI_INTERFACE_VERSION_WIN7_GOLD)
         return (*GlobalDriverData.DxgkInitializeWin7)(DriverObject, RegistryPath, DriverInitializationData);
 
-    ClientDriverData = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_CLIENT_DRIVER_DATA));
+    ClientDriverData = LJB_GetPoolZero(sizeof(LJB_CLIENT_DRIVER_DATA));
     if (ClientDriverData == NULL)
     {
         KdPrint(("?" __FUNCTION__ ": "
@@ -1026,7 +1026,7 @@ LJB_DXGK_InitializeWin7(
         KdPrint(("?"__FUNCTION__ ": no DriverBindingTag left? No interception for this adapter!\n"));
         RemoveEntryList(&ClientDriverData->ListEntry);
         InterlockedDecrement(&GlobalDriverData.ClientDriverListCount);
-        LJB_PROXYKMD_FreePool(ClientDriverData);
+        LJB_FreePool(ClientDriverData);
         return (*GlobalDriverData.DxgkInitializeWin7)(
             DriverObject,
             RegistryPath,
@@ -1120,7 +1120,7 @@ LJB_DXGK_InitializeWin8(
     if (RtlEqualUnicodeString( &DriverObject->DriverName, &BasicRenderName, TRUE))
         return (*GlobalDriverData.DxgkInitializeWin8)(DriverObject, RegistryPath, DriverInitializationData);
 
-    ClientDriverData = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_CLIENT_DRIVER_DATA));
+    ClientDriverData = LJB_GetPoolZero(sizeof(LJB_CLIENT_DRIVER_DATA));
     if (ClientDriverData == NULL)
     {
         KdPrint(("?" __FUNCTION__ ": "
@@ -1215,7 +1215,7 @@ LJB_DXGK_InitializeWin8(
         KdPrint(("?"__FUNCTION__ ": no DriverBindingTag left? No interception for this adapter!\n"));
         RemoveEntryList(&ClientDriverData->ListEntry);
         InterlockedDecrement(&GlobalDriverData.ClientDriverListCount);
-        LJB_PROXYKMD_FreePool(ClientDriverData);
+        LJB_FreePool(ClientDriverData);
         return (*GlobalDriverData.DxgkInitializeWin7)(
             DriverObject,
             RegistryPath,

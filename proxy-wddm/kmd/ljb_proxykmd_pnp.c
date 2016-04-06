@@ -172,7 +172,7 @@ LBJ_PROXYKMD_PnpNotifyInterfaceChange(
         //
         // Allocate memory for the MonitorNode
         //
-        MonitorNode = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_MONITOR_NODE));
+        MonitorNode = LJB_GetPoolZero(sizeof(LJB_MONITOR_NODE));
         if (MonitorNode == NULL)
         {
             DBG_PRINT(Adapter, DBGLVL_ERROR,
@@ -208,7 +208,7 @@ LBJ_PROXYKMD_PnpNotifyInterfaceChange(
             RemoveEntryList(&MonitorNode->ListEntry);
             KeReleaseSpinLock(&Adapter->MonitorNodeListLock, oldIrql);\
             InterlockedDecrement(&Adapter->MonitorNodeListCount);
-            LJB_PROXYKMD_FreePool(MonitorNode);
+            LJB_FreePool(MonitorNode);
             return STATUS_SUCCESS;
         }
 
@@ -724,7 +724,7 @@ LJB_PROXYKMD_CloseTargetDevice(
     {
         ObDereferenceObject(MonitorNode->PDO);
     }
-    LJB_PROXYKMD_FreePool(MonitorNode);
+    LJB_FreePool(MonitorNode);
 }
 
 LJB_MONITOR_NODE *

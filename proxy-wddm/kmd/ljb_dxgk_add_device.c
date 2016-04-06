@@ -86,7 +86,7 @@ LJB_DXGK_AddDevice(
     if (*MiniportDeviceContext == NULL)
         return ntStatus;
 
-    Adapter = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_ADAPTER));
+    Adapter = LJB_GetPoolZero(sizeof(LJB_ADAPTER));
     if (Adapter == NULL)
     {
         KdPrint(("?" __FUNCTION__ ": unable to allocate Adapter?\n"));
@@ -101,6 +101,9 @@ LJB_DXGK_AddDevice(
 
     InitializeListHead(&Adapter->AllocationListHead);
     KeInitializeSpinLock(&Adapter->AllocationListLock);
+
+    InitializeListHead(&Adapter->StdAllocationInfoListHead);
+    KeInitializeSpinLock(&Adapter->StdAllocationInfoListLock);
 
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     InsertTailList(&GlobalDriverData.ClientAdapterListHead, &Adapter->ListEntry);

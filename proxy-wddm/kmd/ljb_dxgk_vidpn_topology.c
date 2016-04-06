@@ -73,8 +73,8 @@ LJB_VIDPN_TOPOLOGY_Initialize(
     }
 
     if (MyTopology->pPaths != NULL)
-        LJB_PROXYKMD_FreePool(MyTopology->pPaths);
-    MyTopology->pPaths = LJB_PROXYKMD_GetPoolZero(
+        LJB_FreePool(MyTopology->pPaths);
+    MyTopology->pPaths = LJB_GetPoolZero(
         MyTopology->NumPaths * sizeof(D3DKMDT_VIDPN_PRESENT_PATH)
         );
     if (MyTopology->pPaths == NULL)

@@ -76,7 +76,7 @@ LJB_DXGK_CreateDevice(
     /*
      * create MyDevice
      */
-    MyDevice = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_DEVICE));
+    MyDevice = LJB_GetPoolZero(sizeof(LJB_DEVICE));
     if (MyDevice == NULL)
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
@@ -103,7 +103,7 @@ LJB_DXGK_CreateDevice(
     ntStatus = (*DriverInitData->DxgkDdiCreateDevice)(hAdapter, pCreateDevice);
     if (!NT_SUCCESS(ntStatus))
     {
-        LJB_PROXYKMD_FreePool(MyDevice);
+        LJB_FreePool(MyDevice);
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
         return ntStatus;

@@ -85,7 +85,7 @@ LJB_DXGK_RemoveDevicePostProcessing(
         if (MyDevice->Adapter == Adapter)
         {
             RemoveEntryList(listEntry);
-            LJB_PROXYKMD_FreePool(MyDevice);
+            LJB_FreePool(MyDevice);
         }
     }
     KeReleaseSpinLock(&GlobalDriverData.ClientDeviceListLock, oldIrql);
@@ -108,9 +108,25 @@ LJB_DXGK_RemoveDevicePostProcessing(
             MyAllocation->hAllocation
             ));
         //RemoveEntryList(listEntry);
-        LJB_PROXYKMD_FreePool(MyAllocation);
+        LJB_FreePool(MyAllocation);
     }
     KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
+
+    /*
+     * released any LJB_STD_ALLOCATION_INFO
+     */
+    listHead = &Adapter->StdAllocationInfoListHead;
+    KeAcquireSpinLock(&Adapter->StdAllocationInfoListLock, &oldIrql);
+    while (!IsListEmpty(listHead))
+    {
+        LJB_STD_ALLOCATION_INFO *    StdAllocationInfo;
+
+        listEntry = RemoveHeadList(listHead);
+        StdAllocationInfo = CONTAINING_RECORD(listEntry, LJB_STD_ALLOCATION_INFO, ListEntry);
+
+        LJB_FreePool(StdAllocationInfo);
+    }
+    KeReleaseSpinLock(&Adapter->StdAllocationInfoListLock, oldIrql);
 
     /*
      * FIXME: Release ClientDriverData should occur when the last driver instance is removed.
@@ -118,7 +134,7 @@ LJB_DXGK_RemoveDevicePostProcessing(
      */
     KeAcquireSpinLock(&GlobalDriverData.ClientDriverListLock, &oldIrql);
     RemoveEntryList(&Adapter->ClientDriverData->ListEntry);
-    LJB_PROXYKMD_FreePool(Adapter->ClientDriverData);
+    LJB_FreePool(Adapter->ClientDriverData);
     KeReleaseSpinLock(&GlobalDriverData.ClientDriverListLock, oldIrql);
 
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
@@ -130,5 +146,5 @@ LJB_DXGK_RemoveDevicePostProcessing(
         GlobalDriverData.ClientAdapterListCount
         ));
 
-    LJB_PROXYKMD_FreePool(Adapter);
+    LJB_FreePool(Adapter);
 }

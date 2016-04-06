@@ -36,7 +36,7 @@ LJB_VIDPN_CreateVidPn(
     LJB_VIDPN *     MyVidPn;
     NTSTATUS        ntStatus;
 
-    MyVidPn = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_VIDPN));
+    MyVidPn = LJB_GetPoolZero(sizeof(LJB_VIDPN));
     if (MyVidPn != NULL)
     {
         MyVidPn->MagicBegin = LJB_VINPN_MAGIC;
@@ -61,8 +61,8 @@ LJB_VIDPN_DestroyVidPn(
     )
 {
     if (MyVidPn->Topology.pPaths != NULL)
-        LJB_PROXYKMD_FreePool(MyVidPn->Topology.pPaths);
-    LJB_PROXYKMD_FreePool(MyVidPn);
+        LJB_FreePool(MyVidPn->Topology.pPaths);
+    LJB_FreePool(MyVidPn);
 }
 
 NTSTATUS

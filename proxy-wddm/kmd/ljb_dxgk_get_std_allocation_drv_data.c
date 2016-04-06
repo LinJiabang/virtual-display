@@ -12,6 +12,22 @@
 #pragma alloc_text (PAGE, LJB_DXGK_GetStdAllocationDrvData)
 #endif
 
+CONST CHAR * StdAllocationTypeString[] =
+{
+    "Unknown",
+    "D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE",
+    "D3DKMDT_STANDARDALLOCATION_SHADOWSURFACE",
+    "D3DKMDT_STANDARDALLOCATION_STAGINGSURFACE",
+    "D3DKMDT_STANDARDALLOCATION_GDISURFACE"
+};
+
+static
+VOID
+LJB_DXGK_GetStdAllocationDrvDataPostProcessing(
+    __in LJB_ADAPTER *  Adapter,
+    __in DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA * pGetStandardAllocationDriverData
+    );
+
 /*
  * Function: LJB_DXGK_GetStdAllocationDrvData
  *
@@ -68,7 +84,113 @@ LJB_DXGK_GetStdAllocationDrvData(
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        return ntStatus;
     }
 
+    LJB_DXGK_GetStdAllocationDrvDataPostProcessing(Adapter, pGetStandardAllocationDriverData);
     return ntStatus;
+}
+
+static
+VOID
+LJB_DXGK_GetStdAllocationDrvDataPostProcessing(
+    __in LJB_ADAPTER *  Adapter,
+    __in DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA * pGetStandardAllocationDriverData
+    )
+{
+    LJB_CLIENT_DRIVER_DATA * CONST      ClientDriverData = Adapter->ClientDriverData;
+    DRIVER_INITIALIZATION_DATA * CONST  DriverInitData = &ClientDriverData->DriverInitData;
+    LJB_STD_ALLOCATION_INFO *           StdAllocationInfo;
+    PVOID                               PrivateDriverData;
+    KIRQL                               oldIrql;
+
+    if (pGetStandardAllocationDriverData->pAllocationPrivateDriverData == NULL)
+        return;
+
+    StdAllocationInfo = LJB_GetPoolZero(sizeof(LJB_STD_ALLOCATION_INFO) +
+        pGetStandardAllocationDriverData->AllocationPrivateDriverDataSize);
+
+    if (StdAllocationInfo == NULL)
+    {
+        /*
+         * nothing you can do.
+         */
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__": unable to get StdAllocationInfo\n"));
+        return;
+    }
+
+    InitializeListHead(&StdAllocationInfo->ListEntry);
+
+    /*
+     * be careful on DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA size. This is WDK
+     * dependent. Do NOT USE structure assignment.
+     */
+    StdAllocationInfo->DriverData.StandardAllocationType = pGetStandardAllocationDriverData->StandardAllocationType;
+    StdAllocationInfo->DriverData.pCreateSharedPrimarySurfaceData = pGetStandardAllocationDriverData->pCreateSharedPrimarySurfaceData;
+    StdAllocationInfo->DriverData.pAllocationPrivateDriverData = pGetStandardAllocationDriverData->pAllocationPrivateDriverData;
+    StdAllocationInfo->DriverData.AllocationPrivateDriverDataSize = pGetStandardAllocationDriverData->AllocationPrivateDriverDataSize;
+    // Not interested in pResourcePrivateDriverData
+
+    if (DriverInitData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0)
+    {
+        StdAllocationInfo->DriverData.PhysicalAdapterIndex = pGetStandardAllocationDriverData->PhysicalAdapterIndex;
+    }
+
+    // Now copy pAllocationPrivateDriverData to our cache area
+    PrivateDriverData = StdAllocationInfo + 1;
+    RtlCopyMemory(
+        PrivateDriverData,
+        pGetStandardAllocationDriverData->pAllocationPrivateDriverData,
+        pGetStandardAllocationDriverData->AllocationPrivateDriverDataSize
+        );
+
+    KeAcquireSpinLock(&Adapter->StdAllocationInfoListLock, &oldIrql);
+    InsertTailList(&Adapter->StdAllocationInfoListHead, &StdAllocationInfo->ListEntry);
+    KeReleaseSpinLock(&Adapter->StdAllocationInfoListLock, oldIrql);
+
+    DBG_PRINT(Adapter, DBGLVL_FLOW,
+        (__FUNCTION__": %s pAllocationPrivateDriverData(%p), AllocationPrivateDriverDataSize(%u) tracked\n",
+        StdAllocationTypeString[pGetStandardAllocationDriverData->StandardAllocationType],
+        pGetStandardAllocationDriverData->pAllocationPrivateDriverData,
+        pGetStandardAllocationDriverData->AllocationPrivateDriverDataSize
+        ));
+}
+
+LJB_STD_ALLOCATION_INFO *
+LJB_FindStdAllocationInfo(
+    __in LJB_ADAPTER *  Adapter,
+    __in PVOID          pAllocationPrivateDriverData,
+    __in UINT           AllocationPrivateDriverDataSize
+    )
+{
+    LIST_ENTRY * CONST          ListHead = &Adapter->StdAllocationInfoListHead;
+    LIST_ENTRY *                ListEntry;
+    LJB_STD_ALLOCATION_INFO *   StdAllocationInfo;
+    KIRQL                       oldIrql;
+
+    StdAllocationInfo = NULL;
+    KeAcquireSpinLock(&Adapter->StdAllocationInfoListLock, &oldIrql);
+    for (ListEntry = ListHead->Flink;
+         ListEntry != ListHead;
+         ListEntry = ListEntry->Flink)
+    {
+        LJB_STD_ALLOCATION_INFO *   ThisInfo;
+        PVOID                       PrivateDriverData;
+
+        ThisInfo = CONTAINING_RECORD(ListEntry, LJB_STD_ALLOCATION_INFO, ListEntry);
+
+        if (ThisInfo->DriverData.AllocationPrivateDriverDataSize != AllocationPrivateDriverDataSize)
+            continue;
+
+        PrivateDriverData = ThisInfo + 1;
+        if (RtlEqualMemory(PrivateDriverData, pAllocationPrivateDriverData, AllocationPrivateDriverDataSize))
+        {
+            StdAllocationInfo = ThisInfo;
+            break;
+        }
+    }
+    KeReleaseSpinLock(&Adapter->StdAllocationInfoListLock, oldIrql);
+
+    return StdAllocationInfo;
 }

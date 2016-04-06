@@ -62,7 +62,7 @@
 __checkReturn
 PVOID
 FORCEINLINE
-LJB_PROXYKMD_GetPoolZero(
+LJB_GetPoolZero(
     __in SIZE_T NumberOfBytes
     )
     {
@@ -78,7 +78,7 @@ LJB_PROXYKMD_GetPoolZero(
     return Buffer;
     }
 
-#define LJB_PROXYKMD_FreePool(p) ExFreePoolWithTag(p, LJB_POOL_TAG)
+#define LJB_FreePool(p) ExFreePoolWithTag(p, LJB_POOL_TAG)
 
 
 /*
@@ -293,6 +293,13 @@ typedef struct _LJB_ADAPTER
     LONG                                    AllocationListCount;
 
     /*
+     * Standard allocation Data
+     */
+    LIST_ENTRY                              StdAllocationInfoListHead;
+    KSPIN_LOCK                              StdAllocationInfoListLock;
+    LONG                                    StdAllocationInfoListCount;
+
+    /*
      * track power component Fstate
      */
     UINT                                    FState[MAX_NUM_OF_POWER_COMPONENTS];
@@ -347,13 +354,22 @@ typedef struct _LJB_CONTEXT
     DXGK_CONTEXTINFO        ContextInfo;
 } LJB_CONTEXT;
 
-typedef struct _LJB_ALLOCATION
+typedef struct _LJB_STD_ALLOCATION_INFO
 {
     LIST_ENTRY              ListEntry;
-    LJB_ADAPTER *           Adapter;
-    HANDLE                  hAllocation;
-    DXGK_ALLOCATIONINFO     AllocationInfo;
+    DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA DriverData;
+} LJB_STD_ALLOCATION_INFO;
+
+typedef struct _LJB_ALLOCATION
+{
+    LIST_ENTRY                  ListEntry;
+    LJB_ADAPTER *               Adapter;
+    HANDLE                      hAllocation;
+    DXGK_ALLOCATIONINFO         AllocationInfo;
+    LJB_STD_ALLOCATION_INFO *   StdAllocationInfo;
 } LJB_ALLOCATION;
+
+extern CONST CHAR * StdAllocationTypeString[];
 
 typedef struct _LJB_MONITOR_NODE
 {
@@ -577,6 +593,13 @@ BOOLEAN
 LJB_DXGK_IsSourceConnectedToUsbTarget(
     __in LJB_ADAPTER *                  Adapter,
     __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    );
+
+LJB_STD_ALLOCATION_INFO *
+LJB_FindStdAllocationInfo(
+    __in LJB_ADAPTER *  Adapter,
+    __in PVOID          pAllocationPrivateDriverData,
+    __in UINT           AllocationPrivateDriverDataSize
     );
 
 _C_END

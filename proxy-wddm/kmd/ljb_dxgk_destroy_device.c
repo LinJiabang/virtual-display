@@ -73,6 +73,6 @@ LJB_DXGK_DestroyDevicePostProcessing(
     KeAcquireSpinLock(&GlobalDriverData.ClientDeviceListLock, &oldIrql);
     RemoveEntryList(&MyDevice->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientDeviceListLock, oldIrql);
-    LJB_PROXYKMD_FreePool(MyDevice);
+    LJB_FreePool(MyDevice);
 
 }

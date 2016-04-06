@@ -271,7 +271,7 @@ LJB_PROXYKMD_IsDxgknlLoaded(
     }
 
     NumOfModules = ModulesSize / sizeof(AUX_MODULE_EXTENDED_INFO);
-    ModExtInfos = LJB_PROXYKMD_GetPoolZero(ModulesSize);
+    ModExtInfos = LJB_GetPoolZero(ModulesSize);
     if (ModExtInfos == NULL)
     {
         KdPrint(("?" __FUNCTION__
@@ -291,7 +291,7 @@ LJB_PROXYKMD_IsDxgknlLoaded(
             ": AuxKlibQueryModuleInformation failed with ntStatus(0x%08x)?\n",
             ntStatus
             ));
-        LJB_PROXYKMD_FreePool(ModExtInfos);
+        LJB_FreePool(ModExtInfos);
         return FALSE;
     }
 
@@ -319,7 +319,7 @@ LJB_PROXYKMD_IsDxgknlLoaded(
         }
     }
 
-    LJB_PROXYKMD_FreePool(ModExtInfos);
+    LJB_FreePool(ModExtInfos);
     return DxgkIsLoaded;
 }
 

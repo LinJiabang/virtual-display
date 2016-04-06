@@ -73,7 +73,7 @@ LJB_DXGK_CreateContext(
     /*
      * create MyContext
      */
-    MyContext = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_CONTEXT));
+    MyContext = LJB_GetPoolZero(sizeof(LJB_CONTEXT));
     if (MyContext == NULL)
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
@@ -92,7 +92,7 @@ LJB_DXGK_CreateContext(
     ntStatus = (*DriverInitData->DxgkDdiCreateContext)(hDevice, pCreateContext);
     if (!NT_SUCCESS(ntStatus))
     {
-        LJB_PROXYKMD_FreePool(MyContext);
+        LJB_FreePool(MyContext);
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
         return ntStatus;
@@ -105,9 +105,9 @@ LJB_DXGK_CreateContext(
 
 static VOID
 LJB_DXGK_CreateContextPostProcessing(
-    __in LJB_ADAPTER *                  Adapter,
-    __in LJB_CONTEXT *                  MyContext,
-    _Inout_       DXGKARG_CREATECONTEXT *pCreateContext
+    __in LJB_ADAPTER *              Adapter,
+    __in LJB_CONTEXT *              MyContext,
+    _Inout_ DXGKARG_CREATECONTEXT*  pCreateContext
     )
 {
     KIRQL                               oldIrql;
@@ -225,5 +225,5 @@ LJB_DXGK_DestroyContextPostProcessing(
     KeAcquireSpinLock(&GlobalDriverData.ClientContextListLock, &oldIrql);
     RemoveEntryList(&MyContext->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientContextListLock, oldIrql);
-    LJB_PROXYKMD_FreePool(MyContext);
+    LJB_FreePool(MyContext);
 }

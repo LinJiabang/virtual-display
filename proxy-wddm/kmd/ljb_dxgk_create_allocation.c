@@ -146,7 +146,7 @@ LJB_DXGK_CreateAllocationPostProcessing(
         DXGK_ALLOCATIONINFO * CONST AllocationInfo = pCreateAllocation->pAllocationInfo;
         LJB_ALLOCATION *            MyAllocation;
 
-        MyAllocation = LJB_PROXYKMD_GetPoolZero(sizeof(LJB_ALLOCATION));
+        MyAllocation = LJB_GetPoolZero(sizeof(LJB_ALLOCATION));
         if (MyAllocation == NULL)
         {
             DBG_PRINT(Adapter, DBGLVL_ERROR,
@@ -159,6 +159,24 @@ LJB_DXGK_CreateAllocationPostProcessing(
         MyAllocation->AllocationInfo = *AllocationInfo;
         InitializeListHead(&MyAllocation->ListEntry);
 
+        MyAllocation->StdAllocationInfo = LJB_FindStdAllocationInfo(
+            Adapter,
+            AllocationInfo->pPrivateDriverData,
+            AllocationInfo->PrivateDriverDataSize
+            );
+        if (MyAllocation->StdAllocationInfo != NULL)
+        {
+            DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA * CONST StdAllocationDrvData =
+                &MyAllocation->StdAllocationInfo->DriverData;
+
+            DBG_UNREFERENCED_LOCAL_VARIABLE(StdAllocationDrvData);
+            DBG_PRINT(Adapter, DBGLVL_FLOW,
+                (__FUNCTION__": found %s pAllocationPrivateDriverData(%p), AllocationPrivateDriverDataSize(%u) tracked\n",
+                StdAllocationTypeString[StdAllocationDrvData->StandardAllocationType],
+                StdAllocationDrvData->pAllocationPrivateDriverData,
+                StdAllocationDrvData->AllocationPrivateDriverDataSize
+                ));
+        }
         KeAcquireSpinLock(&Adapter->AllocationListLock, &oldIrql);
         InsertTailList(&Adapter->AllocationListHead, &MyAllocation->ListEntry);
         KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
