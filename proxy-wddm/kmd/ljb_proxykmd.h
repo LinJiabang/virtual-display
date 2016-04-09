@@ -317,6 +317,8 @@ typedef struct _LJB_ADAPTER
     DXGKARG_COMMITVIDPN                     LastCommitVidPn;
     SIZE_T                                  NumPathsCommitted;
     D3DKMDT_VIDPN_PRESENT_PATH              PathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
+    SIZE_T                                  PrevNumPathsCommitted;
+    D3DKMDT_VIDPN_PRESENT_PATH              PrevPathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
 
 }   LJB_ADAPTER;
 
@@ -358,15 +360,24 @@ typedef struct _LJB_STD_ALLOCATION_INFO
 {
     LIST_ENTRY              ListEntry;
     DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA DriverData;
+    D3DKMDT_SHAREDPRIMARYSURFACEDATA    PrimarySurfaceData;
 } LJB_STD_ALLOCATION_INFO;
 
 typedef struct _LJB_ALLOCATION
 {
-    LIST_ENTRY                  ListEntry;
-    LJB_ADAPTER *               Adapter;
-    HANDLE                      hAllocation;
-    DXGK_ALLOCATIONINFO         AllocationInfo;
-    LJB_STD_ALLOCATION_INFO *   StdAllocationInfo;
+    LIST_ENTRY                          ListEntry;
+    LJB_ADAPTER *                       Adapter;
+    HANDLE                              hAllocation;
+    DXGK_ALLOCATIONINFO                 AllocationInfo;
+    LJB_STD_ALLOCATION_INFO *           StdAllocationInfo;
+
+    D3DDDI_VIDEO_PRESENT_SOURCE_ID      VidPnSourceId;
+    PVOID                               KmBuffer;
+    ULONG                               KmBufferSize;
+
+    PMDL                                UmMdl;
+    PVOID                               UmBuffer;
+    ULONG                               UmBufferSize;
 } LJB_ALLOCATION;
 
 extern CONST CHAR * StdAllocationTypeString[];

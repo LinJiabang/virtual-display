@@ -130,6 +130,12 @@ LJB_DXGK_GetStdAllocationDrvDataPostProcessing(
     StdAllocationInfo->DriverData.pCreateSharedPrimarySurfaceData = pGetStandardAllocationDriverData->pCreateSharedPrimarySurfaceData;
     StdAllocationInfo->DriverData.pAllocationPrivateDriverData = pGetStandardAllocationDriverData->pAllocationPrivateDriverData;
     StdAllocationInfo->DriverData.AllocationPrivateDriverDataSize = pGetStandardAllocationDriverData->AllocationPrivateDriverDataSize;
+
+    if (pGetStandardAllocationDriverData->StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE)
+    {
+        StdAllocationInfo->PrimarySurfaceData = *pGetStandardAllocationDriverData->pCreateSharedPrimarySurfaceData;
+    }
+
     // Not interested in pResourcePrivateDriverData
 
     if (DriverInitData->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0)
@@ -177,12 +183,25 @@ LJB_FindStdAllocationInfo(
     {
         LJB_STD_ALLOCATION_INFO *   ThisInfo;
         PVOID                       PrivateDriverData;
+        DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA* DriverData;
 
         ThisInfo = CONTAINING_RECORD(ListEntry, LJB_STD_ALLOCATION_INFO, ListEntry);
 
-        if (ThisInfo->DriverData.AllocationPrivateDriverDataSize != AllocationPrivateDriverDataSize)
+        DriverData = &ThisInfo->DriverData;
+        if (DriverData->AllocationPrivateDriverDataSize != AllocationPrivateDriverDataSize)
             continue;
 
+        // Match by pointer. Assume the pAllocationPrivateDriverData is maintained
+        // by Dxgk runtime, and wouldn't change across DDI call.
+        if (DriverData->pAllocationPrivateDriverData == pAllocationPrivateDriverData)
+        {
+            StdAllocationInfo = ThisInfo;
+            break;
+        }
+
+        // Match by memory content. This might not work since target driver would
+        // change the content of private data during DxgkDdiCreateAllocation.
+        // When this happens, we wouldn't find the original StdAllocationDriverData.
         PrivateDriverData = ThisInfo + 1;
         if (RtlEqualMemory(PrivateDriverData, pAllocationPrivateDriverData, AllocationPrivateDriverDataSize))
         {

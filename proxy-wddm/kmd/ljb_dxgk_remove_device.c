@@ -107,7 +107,6 @@ LJB_DXGK_RemoveDevicePostProcessing(
             MyAllocation,
             MyAllocation->hAllocation
             ));
-        //RemoveEntryList(listEntry);
         LJB_FreePool(MyAllocation);
     }
     KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);

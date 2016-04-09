@@ -21,6 +21,13 @@ LJB_DXGK_DestroyAllocationPostProcessing(
     _In_ const DXGKARG_DESTROYALLOCATION *  pDestroyAllocation
     );
 
+static
+VOID
+DestroyKmBuffer(
+    __in LJB_ADAPTER *      Adapter,
+    __in LJB_ALLOCATION *   MyAllocation
+    );
+
 /*
  * Function: LJB_DXGK_DestroyAllocation
  *
@@ -109,6 +116,12 @@ LJB_DXGK_DestroyAllocationPostProcessing(
             MyAllocation = CONTAINING_RECORD(listEntry, LJB_ALLOCATION, ListEntry);
             if (MyAllocation->hAllocation == hAllocation)
             {
+                if (MyAllocation->KmBuffer != NULL)
+                {
+                    DestroyKmBuffer(Adapter, MyAllocation);
+                    MyAllocation->KmBuffer = NULL;
+                }
+
                 DBG_PRINT(Adapter, DBGLVL_ALLOCATION,
                     (__FUNCTION__ ": MyAllocation(%p)/hAllocation(%p) released\n",
                     MyAllocation,
@@ -120,5 +133,95 @@ LJB_DXGK_DestroyAllocationPostProcessing(
         }
         KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
     }
+}
 
+static
+VOID
+DestroyKmBuffer(
+    __in LJB_ADAPTER *      Adapter,
+    __in LJB_ALLOCATION *   MyAllocation
+    )
+{
+    LJB_STD_ALLOCATION_INFO* CONST  StdAllocationInfo = MyAllocation->StdAllocationInfo;
+    UINT                            i;
+
+    if (MyAllocation->StdAllocationInfo == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__": no StdAllocationInfo in MyAllocation(0x%p)?\n",
+            MyAllocation
+            ));
+        return;
+    }
+
+    if (StdAllocationInfo->DriverData.StandardAllocationType != D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__": not SharedPrimarySurface?\n"));
+        return;
+    }
+
+    /*
+     * For each USB target associated with MyAllocation->VidPnSourceId in the
+     * current topology, send LJB_GENERIC_IOCTL_DESTROY_PRIMARY_SURFACE
+     */
+    for (i = 0; i < Adapter->NumPathsCommitted; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH* CONST   Path = &Adapter->PathsCommitted[i];
+        LJB_MONITOR_NODE *                  MonitorNode;
+
+        if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
+            continue;
+
+        if (Path->VidPnSourceId != MyAllocation->VidPnSourceId)
+            continue;
+
+        MonitorNode = LJB_GetMonitorNodeFromChildUid(Adapter, Path->VidPnTargetId);
+        if (MonitorNode->MonitorInterface.pfnGenericIoctl != NULL &&
+            MonitorNode->MonitorInterface.Context != NULL)
+        {
+            LJB_MONITOR_INTERFACE* CONST MonitorInterface = &MonitorNode->MonitorInterface;
+            D3DKMDT_SHAREDPRIMARYSURFACEDATA * CONST PrimarySurfaceData = &StdAllocationInfo->PrimarySurfaceData;
+            LJB_PRIMARY_SURFACE LjbPrimarySurface;
+            NTSTATUS myStatus;
+
+            /*
+             * send LJB_GENERIC_IOCTL_DESTROY_PRIMARY_SURFACE to monitor driver
+             */
+            RtlZeroMemory(&LjbPrimarySurface, sizeof(LjbPrimarySurface));
+            LjbPrimarySurface.Width = PrimarySurfaceData->Width;
+            LjbPrimarySurface.Height = PrimarySurfaceData->Height;
+            LjbPrimarySurface.BitPerPixel = 32;
+            LjbPrimarySurface.BufferSize = MyAllocation->KmBufferSize;
+            LjbPrimarySurface.RemoteBuffer = MyAllocation->KmBuffer;
+            LjbPrimarySurface.SurfaceHandle = MyAllocation;
+
+            DBG_PRINT(Adapter, DBGLVL_FLOW,
+                (__FUNCTION__
+                ": Send LJB_GENERIC_IOCTL_DESTROY_PRIMARY_SURFACE UsbTargetId(0x%x)/Width(%u)/Height(%u)\n",
+                Path->VidPnTargetId,
+                LjbPrimarySurface.Width,
+                LjbPrimarySurface.Height
+                ));
+            myStatus = (*MonitorInterface->pfnGenericIoctl)(
+                MonitorInterface->Context,
+                LJB_GENERIC_IOCTL_DESTROY_PRIMARY_SURFACE,
+                &LjbPrimarySurface,
+                sizeof(LjbPrimarySurface),
+                NULL,
+                0,
+                NULL
+                );
+            if (!NT_SUCCESS(myStatus))
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__": failed with ntStatus(0x%x)?\n",
+                    myStatus));
+            }
+        }
+        LJB_DereferenceMonitorNode(MonitorNode);
+    }
+
+    LJB_FreePool(MyAllocation->KmBuffer);
+    MyAllocation->KmBuffer = NULL;
 }

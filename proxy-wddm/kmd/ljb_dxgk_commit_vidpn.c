@@ -25,15 +25,15 @@ static
 VOID
 LJB_NotifyCommitVidPnToSingleTarget(
     __in LJB_ADAPTER *                      Adapter,
-    __in PVOID                              hPrimaryAllocation,
+    IN_CONST_PDXGKARG_COMMITVIDPN_CONST     pCommitVidPn,
     __in CONST D3DKMDT_VIDPN_PRESENT_PATH*  Path
     );
 
 static
 VOID
 LJB_NotifyCommitVidPnToAllUsbTargets(
-    __in LJB_ADAPTER *  Adapter,
-    __in PVOID          hPrimaryAllocation
+    __in LJB_ADAPTER *                      Adapter,
+    IN_CONST_PDXGKARG_COMMITVIDPN_CONST     pCommitVidPn
     );
 
 /*
@@ -152,6 +152,7 @@ LJB_DXGK_CommitVidPn(
      * it might means that that particular VidPnSourceId is to be destroyed. We need
      * to pass this topology to inbox driver.
      *
+     *==========================================================================
      * Resuming from system sleep:
      * LJB_DXGK_CommitVidPn:
      * hFunctionalVidPn(FFFFC0000CF6B620),AffectedVidPnSourceId(0x0),MonitorConnectivityChecks(D3DKMDT_MCC_IGNORE),
@@ -250,8 +251,15 @@ LJB_DXGK_CommitVidPn(
     }
 
     /*
-     * Copy Paths from VidPn topology to PathsCommitted
+     * Copy Paths from VidPn topology to PathsCommitted.
+     * Save previous committed topology.
      */
+    Adapter->PrevNumPathsCommitted = Adapter->NumPathsCommitted;
+    for (i = 0; i < Adapter->NumPathsCommitted; i++)
+    {
+        Adapter->PrevPathsCommitted[i] = Adapter->PathsCommitted[i];
+    }
+
     DBG_PRINT(Adapter, DBGLVL_FLOW,
         (__FUNCTION__": NumPaths(%u)\n", MyVidPn->NumPaths));
     Adapter->NumPathsCommitted = MyVidPn->NumPaths;
@@ -291,7 +299,7 @@ LJB_DXGK_CommitVidPn(
 
         if (NumOfUsbTarget != 0)
         {
-            LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn->hPrimaryAllocation);
+            LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn);
         }
         ntStatus = STATUS_SUCCESS;
         goto Exit;
@@ -334,7 +342,7 @@ LJB_DXGK_CommitVidPn(
 
     if (SourceIsConnectedToUsbTarget)
     {
-        LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn->hPrimaryAllocation);
+        LJB_NotifyCommitVidPnToAllUsbTargets(Adapter, pCommitVidPn);
     }
 
 Exit:
@@ -472,12 +480,45 @@ static
 VOID
 LJB_NotifyCommitVidPnToSingleTarget(
     __in LJB_ADAPTER *                      Adapter,
-    __in PVOID                              hPrimaryAllocation,
+    IN_CONST_PDXGKARG_COMMITVIDPN_CONST     pCommitVidPn,
     __in CONST D3DKMDT_VIDPN_PRESENT_PATH*  Path
     )
 {
-    LJB_MONITOR_NODE * MonitorNode;
-    LJB_COMMIT_VIDPN CommitVidPn;
+    PVOID CONST                 hPrimaryAllocation = pCommitVidPn->hPrimaryAllocation;
+    LJB_ALLOCATION *            MyAllocation;
+    LJB_MONITOR_NODE *          MonitorNode;
+    LJB_STD_ALLOCATION_INFO *   StdAllocationInfo;
+
+    if (hPrimaryAllocation == NULL)
+        return;
+
+    MyAllocation = LJB_DXGK_FindAllocation(Adapter, hPrimaryAllocation);
+    if (MyAllocation == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": unable to find MyAllocation for hPrimaryAllocation(0x%p)\n",
+            hPrimaryAllocation
+            ));
+        return;
+    }
+
+    if (MyAllocation->StdAllocationInfo == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__": no StdAllocationInfo in MyAllocation(0x%p)?\n",
+            MyAllocation
+            ));
+        return;
+    }
+
+    MyAllocation->VidPnSourceId = Path->VidPnSourceId;
+    StdAllocationInfo = MyAllocation->StdAllocationInfo;
+    if (StdAllocationInfo->DriverData.StandardAllocationType != D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__": not SharedPrimarySurface?\n"));
+        return;
+    }
 
     MonitorNode = LJB_GetMonitorNodeFromChildUid(
         Adapter, Path->VidPnTargetId
@@ -495,18 +536,23 @@ LJB_NotifyCommitVidPnToSingleTarget(
         MonitorNode->MonitorInterface.Context != NULL)
     {
         LJB_MONITOR_INTERFACE* CONST MonitorInterface = &MonitorNode->MonitorInterface;
+        D3DKMDT_SHAREDPRIMARYSURFACEDATA * CONST PrimarySurfaceData = &StdAllocationInfo->PrimarySurfaceData;
+        LJB_COMMIT_VIDPN CommitVidPn;
+        LJB_PRIMARY_SURFACE LjbPrimarySurface;
         NTSTATUS myStatus;
 
         RtlZeroMemory(&CommitVidPn, sizeof(CommitVidPn));
         CommitVidPn.CommitPath = *Path;
+        CommitVidPn.Width = PrimarySurfaceData->Width;
+        CommitVidPn.Height = PrimarySurfaceData->Height;
+        CommitVidPn.BitPerPixel = 32;
 
-        /*
-         * FIXME: setup Width, Height, Bpp according to hPrimaryAllocation
-         */
-        UNREFERENCED_PARAMETER(hPrimaryAllocation);
         DBG_PRINT(Adapter, DBGLVL_FLOW,
-            (__FUNCTION__": Send LJB_GENERIC_IOCTL_COMMIT_VIDPN UsbTargetId(0x%x)\n",
-            Path->VidPnTargetId
+            (__FUNCTION__
+            ": Send LJB_GENERIC_IOCTL_COMMIT_VIDPN UsbTargetId(0x%x)/Width(%u)/Height(%u)\n",
+            Path->VidPnTargetId,
+            CommitVidPn.Width,
+            CommitVidPn.Height
             ));
         myStatus = (*MonitorInterface->pfnGenericIoctl)(
             MonitorInterface->Context,
@@ -523,15 +569,69 @@ LJB_NotifyCommitVidPnToSingleTarget(
                 ("?" __FUNCTION__": failed with ntStatus(0x%x)?\n",
                 myStatus));
         }
+
+        /*
+         * Create my local buffer associated with the primary surface, if not
+         * yet previously did so.
+         */
+        if (MyAllocation->KmBuffer != NULL)
+            goto exit;
+
+        MyAllocation->KmBufferSize = PrimarySurfaceData->Width * PrimarySurfaceData->Height * 4;
+        MyAllocation->KmBuffer = LJB_GetPoolZero(
+            MyAllocation->KmBufferSize
+            );
+        if (MyAllocation->KmBuffer == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": unable to allocate KmBuffer?\n"));
+            goto exit;
+        }
+
+        /*
+         * send LJB_GENERIC_IOCTL_CREATE_PRIMARY_SURFACE to monitor driver
+         */
+        RtlZeroMemory(&LjbPrimarySurface, sizeof(LjbPrimarySurface));
+        LjbPrimarySurface.Width = PrimarySurfaceData->Width;
+        LjbPrimarySurface.Height = PrimarySurfaceData->Height;
+        LjbPrimarySurface.BitPerPixel = 32;
+        LjbPrimarySurface.BufferSize = MyAllocation->KmBufferSize;
+        LjbPrimarySurface.RemoteBuffer = MyAllocation->KmBuffer;
+        LjbPrimarySurface.SurfaceHandle = MyAllocation;
+
+        DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__
+            ": Send LJB_GENERIC_IOCTL_CREATE_PRIMARY_SURFACE UsbTargetId(0x%x)/Width(%u)/Height(%u)\n",
+            Path->VidPnTargetId,
+            CommitVidPn.Width,
+            CommitVidPn.Height
+            ));
+        myStatus = (*MonitorInterface->pfnGenericIoctl)(
+            MonitorInterface->Context,
+            LJB_GENERIC_IOCTL_CREATE_PRIMARY_SURFACE,
+            &LjbPrimarySurface,
+            sizeof(LjbPrimarySurface),
+            NULL,
+            0,
+            NULL
+            );
+        if (!NT_SUCCESS(myStatus))
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": failed with ntStatus(0x%x)?\n",
+                myStatus));
+        }
     }
+
+exit:
     LJB_DereferenceMonitorNode(MonitorNode);
 }
 
 static
 VOID
 LJB_NotifyCommitVidPnToAllUsbTargets(
-    __in LJB_ADAPTER *  Adapter,
-    __in PVOID          hPrimaryAllocation
+    __in LJB_ADAPTER *                      Adapter,
+    IN_CONST_PDXGKARG_COMMITVIDPN_CONST     pCommitVidPn
     )
 {
     CONST D3DKMDT_VIDPN_PRESENT_PATH* Path;
@@ -546,6 +646,13 @@ LJB_NotifyCommitVidPnToAllUsbTargets(
         if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
             continue;
 
-        LJB_NotifyCommitVidPnToSingleTarget(Adapter, hPrimaryAllocation, Path);
+        // if AffectedVidPnSourceId != D3DDDI_ID_ALL, we only send paths that are
+        // affected.
+        if (pCommitVidPn->AffectedVidPnSourceId != D3DDDI_ID_ALL)
+        {
+            if (Path->VidPnSourceId != pCommitVidPn->AffectedVidPnSourceId)
+                continue;
+        }
+        LJB_NotifyCommitVidPnToSingleTarget(Adapter, pCommitVidPn, Path);
     }
 }

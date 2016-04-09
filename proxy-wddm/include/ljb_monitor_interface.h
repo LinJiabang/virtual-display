@@ -109,6 +109,7 @@ typedef struct _LJB_COMMIT_VIDPN
  *  Notifies the USB monitor that a primary surface is created
  */
 #define LJB_GENERIC_IOCTL_CREATE_PRIMARY_SURFACE        3
+#define LJB_GENERIC_IOCTL_DESTROY_PRIMARY_SURFACE       4
 
 typedef struct _LJB_PRIMARY_SURFACE
 {
@@ -135,6 +136,6 @@ typedef struct _LJB_PRIMARY_SURFACE
  * Desciption:
  *  Notifies the USB monitor driver about the monitor visibility.
  */
-#define LJB_GENERIC_IOCTL_SET_VIDPN_SOURCE_VISIBLE      4
+#define LJB_GENERIC_IOCTL_SET_VIDPN_SOURCE_VISIBLE      5
 
 #endif
