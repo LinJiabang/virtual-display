@@ -12,6 +12,12 @@
 #pragma alloc_text (PAGE, LJB_DXGK_OpenAllocation)
 #endif
 
+static VOID
+LJB_DXGK_OpenAllocationPostProcessing(
+    __in LJB_ADAPTER *                  Adapter,
+    __in const DXGKARG_OPENALLOCATION * pOpenAllocation
+    );
+
 /*
  * Function: LJB_DXGK_OpenAllocation
  *
@@ -82,7 +88,96 @@ LJB_DXGK_OpenAllocation(
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        return ntStatus;
     }
 
+    LJB_DXGK_OpenAllocationPostProcessing(Adapter, pOpenAllocation);
     return ntStatus;
+}
+
+static VOID
+LJB_DXGK_OpenAllocationPostProcessing(
+    __in LJB_ADAPTER *                  Adapter,
+    __in const DXGKARG_OPENALLOCATION * pOpenAllocation
+    )
+{
+    DXGKRNL_INTERFACE * CONST   DxgkInterface = &Adapter->DxgkInterface;
+    UINT                        i;
+
+    for (i = 0; i < pOpenAllocation->NumAllocations; i++)
+    {
+        DXGK_OPENALLOCATIONINFO * CONST OpenAllocationInfo = pOpenAllocation->pOpenAllocation + i;
+        LJB_OPENED_ALLOCATION * OpenedAllocation;
+        DXGKARGCB_GETHANDLEDATA GetHandleData;
+        PVOID                   hAllocation;
+        KIRQL                   oldIrql;
+
+        RtlZeroMemory(&GetHandleData, sizeof(GetHandleData));
+        GetHandleData.hObject = OpenAllocationInfo->hAllocation;
+        GetHandleData.Type = DXGK_HANDLE_ALLOCATION;
+        hAllocation = (*DxgkInterface->DxgkCbGetHandleData)(&GetHandleData);
+
+        if (hAllocation == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?"__FUNCTION__": DxgkCbGetHandleData failed?\n"));
+            break;
+        }
+
+        OpenedAllocation = LJB_GetPoolZero(sizeof(LJB_OPENED_ALLOCATION));
+        if (OpenedAllocation == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__ ": failed to create OpenedAllocation\n"));
+            break;
+        }
+
+        OpenedAllocation->hKmHandle = OpenAllocationInfo->hAllocation;
+        OpenedAllocation->hDeviceSpecificAllocation = OpenAllocationInfo->hDeviceSpecificAllocation;
+        OpenedAllocation->hAllocation = hAllocation;
+        OpenedAllocation->MyAllocation = LJB_DXGK_FindAllocation(Adapter, hAllocation);
+        InitializeListHead(&OpenedAllocation->ListEntry);
+
+        KeAcquireSpinLock(&Adapter->OpenedAllocationListLock, &oldIrql);
+        InsertTailList(&Adapter->OpenedAllocationListHead, &OpenedAllocation->ListEntry);
+        KeReleaseSpinLock(&Adapter->OpenedAllocationListLock, oldIrql);
+        InterlockedIncrement(&Adapter->OpenedAllocationListCount);
+    }
+}
+
+LJB_OPENED_ALLOCATION *
+LJB_DXGK_FindOpenedAllocation(
+    __in LJB_ADAPTER*   Adapter,
+    __in HANDLE         hDeviceSpecificAllocation
+    )
+{
+    LIST_ENTRY * CONST      listHead = &Adapter->OpenedAllocationListHead;
+    LIST_ENTRY *            listEntry;
+    LJB_OPENED_ALLOCATION * OpenedAllocation;
+    KIRQL                   oldIrql;
+
+    OpenedAllocation = NULL;
+    KeAcquireSpinLock(&Adapter->OpenedAllocationListLock, &oldIrql);
+    for (listEntry = listHead->Flink;
+         listEntry != listHead;
+         listEntry = listEntry->Flink)
+    {
+        LJB_OPENED_ALLOCATION * thisAllocation;
+
+        thisAllocation = CONTAINING_RECORD(listEntry, LJB_OPENED_ALLOCATION, ListEntry);
+        if (thisAllocation->hDeviceSpecificAllocation == hDeviceSpecificAllocation)
+        {
+            OpenedAllocation = thisAllocation;
+            break;
+        }
+    }
+    KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
+
+    if (OpenedAllocation == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": no allocation found for hAllocation(%p)?\n",
+            hDeviceSpecificAllocation));
+    }
+    return OpenedAllocation;
 }

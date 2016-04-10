@@ -154,6 +154,7 @@ LJB_DXGK_GetStdAllocationDrvDataPostProcessing(
     KeAcquireSpinLock(&Adapter->StdAllocationInfoListLock, &oldIrql);
     InsertTailList(&Adapter->StdAllocationInfoListHead, &StdAllocationInfo->ListEntry);
     KeReleaseSpinLock(&Adapter->StdAllocationInfoListLock, oldIrql);
+    InterlockedIncrement(&Adapter->StdAllocationInfoListCount);
 
     DBG_PRINT(Adapter, DBGLVL_FLOW,
         (__FUNCTION__": %s pAllocationPrivateDriverData(%p), AllocationPrivateDriverDataSize(%u) tracked\n",

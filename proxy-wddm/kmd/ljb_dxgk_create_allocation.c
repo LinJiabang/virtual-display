@@ -180,6 +180,7 @@ LJB_DXGK_CreateAllocationPostProcessing(
         KeAcquireSpinLock(&Adapter->AllocationListLock, &oldIrql);
         InsertTailList(&Adapter->AllocationListHead, &MyAllocation->ListEntry);
         KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
+        InterlockedIncrement(&Adapter->AllocationListCount);
 
         DBG_PRINT(Adapter, DBGLVL_ALLOCATION,
             (__FUNCTION__ ": MyAllocation(%p)/hAllocation(%p) allocated\n",

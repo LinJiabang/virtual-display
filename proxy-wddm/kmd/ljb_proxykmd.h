@@ -292,6 +292,10 @@ typedef struct _LJB_ADAPTER
     KSPIN_LOCK                              AllocationListLock;
     LONG                                    AllocationListCount;
 
+    LIST_ENTRY                              OpenedAllocationListHead;
+    KSPIN_LOCK                              OpenedAllocationListLock;
+    LONG                                    OpenedAllocationListCount;
+
     /*
      * Standard allocation Data
      */
@@ -363,6 +367,8 @@ typedef struct _LJB_STD_ALLOCATION_INFO
     D3DKMDT_SHAREDPRIMARYSURFACEDATA    PrimarySurfaceData;
 } LJB_STD_ALLOCATION_INFO;
 
+extern CONST CHAR * StdAllocationTypeString[];
+
 typedef struct _LJB_ALLOCATION
 {
     LIST_ENTRY                          ListEntry;
@@ -380,7 +386,14 @@ typedef struct _LJB_ALLOCATION
     ULONG                               UmBufferSize;
 } LJB_ALLOCATION;
 
-extern CONST CHAR * StdAllocationTypeString[];
+typedef struct _LJB_OPENED_ALLOCATION
+{
+    LIST_ENTRY                          ListEntry;
+    D3DKMT_HANDLE                       hKmHandle;
+    HANDLE                              hDeviceSpecificAllocation;
+    HANDLE                              hAllocation;
+    LJB_ALLOCATION *                    MyAllocation;
+} LJB_OPENED_ALLOCATION;
 
 typedef struct _LJB_MONITOR_NODE
 {
@@ -543,6 +556,12 @@ LJB_ALLOCATION *
 LJB_DXGK_FindAllocation(
     __in LJB_ADAPTER*   Adapter,
     __in HANDLE         hAllocation
+    );
+
+LJB_OPENED_ALLOCATION *
+LJB_DXGK_FindOpenedAllocation(
+    __in LJB_ADAPTER*   Adapter,
+    __in HANDLE         hDeviceSpecificAllocation
     );
 
 #define FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter) LJB_DXGK_FindAdapterByDriverAdapter(hAdapter)

@@ -12,6 +12,13 @@
 #pragma alloc_text (PAGE, LJB_DXGK_CloseAllocation)
 #endif
 
+static
+VOID
+LJB_DXGK_CloseAllocationPostProcessing(
+    __in LJB_ADAPTER *                  Adapter,
+    _In_ const DXGKARG_CLOSEALLOCATION *pCloseAllocation
+    );
+
 /*
  * Function: LJB_DXGK_CloseAllocation
  *
@@ -54,7 +61,44 @@ LJB_DXGK_CloseAllocation(
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        return ntStatus;
     }
 
+    LJB_DXGK_CloseAllocationPostProcessing(Adapter, pCloseAllocation);
     return ntStatus;
+}
+
+static
+VOID
+LJB_DXGK_CloseAllocationPostProcessing(
+    __in LJB_ADAPTER *                  Adapter,
+    _In_ const DXGKARG_CLOSEALLOCATION *pCloseAllocation
+    )
+{
+    UINT    i;
+
+    for (i = 0; i < pCloseAllocation->NumAllocations; i++)
+    {
+        HANDLE CONST hDeviceSpecificAllocation = pCloseAllocation->pOpenHandleList[i];
+        LJB_OPENED_ALLOCATION * CONST OpenedAllocation =
+            LJB_DXGK_FindOpenedAllocation(Adapter, hDeviceSpecificAllocation);
+        KIRQL   oldIrql;
+
+        if (OpenedAllocation == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__
+                ": unable to find OpenedAllocation on hDeviceSpecificAllocation(0x%p)\n",
+                hDeviceSpecificAllocation
+                ));
+            continue;
+        }
+
+        KeAcquireSpinLock(&Adapter->OpenedAllocationListLock, &oldIrql);
+        RemoveEntryList(&OpenedAllocation->ListEntry);
+        KeReleaseSpinLock(&Adapter->OpenedAllocationListLock, oldIrql);
+        InterlockedDecrement(&Adapter->OpenedAllocationListCount);
+
+        LJB_FreePool(OpenedAllocation);
+    }
 }

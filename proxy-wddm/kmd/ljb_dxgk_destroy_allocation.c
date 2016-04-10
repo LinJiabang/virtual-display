@@ -128,6 +128,7 @@ LJB_DXGK_DestroyAllocationPostProcessing(
                     MyAllocation->hAllocation
                     ));
                 RemoveEntryList(listEntry);
+                InterlockedDecrement(&Adapter->AllocationListCount);
                 LJB_FreePool(MyAllocation);
             }
         }

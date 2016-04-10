@@ -100,6 +100,7 @@ LJB_DXGK_RemoveDevicePostProcessing(
         LJB_ALLOCATION *    MyAllocation;
 
         listEntry = RemoveHeadList(listHead);
+        InterlockedDecrement(&Adapter->AllocationListCount);
         MyAllocation = CONTAINING_RECORD(listEntry, LJB_ALLOCATION, ListEntry);
 
         DBG_PRINT(Adapter, DBGLVL_ALLOCATION,
@@ -121,11 +122,29 @@ LJB_DXGK_RemoveDevicePostProcessing(
         LJB_STD_ALLOCATION_INFO *    StdAllocationInfo;
 
         listEntry = RemoveHeadList(listHead);
+        InterlockedDecrement(&Adapter->StdAllocationInfoListCount);
         StdAllocationInfo = CONTAINING_RECORD(listEntry, LJB_STD_ALLOCATION_INFO, ListEntry);
 
         LJB_FreePool(StdAllocationInfo);
     }
     KeReleaseSpinLock(&Adapter->StdAllocationInfoListLock, oldIrql);
+
+    /*
+     * released any LJB_OPENED_ALLOCATION
+     */
+    listHead = &Adapter->OpenedAllocationListHead;
+    KeAcquireSpinLock(&Adapter->OpenedAllocationListLock, &oldIrql);
+    while (!IsListEmpty(listHead))
+    {
+        LJB_OPENED_ALLOCATION *    OpenedAllocationInfo;
+
+        listEntry = RemoveHeadList(listHead);
+        InterlockedDecrement(&Adapter->OpenedAllocationListCount);
+        OpenedAllocationInfo = CONTAINING_RECORD(listEntry, LJB_OPENED_ALLOCATION, ListEntry);
+
+        LJB_FreePool(OpenedAllocationInfo);
+    }
+    KeReleaseSpinLock(&Adapter->OpenedAllocationListLock, oldIrql);
 
     /*
      * FIXME: Release ClientDriverData should occur when the last driver instance is removed.
