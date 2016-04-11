@@ -20,10 +20,24 @@ LJB_DXGK_PresentPostProcessing(
     );
 
 static VOID
-LJB_DXGK_PresentOnUsbMonitor(
+LJB_DXGK_PresentDoCopyOnUsbMonitor(
     __in LJB_ADAPTER *      Adapter,
     __in DXGKARG_PRESENT *  pPresent,
     __in LJB_ALLOCATION *   SrcAllocation,
+    __in LJB_ALLOCATION *   DstAllocation
+    );
+
+static VOID
+LJB_DXGK_PresentDoFlipOnUsbMonitor(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent,
+    __in LJB_ALLOCATION *   SrcAllocation
+    );
+
+static VOID
+LJB_DXGK_PresentDoColorFillOnUsbMonitor(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent,
     __in LJB_ALLOCATION *   DstAllocation
     );
 
@@ -227,6 +241,26 @@ LJB_DXGK_Present(
 
     PAGED_CODE();
 
+    DBG_PRINT(Adapter, DBGLVL_PRESENT,
+        (__FUNCTION__":\n"
+        "pDmaBuffer(%p), DmaSize(0x%x), pDmaBufferPrivateData(0x%p), DmaBufferPrivateDataSize(0x%x)\n"
+        "DstRect(%u,%u,%u,%u),SrcRect(%u,%u,%u,%u),SubRectCnt(%u),FlipInterval(%u),Flags(0x%x)\n",
+        pPresent->pDmaBuffer,
+        pPresent->DmaSize,
+        pPresent->pDmaBufferPrivateData,
+        pPresent->DmaBufferPrivateDataSize,
+        pPresent->DstRect.left,
+        pPresent->DstRect.top,
+        pPresent->DstRect.right,
+        pPresent->DstRect.bottom,
+        pPresent->SrcRect.left,
+        pPresent->SrcRect.top,
+        pPresent->SrcRect.right,
+        pPresent->SrcRect.bottom,
+        pPresent->SubRectCnt,
+        pPresent->FlipInterval,
+        pPresent->Flags.Value
+        ));
 
     ntStatus = (*DriverInitData->DxgkDdiPresent)(hContext, pPresent);
     if (!NT_SUCCESS(ntStatus))
@@ -281,7 +315,7 @@ LJB_DXGK_PresentPostProcessing(
          */
         if (SrcAllocationList->SegmentId == 0 && DstAllocationList->SegmentId != 0)
         {
-            LJB_DXGK_PresentOnUsbMonitor(
+            LJB_DXGK_PresentDoCopyOnUsbMonitor(
                 Adapter,
                 pPresent,
                 SrcAllocation,
@@ -289,10 +323,39 @@ LJB_DXGK_PresentPostProcessing(
                 );
         }
     }
+    else if (SrcDeviceSpecificAllocation != NULL && DstDeviceSpecificAllocation == NULL)
+    {
+        LJB_OPENED_ALLOCATION * CONST SrcOpenedAllocation = LJB_DXGK_FindOpenedAllocation(Adapter, SrcDeviceSpecificAllocation);
+        LJB_ALLOCATION * CONST        SrcAllocation = SrcOpenedAllocation->MyAllocation;
+
+        /*
+         * FLIP operation
+         */
+        LJB_DXGK_PresentDoFlipOnUsbMonitor(
+            Adapter,
+            pPresent,
+            SrcAllocation
+            );
+
+    }
+    else if (SrcDeviceSpecificAllocation == NULL && DstDeviceSpecificAllocation != NULL)
+    {
+        LJB_OPENED_ALLOCATION * CONST DstOpenedAllocation = LJB_DXGK_FindOpenedAllocation(Adapter, DstDeviceSpecificAllocation);
+        LJB_ALLOCATION * CONST        DstAllocation = DstOpenedAllocation->MyAllocation;
+
+        /*
+         * Color-Fill operation
+         */
+        LJB_DXGK_PresentDoColorFillOnUsbMonitor(
+            Adapter,
+            pPresent,
+            DstAllocation
+            );
+    }
 }
 
 static VOID
-LJB_DXGK_PresentOnUsbMonitor(
+LJB_DXGK_PresentDoCopyOnUsbMonitor(
     __in LJB_ADAPTER *      Adapter,
     __in DXGKARG_PRESENT *  pPresent,
     __in LJB_ALLOCATION *   SrcAllocation,
@@ -302,6 +365,61 @@ LJB_DXGK_PresentOnUsbMonitor(
     UNREFERENCED_PARAMETER(Adapter);
     UNREFERENCED_PARAMETER(pPresent);
     UNREFERENCED_PARAMETER(SrcAllocation);
+    UNREFERENCED_PARAMETER(DstAllocation);
+
+    /*
+     * NOT YET IMPLEMENTED
+     */
+    DBG_PRINT(Adapter, DBGLVL_PRESENT,
+        (__FUNCTION__":\n"
+        "pDmaBuffer(%p), DmaSize(0x%x), pDmaBufferPrivateData(0x%p), DmaBufferPrivateDataSize(0x%x)\n",
+        "DstRect(%u,%u,%u,%u),SrcRect(%u,%u,%u,%u),SubRectCnt(%u),FlipInterval(%u),Flags(0x%x)\n",
+        pPresent->pDmaBuffer,
+        pPresent->DmaSize,
+        pPresent->pDmaBufferPrivateData,
+        pPresent->DmaBufferPrivateDataSize,
+        pPresent->DstRect.left,
+        pPresent->DstRect.top,
+        pPresent->DstRect.right,
+        pPresent->DstRect.bottom,
+        pPresent->SrcRect.left,
+        pPresent->SrcRect.top,
+        pPresent->SrcRect.right,
+        pPresent->SrcRect.bottom,
+        pPresent->SubRectCnt,
+        pPresent->FlipInterval,
+        pPresent->Flags.Value
+        ));
+}
+
+static VOID
+LJB_DXGK_PresentDoFlipOnUsbMonitor(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent,
+    __in LJB_ALLOCATION *   SrcAllocation
+    )
+{
+    UNREFERENCED_PARAMETER(Adapter);
+    UNREFERENCED_PARAMETER(pPresent);
+    UNREFERENCED_PARAMETER(SrcAllocation);
+
+    /*
+     * NOT YET IMPLEMENTED
+     */
+    DBG_PRINT(Adapter, DBGLVL_PRESENT,
+        (__FUNCTION__": \n"
+        ));
+}
+
+static VOID
+LJB_DXGK_PresentDoColorFillOnUsbMonitor(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent,
+    __in LJB_ALLOCATION *   DstAllocation
+    )
+{
+    UNREFERENCED_PARAMETER(Adapter);
+    UNREFERENCED_PARAMETER(pPresent);
     UNREFERENCED_PARAMETER(DstAllocation);
 
     /*

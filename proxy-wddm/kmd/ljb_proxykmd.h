@@ -97,7 +97,7 @@ LJB_GetPoolZero(
 #define DBGLVL_FENCEID      (1 << 7)
 #define DBGLVL_VIDPN        (1 << 8)
 #define DBGLVL_VSYNC        (1 << 9)
-#define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER | DBGLVL_INFO | DBGLVL_FLOW)
+#define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER | DBGLVL_INFO | DBGLVL_FLOW | DBGLVL_PRESENT)
 
 #if (DBG)
 #define DBG_PRINT(adapter, mask, arg)           \
