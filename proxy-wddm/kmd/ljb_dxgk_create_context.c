@@ -133,10 +133,10 @@ LJB_DXGK_CreateContextPostProcessing(
     InsertTailList(&GlobalDriverData.ClientContextListHead, &MyContext->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientContextListLock, oldIrql);
 
-    DBG_PRINT(Adapter, DBGLVL_FLOW,
-        (__FUNCTION__ ": hContext(%p) tracked\n",
-        MyContext->hContext
-        ));
+    //DBG_PRINT(Adapter, DBGLVL_FLOW,
+    //    (__FUNCTION__ ": hContext(%p) tracked\n",
+    //    MyContext->hContext
+    //    ));
 }
 
 LJB_CONTEXT *

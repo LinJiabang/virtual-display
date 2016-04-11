@@ -135,12 +135,12 @@ LJB_DXGK_CreateDevicePostProcessing(
     InsertTailList(&GlobalDriverData.ClientDeviceListHead, &MyDevice->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientDeviceListLock, oldIrql);
 
-    DBG_PRINT(Adapter, DBGLVL_FLOW,
-        (__FUNCTION__ ": hDevice(%p)/hRTDevice(%p)/Flags(0x%x) tracked\n",
-        MyDevice->hDevice,
-        MyDevice->hRTDevice,
-        MyDevice->CreateDevice.Flags.Value
-        ));
+    //DBG_PRINT(Adapter, DBGLVL_FLOW,
+    //    (__FUNCTION__ ": hDevice(%p)/hRTDevice(%p)/Flags(0x%x) tracked\n",
+    //    MyDevice->hDevice,
+    //    MyDevice->hRTDevice,
+    //    MyDevice->CreateDevice.Flags.Value
+    //    ));
 }
 
 LJB_DEVICE *
