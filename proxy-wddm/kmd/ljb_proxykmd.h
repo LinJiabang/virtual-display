@@ -564,6 +564,12 @@ LJB_DXGK_FindOpenedAllocation(
     __in HANDLE         hDeviceSpecificAllocation
     );
 
+PVOID
+LJB_AcquireHandleData(
+    __in DXGKRNL_INTERFACE *            DxgkInterface,
+    IN_CONST_PDXGKARGCB_GETHANDLEDATA   GetHandleData
+    );
+
 #define FIND_ADAPTER_BY_DRIVER_ADAPTER(hAdapter) LJB_DXGK_FindAdapterByDriverAdapter(hAdapter)
 #define FIND_ADAPTER_AT_DIRQL(hAdapter) LJB_DXGK_FindAdapterByDriverAdapterAtDIRQL(hAdapter)
 

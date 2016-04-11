@@ -115,12 +115,12 @@ LJB_DXGK_OpenAllocationPostProcessing(
         RtlZeroMemory(&GetHandleData, sizeof(GetHandleData));
         GetHandleData.hObject = OpenAllocationInfo->hAllocation;
         GetHandleData.Type = DXGK_HANDLE_ALLOCATION;
-        hAllocation = (*DxgkInterface->DxgkCbGetHandleData)(&GetHandleData);
+        hAllocation = LJB_AcquireHandleData(DxgkInterface, &GetHandleData);
 
         if (hAllocation == NULL)
         {
             DBG_PRINT(Adapter, DBGLVL_ERROR,
-                ("?"__FUNCTION__": DxgkCbGetHandleData failed?\n"));
+                ("?"__FUNCTION__": LJB_AcquireHandleData failed?\n"));
             break;
         }
 
@@ -171,13 +171,51 @@ LJB_DXGK_FindOpenedAllocation(
             break;
         }
     }
-    KeReleaseSpinLock(&Adapter->AllocationListLock, oldIrql);
+    KeReleaseSpinLock(&Adapter->OpenedAllocationListLock, oldIrql);
 
     if (OpenedAllocation == NULL)
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": no allocation found for hAllocation(%p)?\n",
+            ("?" __FUNCTION__
+            ": no OpenedAllocation found for hDeviceSpecificAllocation(%p)?\n",
             hDeviceSpecificAllocation));
     }
     return OpenedAllocation;
+}
+
+PVOID
+LJB_AcquireHandleData(
+    __in DXGKRNL_INTERFACE *            DxgkInterface,
+    IN_CONST_PDXGKARGCB_GETHANDLEDATA   GetHandleData
+    )
+{
+    PVOID   hAllocation;
+
+    /*
+     * Started from Win10, a new set of API (DxgkCbAcquireHandleData/DxgkCbReleaseHandleData)
+     * is introduced. We first try old DxgkCbGetHandleData. If it does not work,
+     * we try new API
+     */
+    hAllocation = (*DxgkInterface->DxgkCbGetHandleData)(GetHandleData);
+
+    if (hAllocation == NULL)
+    {
+        if (DxgkInterface->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0)
+        {
+            DXGKARG_RELEASE_HANDLE      ReleaseHandle;
+            DXGKARGCB_RELEASEHANDLEDATA ReleaseHandleData;
+
+            hAllocation = (*DxgkInterface->DxgkCbAcquireHandleData)(GetHandleData, &ReleaseHandle);
+
+            if (hAllocation != NULL)
+            {
+                RtlZeroMemory(&ReleaseHandleData, sizeof(ReleaseHandleData));
+                ReleaseHandleData.ReleaseHandle = ReleaseHandle;
+                ReleaseHandleData.Type = GetHandleData->Type;
+                (*DxgkInterface->DxgkCbReleaseHandleData)(ReleaseHandleData);
+            }
+        }
+    }
+
+    return hAllocation;
 }
