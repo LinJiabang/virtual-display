@@ -131,9 +131,15 @@ LJB_DXGK_GetStdAllocationDrvDataPostProcessing(
     StdAllocationInfo->DriverData.pAllocationPrivateDriverData = pGetStandardAllocationDriverData->pAllocationPrivateDriverData;
     StdAllocationInfo->DriverData.AllocationPrivateDriverDataSize = pGetStandardAllocationDriverData->AllocationPrivateDriverDataSize;
 
-    if (pGetStandardAllocationDriverData->StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE)
+    switch (pGetStandardAllocationDriverData->StandardAllocationType)
     {
-        StdAllocationInfo->PrimarySurfaceData = *pGetStandardAllocationDriverData->pCreateSharedPrimarySurfaceData;
+        case D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE:
+            StdAllocationInfo->PrimarySurfaceData = *pGetStandardAllocationDriverData->pCreateSharedPrimarySurfaceData;
+            break;
+
+        case D3DKMDT_STANDARDALLOCATION_SHADOWSURFACE:
+            StdAllocationInfo->ShadowSurfaceData = *pGetStandardAllocationDriverData->pCreateShadowSurfaceData;
+            break;
     }
 
     // Not interested in pResourcePrivateDriverData

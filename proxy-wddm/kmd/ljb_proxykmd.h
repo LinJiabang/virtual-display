@@ -365,6 +365,7 @@ typedef struct _LJB_STD_ALLOCATION_INFO
     LIST_ENTRY              ListEntry;
     DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA DriverData;
     D3DKMDT_SHAREDPRIMARYSURFACEDATA    PrimarySurfaceData;
+    D3DKMDT_SHADOWSURFACEDATA           ShadowSurfaceData;
 } LJB_STD_ALLOCATION_INFO;
 
 extern CONST CHAR * StdAllocationTypeString[];
@@ -636,6 +637,42 @@ BOOLEAN
 LJB_DXGK_IsSourceConnectedToUsbTarget(
     __in LJB_ADAPTER *                  Adapter,
     __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    );
+
+static FORCEINLINE
+NTSTATUS
+SaveSseState(
+    _In_ ULONG64 Mask,
+    _Out_ PXSTATE_SAVE XStateSave
+    )
+{
+#if defined (_X86_)
+    return KeSaveExtendedProcessorState( Mask, XStateSave );
+#else
+    UNREFERENCED_PARAMETER(Mask);
+    UNREFERENCED_PARAMETER(XStateSave);
+    return STATUS_SUCCESS;
+#endif
+}
+
+static FORCEINLINE
+VOID
+RestoreSseState(
+    _In_ PXSTATE_SAVE XStateSave
+    )
+    {
+#if defined (_X86_)
+    KeRestoreExtendedProcessorState( XStateSave );
+#else
+    UNREFERENCED_PARAMETER(XStateSave);
+#endif
+    }
+
+SIZE_T
+LJB_PROXYKMD_FastMemCpy(
+    __out PVOID pDst,
+    __in PVOID  pSrc,
+    __in SIZE_T len
     );
 
 _C_END

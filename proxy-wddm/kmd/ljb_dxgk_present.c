@@ -41,6 +41,17 @@ LJB_DXGK_PresentDoColorFillOnUsbMonitor(
     __in LJB_ALLOCATION *   DstAllocation
     );
 
+static VOID
+LJB_DXGK_PresentCopyRect(
+    __in LJB_ADAPTER *  pAdapter,
+    __in PVOID          SrcBuffer,
+    __in ULONG          SrcPitch,
+    __in PVOID          DstBuffer,
+    __in ULONG          DstPitch,
+    __in CONST RECT *   pSrcRect,
+    __in CONST RECT *   pDstRect
+    );
+
 /*
  * Function: LJB_DXGK_Present
  *
@@ -241,27 +252,6 @@ LJB_DXGK_Present(
 
     PAGED_CODE();
 
-    DBG_PRINT(Adapter, DBGLVL_PRESENT,
-        (__FUNCTION__":\n"
-        "pDmaBuffer(%p), DmaSize(0x%x), pDmaBufferPrivateData(0x%p), DmaBufferPrivateDataSize(0x%x)\n"
-        "DstRect(%u,%u,%u,%u),SrcRect(%u,%u,%u,%u),SubRectCnt(%u),FlipInterval(%u),Flags(0x%x)\n",
-        pPresent->pDmaBuffer,
-        pPresent->DmaSize,
-        pPresent->pDmaBufferPrivateData,
-        pPresent->DmaBufferPrivateDataSize,
-        pPresent->DstRect.left,
-        pPresent->DstRect.top,
-        pPresent->DstRect.right,
-        pPresent->DstRect.bottom,
-        pPresent->SrcRect.left,
-        pPresent->SrcRect.top,
-        pPresent->SrcRect.right,
-        pPresent->SrcRect.bottom,
-        pPresent->SubRectCnt,
-        pPresent->FlipInterval,
-        pPresent->Flags.Value
-        ));
-
     ntStatus = (*DriverInitData->DxgkDdiPresent)(hContext, pPresent);
     if (!NT_SUCCESS(ntStatus))
     {
@@ -362,18 +352,24 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
     __in LJB_ALLOCATION *   DstAllocation
     )
 {
-    UNREFERENCED_PARAMETER(Adapter);
-    UNREFERENCED_PARAMETER(pPresent);
-    UNREFERENCED_PARAMETER(SrcAllocation);
-    UNREFERENCED_PARAMETER(DstAllocation);
+    LJB_STD_ALLOCATION_INFO* CONST  SrcStdAllocationInfo = SrcAllocation->StdAllocationInfo;
+    LJB_STD_ALLOCATION_INFO* CONST  DstStdAllocationInfo = DstAllocation->StdAllocationInfo;
+    RECT * CONST                    SrcRect = &pPresent->SrcRect;
+    RECT * CONST                    DstRect = &pPresent->DstRect;
+    UINT CONST                      SrcWidth  = SrcRect->right -  SrcRect->left;
+    UINT CONST                      SrcHeight = SrcRect->bottom - SrcRect->top;
+    UINT CONST                      DstWidth  = DstRect->right -  DstRect->left;
+    UINT CONST                      DstHeight = DstRect->bottom - DstRect->top;
+    PVOID                           SrcBuffer;
+    ULONG                           SrcPitch;
+    PVOID                           DstBuffer;
+    ULONG                           DstPitch;
+    UINT                            i;
 
-    /*
-     * NOT YET IMPLEMENTED
-     */
     DBG_PRINT(Adapter, DBGLVL_PRESENT,
         (__FUNCTION__":\n"
         "pDmaBuffer(%p), DmaSize(0x%x), pDmaBufferPrivateData(0x%p), DmaBufferPrivateDataSize(0x%x)\n",
-        "DstRect(%u,%u,%u,%u),SrcRect(%u,%u,%u,%u),SubRectCnt(%u),FlipInterval(%u),Flags(0x%x)\n",
+        "DstRect(%d,%d,%d,%d),SrcRect(%d,%d,%d,%d),SubRectCnt(%u),FlipInterval(%u),Flags(0x%x)\n",
         pPresent->pDmaBuffer,
         pPresent->DmaSize,
         pPresent->pDmaBufferPrivateData,
@@ -390,7 +386,164 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
         pPresent->FlipInterval,
         pPresent->Flags.Value
         ));
+
+    /*
+     * No streched copy supported.
+     */
+    if (SrcWidth != DstWidth || SrcHeight != DstHeight)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?" __FUNCTION__ ": no streaching copy!\n"));
+        return;
+    }
+
+    /*
+     * For copy operation, the valid allocation must be created by Dxgkrnl.sys
+     */
+    if (SrcStdAllocationInfo == NULL || DstStdAllocationInfo == NULL)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?"__FUNCTION__
+            ": SrcStdAllocationInfo(%p) or DstStdAllocationInfo(%p) is null\n",
+            SrcStdAllocationInfo,
+            DstStdAllocationInfo
+            ));
+        return;
+    }
+
+    /*
+     * determine src buffer, src pitch, dst buffer, dst Pitch
+     */
+    SrcBuffer = NULL;
+    SrcPitch = 0;
+    DstBuffer = NULL;
+    DstPitch = 0;
+    if (SrcStdAllocationInfo->DriverData.StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE)
+    {
+        SrcBuffer = SrcAllocation->KmBuffer;
+        SrcPitch = SrcStdAllocationInfo->PrimarySurfaceData.Width * 4;
+    }
+    else if (SrcStdAllocationInfo->DriverData.StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHADOWSURFACE)
+    {
+        // Map shadow buffer from system memory to kernel space.
+        SrcPitch = SrcStdAllocationInfo->ShadowSurfaceData.Pitch;
+    }
+
+    if (DstStdAllocationInfo->DriverData.StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHAREDPRIMARYSURFACE)
+    {
+        DstBuffer = DstAllocation->KmBuffer;
+        DstPitch = DstStdAllocationInfo->PrimarySurfaceData.Width * 4;
+    }
+    else if (DstStdAllocationInfo->DriverData.StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHADOWSURFACE)
+    {
+        // Map shadow buffer from system memory to kernel space.
+        DstPitch = SrcStdAllocationInfo->ShadowSurfaceData.Pitch;
+    }
+
+    if (SrcBuffer == NULL || SrcPitch == 0 || DstBuffer == NULL || DstPitch == 0)
+    {
+        DBG_PRINT(Adapter, DBGLVL_ERROR,
+            ("?"__FUNCTION__": bad SrcBuffer(%p)/SrcPitch(%u)/DstBuffer(%p)/DstPitch(%u)\n",
+            SrcBuffer,
+            SrcPitch,
+            DstBuffer,
+            DstPitch
+            ));
+        return;
+    }
+
+    for (i = 0; i < pPresent->SubRectCnt; i++)
+    {
+        INT     XOffset;
+        INT     YOffset;
+        RECT    SrcSubRect;
+
+        DBG_PRINT(Adapter, DBGLVL_PRESENT,
+            (__FUNCTION__ ":\n"
+            "SrcRect(%d, %d, %d, %d)\n"
+            "DstRect(%d, %d, %d, %d)\n"
+            "SubDstRect[%u] (%d, %d, %d, %d)\n",
+            pPresent->SrcRect.left,
+            pPresent->SrcRect.top,
+            pPresent->SrcRect.right,
+            pPresent->SrcRect.bottom,
+            pPresent->DstRect.left,
+            pPresent->DstRect.top,
+            pPresent->DstRect.right,
+            pPresent->DstRect.bottom,
+            i,
+            pPresent->pDstSubRects[i].left,
+            pPresent->pDstSubRects[i].top,
+            pPresent->pDstSubRects[i].right,
+            pPresent->pDstSubRects[i].bottom
+            ));
+
+        XOffset             = pPresent->SrcRect.left - pPresent->DstRect.left;
+        YOffset             = pPresent->SrcRect.top - pPresent->DstRect.top;
+        SrcSubRect          = pPresent->pDstSubRects[i];
+        SrcSubRect.left     += XOffset;
+        SrcSubRect.right    += XOffset;
+        SrcSubRect.top      += YOffset;
+        SrcSubRect.bottom   += YOffset;
+
+        LJB_DXGK_PresentCopyRect(
+            Adapter,
+            SrcBuffer,
+            SrcPitch,
+            DstBuffer,
+            DstPitch,
+            &SrcSubRect,
+            &pPresent->pDstSubRects[i]
+            );
+    }
 }
+
+static VOID
+LJB_DXGK_PresentCopyRect(
+    __in LJB_ADAPTER *  Adapter,
+    __in PVOID          SrcBuffer,
+    __in ULONG          SrcPitch,
+    __in PVOID          DstBuffer,
+    __in ULONG          DstPitch,
+    __in CONST RECT *   pSrcRect,
+    __in CONST RECT *   pDstRect
+    )
+{
+    UINT CONST  SrcWidth    = pSrcRect->right -  pSrcRect->left;
+    UINT CONST  SrcHeight   = pSrcRect->bottom - pSrcRect->top;
+    UINT CONST  BytesPerLine = SrcWidth << 2;
+    UCHAR *     pSrcStart;
+    UCHAR *     pDstStart;
+    UINT        line;
+    NTSTATUS    ntStatus;
+    XSTATE_SAVE XStateSave;
+
+    UNREFERENCED_PARAMETER(Adapter);
+
+    pSrcStart = SrcBuffer;
+    pSrcStart += pSrcRect->top * SrcPitch + (pSrcRect->left << 2);
+    pDstStart = DstBuffer;
+    pDstStart += pDstRect->top * DstPitch + (pDstRect->left << 2);
+
+    ntStatus = SaveSseState(XSTATE_MASK_LEGACY_SSE, &XStateSave);
+    if (!NT_SUCCESS(ntStatus))
+        return;
+
+
+    for (line = 0; line < SrcHeight; line++)
+    {
+        LJB_PROXYKMD_FastMemCpy(
+            pDstStart,
+            pSrcStart,
+            BytesPerLine
+            );
+        pSrcStart += SrcPitch;
+        pDstStart += DstPitch;
+    }
+
+    RestoreSseState(&XStateSave);
+}
+
 
 static VOID
 LJB_DXGK_PresentDoFlipOnUsbMonitor(
