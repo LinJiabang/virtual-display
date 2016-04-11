@@ -82,6 +82,7 @@ DriverEntry(
     UNREFERENCED_PARAMETER(RegistryPath);
 
     KdPrint((__FUNCTION__ ": Built at %s %s\n", __DATE__, __TIME__));
+    ExInitializeDriverRuntime(DrvRtPoolNxOptIn);
 
     RtlZeroMemory(&GlobalDriverData, sizeof(GlobalDriverData));
     InitializeListHead(&GlobalDriverData.ClientDriverListHead);

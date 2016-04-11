@@ -271,10 +271,35 @@ LJB_DXGK_PresentPostProcessing(
     __in DXGKARG_PRESENT *  pPresent
     )
 {
-    DXGK_ALLOCATIONLIST* CONST  SrcAllocationList = &pPresent->pAllocationList[DXGK_PRESENT_SOURCE_INDEX];
-    DXGK_ALLOCATIONLIST* CONST  DstAllocationList = &pPresent->pAllocationList[DXGK_PRESENT_DESTINATION_INDEX];
-    HANDLE CONST                SrcDeviceSpecificAllocation = SrcAllocationList->hDeviceSpecificAllocation;
-    HANDLE CONST                DstDeviceSpecificAllocation = DstAllocationList->hDeviceSpecificAllocation;
+    DXGKRNL_INTERFACE * CONST   DxgkInterface = &Adapter->DxgkInterface;
+    HANDLE                      SrcDeviceSpecificAllocation;
+    HANDLE                      DstDeviceSpecificAllocation;
+    UINT                        SrcSegmentId;
+    UINT                        DstSegmentId;
+
+    /*
+     * On WDDM2.0, Use pAllocationInfo to retrieve hDeviceSpecificAllocation
+     */
+    if (DxgkInterface->Version >= DXGKDDI_INTERFACE_VERSION_WDDM2_0)
+    {
+        DXGK_PRESENTALLOCATIONINFO* CONST SrcAllocationInfo = &pPresent->pAllocationInfo[DXGK_PRESENT_SOURCE_INDEX];
+        DXGK_PRESENTALLOCATIONINFO* CONST DstAllocationInfo = &pPresent->pAllocationInfo[DXGK_PRESENT_SOURCE_INDEX];
+
+        SrcDeviceSpecificAllocation = SrcAllocationInfo->hDeviceSpecificAllocation;
+        DstDeviceSpecificAllocation = DstAllocationInfo->hDeviceSpecificAllocation;
+        SrcSegmentId = SrcAllocationInfo->SegmentId;
+        DstSegmentId = DstAllocationInfo->SegmentId;
+    }
+    else
+    {
+        DXGK_ALLOCATIONLIST* CONST  SrcAllocationList = &pPresent->pAllocationList[DXGK_PRESENT_SOURCE_INDEX];
+        DXGK_ALLOCATIONLIST* CONST  DstAllocationList = &pPresent->pAllocationList[DXGK_PRESENT_DESTINATION_INDEX];
+
+        SrcDeviceSpecificAllocation = SrcAllocationList->hDeviceSpecificAllocation;
+        DstDeviceSpecificAllocation = DstAllocationList->hDeviceSpecificAllocation;
+        SrcSegmentId = SrcAllocationList->SegmentId;
+        DstSegmentId = DstAllocationList->SegmentId;
+    }
 
     /*
      * Check for COPY operation where Source != NULL && Destination != NULL
@@ -303,7 +328,7 @@ LJB_DXGK_PresentPostProcessing(
          * either the src or dst is our primary surface. Handle it!
          * If both allocation are pre-patched, operate on KmBuffer.
          */
-        if (SrcAllocationList->SegmentId == 0 && DstAllocationList->SegmentId != 0)
+        if (SrcSegmentId != 0 && DstSegmentId != 0)
         {
             LJB_DXGK_PresentDoCopyOnUsbMonitor(
                 Adapter,

@@ -401,6 +401,7 @@ Return Value:
          * A function or filter driver handles the IRP before passing it to the
          * next lower driver. A bus driver handles the IRP and then completes it.
          */
+        status = Irp->IoStatus.Status;
         if (DeviceExtension->DeviceType == DEVICE_TYPE_FDO &&
             irpStack->Parameters.QueryDeviceRelations.Type == RemovalRelations &&
             GlobalDriverData.ClientAdapterListCount != 0)

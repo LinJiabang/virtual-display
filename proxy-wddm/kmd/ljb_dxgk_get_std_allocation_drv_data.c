@@ -191,6 +191,7 @@ LJB_FindStdAllocationInfo(
         LJB_STD_ALLOCATION_INFO *   ThisInfo;
         PVOID                       PrivateDriverData;
         DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA* DriverData;
+        BOOLEAN IsEqual;
 
         ThisInfo = CONTAINING_RECORD(ListEntry, LJB_STD_ALLOCATION_INFO, ListEntry);
 
@@ -209,8 +210,13 @@ LJB_FindStdAllocationInfo(
         // Match by memory content. This might not work since target driver would
         // change the content of private data during DxgkDdiCreateAllocation.
         // When this happens, we wouldn't find the original StdAllocationDriverData.
+        // Do not compare memory with Spinlock held. The pAllocationPrivateDriverData
+        // is allocated from PAGEABLE area.
         PrivateDriverData = ThisInfo + 1;
-        if (RtlEqualMemory(PrivateDriverData, pAllocationPrivateDriverData, AllocationPrivateDriverDataSize))
+        KeReleaseSpinLock(&Adapter->StdAllocationInfoListLock, oldIrql);
+        IsEqual = RtlEqualMemory(PrivateDriverData, pAllocationPrivateDriverData, AllocationPrivateDriverDataSize);
+        KeAcquireSpinLock(&Adapter->StdAllocationInfoListLock, &oldIrql);
+        if (IsEqual)
         {
             StdAllocationInfo = ThisInfo;
             break;
