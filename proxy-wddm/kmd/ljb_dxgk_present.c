@@ -12,6 +12,21 @@
 #pragma alloc_text (PAGE, LJB_DXGK_Present)
 #endif
 
+static
+VOID
+LJB_DXGK_PresentPostProcessing(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent
+    );
+
+static VOID
+LJB_DXGK_PresentOnUsbMonitor(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent,
+    __in LJB_ALLOCATION *   SrcAllocation,
+    __in LJB_ALLOCATION *   DstAllocation
+    );
+
 /*
  * Function: LJB_DXGK_Present
  *
@@ -200,8 +215,8 @@
  */
 NTSTATUS
 LJB_DXGK_Present(
-     _In_    const HANDLE          hContext,
-    _Inout_       DXGKARG_PRESENT *pPresent
+     _In_    const HANDLE       hContext,
+    _Inout_ DXGKARG_PRESENT *   pPresent
     )
 {
     LJB_CONTEXT * CONST                 MyContext = LJB_DXGK_FindContext(hContext);
@@ -212,12 +227,87 @@ LJB_DXGK_Present(
 
     PAGED_CODE();
 
+
     ntStatus = (*DriverInitData->DxgkDdiPresent)(hContext, pPresent);
     if (!NT_SUCCESS(ntStatus))
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?" __FUNCTION__ ": failed with 0x%08x\n", ntStatus));
+        return ntStatus;
     }
 
+    LJB_DXGK_PresentPostProcessing(Adapter, pPresent);
     return ntStatus;
+}
+
+static
+VOID
+LJB_DXGK_PresentPostProcessing(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent
+    )
+{
+    DXGK_ALLOCATIONLIST* CONST  SrcAllocationList = &pPresent->pAllocationList[DXGK_PRESENT_SOURCE_INDEX];
+    DXGK_ALLOCATIONLIST* CONST  DstAllocationList = &pPresent->pAllocationList[DXGK_PRESENT_DESTINATION_INDEX];
+    HANDLE CONST                SrcDeviceSpecificAllocation = SrcAllocationList->hDeviceSpecificAllocation;
+    HANDLE CONST                DstDeviceSpecificAllocation = DstAllocationList->hDeviceSpecificAllocation;
+
+    /*
+     * Check for COPY operation where Source != NULL && Destination != NULL
+     */
+    if (SrcDeviceSpecificAllocation != NULL && DstDeviceSpecificAllocation != NULL)
+    {
+        LJB_OPENED_ALLOCATION * CONST SrcOpenedAllocation = LJB_DXGK_FindOpenedAllocation(Adapter, SrcDeviceSpecificAllocation);
+        LJB_OPENED_ALLOCATION * CONST DstOpenedAllocation = LJB_DXGK_FindOpenedAllocation(Adapter, DstDeviceSpecificAllocation);
+        LJB_ALLOCATION * CONST        SrcAllocation = SrcOpenedAllocation->MyAllocation;
+        LJB_ALLOCATION * CONST        DstAllocation = DstOpenedAllocation->MyAllocation;
+
+        ASSERT(SrcAllocation != NULL && DstAllocation != NULL);
+
+        /*
+         * check if either Src or Dst allocation is our primary surface!
+         * Note we update KmBuffer member of LJB_ALLOCATION during CommitVidPn when we
+         * detected a standard primary surface.
+         */
+        if (SrcAllocation->KmBuffer == NULL && DstAllocation->KmBuffer == NULL)
+        {
+            // Not our case.
+            return;
+        }
+
+        /*
+         * either the src or dst is our primary surface. Handle it!
+         * If both allocation are pre-patched, operate on KmBuffer.
+         */
+        if (SrcAllocationList->SegmentId == 0 && DstAllocationList->SegmentId != 0)
+        {
+            LJB_DXGK_PresentOnUsbMonitor(
+                Adapter,
+                pPresent,
+                SrcAllocation,
+                DstAllocation
+                );
+        }
+    }
+}
+
+static VOID
+LJB_DXGK_PresentOnUsbMonitor(
+    __in LJB_ADAPTER *      Adapter,
+    __in DXGKARG_PRESENT *  pPresent,
+    __in LJB_ALLOCATION *   SrcAllocation,
+    __in LJB_ALLOCATION *   DstAllocation
+    )
+{
+    UNREFERENCED_PARAMETER(Adapter);
+    UNREFERENCED_PARAMETER(pPresent);
+    UNREFERENCED_PARAMETER(SrcAllocation);
+    UNREFERENCED_PARAMETER(DstAllocation);
+
+    /*
+     * NOT YET IMPLEMENTED
+     */
+    DBG_PRINT(Adapter, DBGLVL_PRESENT,
+        (__FUNCTION__": \n"
+        ));
 }

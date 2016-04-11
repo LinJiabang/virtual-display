@@ -552,6 +552,13 @@ LJB_DXGK_FindContext(
     __in HANDLE     hContext
     );
 
+LJB_STD_ALLOCATION_INFO *
+LJB_FindStdAllocationInfo(
+    __in LJB_ADAPTER *  Adapter,
+    __in PVOID          pAllocationPrivateDriverData,
+    __in UINT           AllocationPrivateDriverDataSize
+    );
+
 LJB_ALLOCATION *
 LJB_DXGK_FindAllocation(
     __in LJB_ADAPTER*   Adapter,
@@ -629,13 +636,6 @@ BOOLEAN
 LJB_DXGK_IsSourceConnectedToUsbTarget(
     __in LJB_ADAPTER *                  Adapter,
     __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
-    );
-
-LJB_STD_ALLOCATION_INFO *
-LJB_FindStdAllocationInfo(
-    __in LJB_ADAPTER *  Adapter,
-    __in PVOID          pAllocationPrivateDriverData,
-    __in UINT           AllocationPrivateDriverDataSize
     );
 
 _C_END
