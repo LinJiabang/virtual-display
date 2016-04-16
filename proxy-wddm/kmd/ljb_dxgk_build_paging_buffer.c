@@ -12,6 +12,12 @@
 #pragma alloc_text (PAGE, LJB_DXGK_BuildPagingBuffer)
 #endif
 
+static VOID
+LJB_DXGK_BuildPagingBufferPostProcessing(
+    __in LJB_ADAPTER *              Adapter,
+    __in DXGKARG_BUILDPAGINGBUFFER* pBuildPagingBuffer
+    );
+
 /*
  * Function: LJB_DXGK_BuildPagingBuffer
  *
@@ -298,4 +304,223 @@ LJB_DXGK_BuildPagingBuffer(
     }
 
     return ntStatus;
+}
+
+/*
+ * track MapApertureSegment/UnmapApertureSegment
+ */
+static VOID
+LJB_DXGK_BuildPagingBufferPostProcessing(
+    __in LJB_ADAPTER *              Adapter,
+    __in DXGKARG_BUILDPAGINGBUFFER* pBuildPagingBuffer
+    )
+{
+    LJB_APERTURE_MAPPING *          ApertureMapping;
+    KIRQL                           oldIrql;
+
+    if (pBuildPagingBuffer->Operation == DXGK_OPERATION_MAP_APERTURE_SEGMENT)
+    {
+        ApertureMapping = LJB_DXGK_FindApertureMapping(
+            Adapter,
+            pBuildPagingBuffer->MapApertureSegment.hAllocation,
+            pBuildPagingBuffer->MapApertureSegment.SegmentId
+            );
+        if (ApertureMapping != NULL)
+        {
+            /*
+             * This is a duplicate call. Check if this call is different than
+             * previous call
+             */
+            if (ApertureMapping->OffsetInPages != pBuildPagingBuffer->MapApertureSegment.OffsetInPages ||
+                ApertureMapping->NumberOfPages != pBuildPagingBuffer->MapApertureSegment.NumberOfPages ||
+                ApertureMapping->pMdl != pBuildPagingBuffer->MapApertureSegment.pMdl ||
+                ApertureMapping->MdlOffset != pBuildPagingBuffer->MapApertureSegment.MdlOffset)
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?"__FUNCTION__": inconsistent ApertureMapping\n"
+                    "Previous hAllocation(%p)/SegmentId(0x%x)/OffsetInPages(0x%x)/NumberOfPages(0x%x)/pMdl(%p)/MdlOffset(0x%x)\n"
+                    "Current  hAllocation(%p)/SegmentId(0x%x)/OffsetInPages(0x%x)/NumberOfPages(0x%x)/pMdl(%p)/MdlOffset(0x%x)\n",
+                    ApertureMapping->hAllocation,
+                    ApertureMapping->SegmentId,
+                    ApertureMapping->OffsetInPages,
+                    ApertureMapping->NumberOfPages,
+                    ApertureMapping->pMdl,
+                    ApertureMapping->MdlOffset,
+                    pBuildPagingBuffer->MapApertureSegment.hAllocation,
+                    pBuildPagingBuffer->MapApertureSegment.SegmentId,
+                    pBuildPagingBuffer->MapApertureSegment.OffsetInPages,
+                    pBuildPagingBuffer->MapApertureSegment.NumberOfPages,
+                    pBuildPagingBuffer->MapApertureSegment.pMdl,
+                    pBuildPagingBuffer->MapApertureSegment.MdlOffset
+                    ));
+            }
+        }
+        else
+        {
+
+            /*
+             * Not yet previously mapped. Create an entry now.
+             */
+            ApertureMapping = LJB_GetPoolZero(sizeof(LJB_APERTURE_MAPPING));
+            if (ApertureMapping == NULL)
+            {
+                DBG_PRINT(Adapter, DBGLVL_ERROR,
+                    ("?" __FUNCTION__ ": unable to get ApertureMapping?\n"));
+                return;
+            }
+
+            InitializeListHead(&ApertureMapping->ListEntry);
+            ApertureMapping->hDevice = pBuildPagingBuffer->MapApertureSegment.hDevice;
+            ApertureMapping->hAllocation = pBuildPagingBuffer->MapApertureSegment.hAllocation;
+            ApertureMapping->SegmentId = pBuildPagingBuffer->MapApertureSegment.SegmentId;
+            ApertureMapping->OffsetInPages = pBuildPagingBuffer->MapApertureSegment.OffsetInPages;
+            ApertureMapping->NumberOfPages = pBuildPagingBuffer->MapApertureSegment.NumberOfPages;
+            ApertureMapping->pMdl = pBuildPagingBuffer->MapApertureSegment.pMdl;
+            ApertureMapping->Flags = pBuildPagingBuffer->MapApertureSegment.Flags;
+            ApertureMapping->MdlOffset = pBuildPagingBuffer->MapApertureSegment.MdlOffset;
+            ApertureMapping->ReferenceCount = 1;
+
+            KeAcquireSpinLock(&Adapter->ApertureMappingListLock, &oldIrql);
+            InsertTailList(&Adapter->ApertureMappingListHead, &ApertureMapping->ListEntry);
+            KeReleaseSpinLock(&Adapter->ApertureMappingListLock, oldIrql);
+            InterlockedIncrement(&Adapter->ApertureMappingListCount);
+        }
+    }
+    else if (pBuildPagingBuffer->Operation == DXGK_OPERATION_UNMAP_APERTURE_SEGMENT)
+    {
+        ApertureMapping = LJB_DXGK_FindApertureMapping(
+            Adapter,
+            pBuildPagingBuffer->UnmapApertureSegment.hAllocation,
+            pBuildPagingBuffer->UnmapApertureSegment.SegmentId
+            );
+
+        /*
+         * duplicated call
+         */
+        if (ApertureMapping == NULL)
+            return;
+
+        LJB_DXGK_CloseApertureMapping(Adapter, ApertureMapping);
+    }
+}
+
+LJB_APERTURE_MAPPING *
+LJB_DXGK_FindApertureMapping(
+    __in LJB_ADAPTER *      Adapter,
+    __in PVOID              hAllocation,
+    __in UINT               SegmentId
+    )
+{
+    LIST_ENTRY * CONST      ListHead = &Adapter->ApertureMappingListHead;
+    LIST_ENTRY *            ListEntry;
+    LJB_APERTURE_MAPPING*   ApertureMapping;
+    KIRQL                   oldIrql;
+
+    ApertureMapping = NULL;
+    KeAcquireSpinLock(&Adapter->ApertureMappingListLock, &oldIrql);
+    for (ListEntry = ListHead->Flink;
+         ListEntry != ListHead;
+         ListEntry = ListEntry->Flink)
+    {
+        LJB_APERTURE_MAPPING *  ThisMapping;
+
+        ThisMapping = CONTAINING_RECORD(ListEntry, LJB_APERTURE_MAPPING, ListEntry);
+        if (ThisMapping->hAllocation == hAllocation &&
+            ThisMapping->SegmentId == SegmentId)
+        {
+            ApertureMapping = ThisMapping;
+            break;
+        }
+    }
+    KeReleaseSpinLock(&Adapter->ApertureMappingListLock, oldIrql);
+
+    return ApertureMapping;
+}
+
+VOID
+LJB_DXGK_OpenApertureMapping(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_APERTURE_MAPPING * ApertureMapping
+    )
+{
+    PVOID   VirtualAddress;
+    PVOID   PartialBuffer;
+    UINT    MemOffset;
+    ULONG   MemSize;
+
+    UNREFERENCED_PARAMETER(Adapter);
+
+    InterlockedIncrement(&ApertureMapping->ReferenceCount);
+
+    VirtualAddress = MmGetMdlVirtualAddress(ApertureMapping->pMdl);
+    MemOffset = ApertureMapping->MdlOffset << PAGE_SHIFT;
+    MemSize = (ULONG) ApertureMapping->NumberOfPages << PAGE_SHIFT;
+    PartialBuffer = ((UCHAR *) VirtualAddress) + MemOffset;
+
+    /*
+     * check if this is already mapped to system space
+     */
+    if (ApertureMapping->MappedSystemMemory != NULL)
+        return;
+
+    /*
+     * create Partial MDL if not yet done
+     */
+    if (ApertureMapping->PartialMdl == NULL)
+    {
+        ApertureMapping->PartialMdl = IoAllocateMdl(
+            PartialBuffer,
+            MemSize,
+            FALSE,
+            FALSE,
+            NULL);
+        if (ApertureMapping->PartialMdl == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?"__FUNCTION__": Unable to get PartialMdl?\n"));
+            return;
+        }
+    }
+
+    IoBuildPartialMdl(
+        ApertureMapping->pMdl,
+        ApertureMapping->PartialMdl,
+        PartialBuffer,
+        MemSize
+        );
+    ApertureMapping->MappedSystemMemory = MmGetSystemAddressForMdlSafe(
+        ApertureMapping->pMdl,
+        NormalPagePriority
+        );
+
+}
+
+VOID
+LJB_DXGK_CloseApertureMapping(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_APERTURE_MAPPING * ApertureMapping
+    )
+{
+    LONG    ReferenceCount;
+    KIRQL   oldIrql;
+
+    ReferenceCount = InterlockedDecrement(&ApertureMapping->ReferenceCount);
+
+    /*
+     * If no body is referencing to this aperture mapping, destroy it now
+     */
+    if (ReferenceCount == 0)
+    {
+        KeAcquireSpinLock(&Adapter->ApertureMappingListLock, &oldIrql);
+        RemoveEntryList(&ApertureMapping->ListEntry);
+        KeReleaseSpinLock(&Adapter->ApertureMappingListLock, oldIrql);
+
+        if (ApertureMapping->MappedSystemMemory != NULL)
+        {
+            IoFreeMdl(ApertureMapping->PartialMdl);
+            ApertureMapping->PartialMdl = NULL;
+            ApertureMapping->MappedSystemMemory = NULL;
+        }
+        LJB_FreePool(ApertureMapping);
+    }
 }

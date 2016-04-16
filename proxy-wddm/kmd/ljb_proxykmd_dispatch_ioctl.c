@@ -19,6 +19,7 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include "ljb_proxykmd.h"
+#include "ljb_proxykmd_ioctl.h"
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text (PAGE, LJB_PROXYKMD_DispatchIoctl)
@@ -33,6 +34,11 @@ LJB_PROXYKMD_DispatchIoctl (
     LJB_DEVICE_EXTENSION *  CONST   DeviceExtension = DeviceObject->DeviceExtension;
     PIO_STACK_LOCATION CONST        IoStackLocation = IoGetCurrentIrpStackLocation(Irp);
     ULONG                           IoctlCode = IoStackLocation->Parameters.DeviceIoControl.IoControlCode;
+    LIST_ENTRY * CONST              ListHead = &GlobalDriverData.ClientAdapterListHead;
+    LIST_ENTRY *                    ListEntry;
+    LJB_ADAPTER *                   Adapter;
+    DXGKRNL_INTERFACE *             DxgkInterface;
+    DXGK_CHILD_STATUS               DxgkChildStatus;
     NTSTATUS                        ntStatus;
 
     PAGED_CODE();
@@ -46,6 +52,62 @@ LJB_PROXYKMD_DispatchIoctl (
 
     switch (IoctlCode)
     {
+    case IOCTL_PROXYKMD_PLUGIN_FAKE_MONITOR:
+        /*
+         * Locate the first adapter
+         */
+        if (IsListEmpty(ListHead))
+            {
+            KdPrint(( __FUNCTION__ ": No adapter intercepted\n"));
+            Irp->IoStatus.Information = 0;
+            Irp->IoStatus.Status = STATUS_SUCCESS;
+            IoCompleteRequest(Irp, IO_NO_INCREMENT);
+            return STATUS_SUCCESS;
+            }
+
+        ListEntry = ListHead->Flink;
+        Adapter = CONTAINING_RECORD(ListEntry, LJB_ADAPTER, ListEntry);
+        DxgkInterface = &Adapter->DxgkInterface;
+        DxgkChildStatus.Type = StatusConnection;
+        DxgkChildStatus.ChildUid = Adapter->UsbTargetIdBase;
+
+        KdPrint((__FUNCTION__ ": sending attach event\n"));
+        Adapter->FakeMonitorEnabled         = TRUE;
+        DxgkChildStatus.HotPlug.Connected   = TRUE;
+        ntStatus = (*DxgkInterface->DxgkCbIndicateChildStatus)(
+            DxgkInterface->DeviceHandle,
+            &DxgkChildStatus
+            );
+        break;
+
+    case IOCTL_PROXYKMD_UNPLUG_FAKE_MONITOR:
+        /*
+         * Locate the first adapter
+         */
+        if (IsListEmpty(ListHead))
+            {
+            KdPrint(( __FUNCTION__ ": No adapter intercepted\n"));
+            Irp->IoStatus.Information = 0;
+            Irp->IoStatus.Status = STATUS_SUCCESS;
+            IoCompleteRequest(Irp, IO_NO_INCREMENT);
+            return STATUS_SUCCESS;
+            }
+
+        ListEntry = ListHead->Flink;
+        Adapter = CONTAINING_RECORD(ListEntry, LJB_ADAPTER, ListEntry);
+        DxgkInterface = &Adapter->DxgkInterface;
+        DxgkChildStatus.Type = StatusConnection;
+        DxgkChildStatus.ChildUid = Adapter->UsbTargetIdBase;
+
+        KdPrint((__FUNCTION__ ": sending detach event\n"));
+        Adapter->FakeMonitorEnabled         = FALSE;
+        DxgkChildStatus.HotPlug.Connected   = FALSE;
+        ntStatus = (*DxgkInterface->DxgkCbIndicateChildStatus)(
+            DxgkInterface->DeviceHandle,
+            &DxgkChildStatus
+            );
+        break;
+
     default:
         ntStatus = STATUS_NOT_SUPPORTED;
         break;

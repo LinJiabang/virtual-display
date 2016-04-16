@@ -159,7 +159,7 @@ LJB_DXGK_CreateAllocationPostProcessing(
         MyAllocation->AllocationInfo = *AllocationInfo;
         InitializeListHead(&MyAllocation->ListEntry);
 
-        MyAllocation->StdAllocationInfo = LJB_FindStdAllocationInfo(
+        MyAllocation->StdAllocationInfo = LJB_DXGK_FindStdAllocationInfo(
             Adapter,
             AllocationInfo->pPrivateDriverData,
             AllocationInfo->PrivateDriverDataSize

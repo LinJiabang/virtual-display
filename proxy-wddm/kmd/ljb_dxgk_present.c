@@ -24,7 +24,9 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
     __in LJB_ADAPTER *      Adapter,
     __in DXGKARG_PRESENT *  pPresent,
     __in LJB_ALLOCATION *   SrcAllocation,
-    __in LJB_ALLOCATION *   DstAllocation
+    __in LJB_ALLOCATION *   DstAllocation,
+    __in UINT               SrcSegmentId,
+    __in UINT               DstSegmentId
     );
 
 static VOID
@@ -328,17 +330,19 @@ LJB_DXGK_PresentPostProcessing(
          * either the src or dst is our primary surface. Handle it!
          * If both allocation are pre-patched, operate on KmBuffer.
          */
-        if (SrcSegmentId != 0 && DstSegmentId != 0)
+        if (SrcSegmentId != 0 && DstSegmentId != 0 && pPresent->Flags.Blt)
         {
             LJB_DXGK_PresentDoCopyOnUsbMonitor(
                 Adapter,
                 pPresent,
                 SrcAllocation,
-                DstAllocation
+                DstAllocation,
+                SrcSegmentId,
+                DstSegmentId
                 );
         }
     }
-    else if (SrcDeviceSpecificAllocation != NULL && DstDeviceSpecificAllocation == NULL)
+    else if (SrcDeviceSpecificAllocation != NULL && DstDeviceSpecificAllocation == NULL && pPresent->Flags.Flip)
     {
         LJB_OPENED_ALLOCATION * CONST SrcOpenedAllocation = LJB_DXGK_FindOpenedAllocation(Adapter, SrcDeviceSpecificAllocation);
         LJB_ALLOCATION * CONST        SrcAllocation = SrcOpenedAllocation->MyAllocation;
@@ -353,7 +357,7 @@ LJB_DXGK_PresentPostProcessing(
             );
 
     }
-    else if (SrcDeviceSpecificAllocation == NULL && DstDeviceSpecificAllocation != NULL)
+    else if (SrcDeviceSpecificAllocation == NULL && DstDeviceSpecificAllocation != NULL && pPresent->Flags.ColorFill)
     {
         LJB_OPENED_ALLOCATION * CONST DstOpenedAllocation = LJB_DXGK_FindOpenedAllocation(Adapter, DstDeviceSpecificAllocation);
         LJB_ALLOCATION * CONST        DstAllocation = DstOpenedAllocation->MyAllocation;
@@ -374,7 +378,9 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
     __in LJB_ADAPTER *      Adapter,
     __in DXGKARG_PRESENT *  pPresent,
     __in LJB_ALLOCATION *   SrcAllocation,
-    __in LJB_ALLOCATION *   DstAllocation
+    __in LJB_ALLOCATION *   DstAllocation,
+    __in UINT               SrcSegmentId,
+    __in UINT               DstSegmentId
     )
 {
     LJB_STD_ALLOCATION_INFO* CONST  SrcStdAllocationInfo = SrcAllocation->StdAllocationInfo;
@@ -385,12 +391,16 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
     UINT CONST                      SrcHeight = SrcRect->bottom - SrcRect->top;
     UINT CONST                      DstWidth  = DstRect->right -  DstRect->left;
     UINT CONST                      DstHeight = DstRect->bottom - DstRect->top;
+    LJB_APERTURE_MAPPING *          SrcApertureMapping;
+    LJB_APERTURE_MAPPING *          DstApertureMapping;
     PVOID                           SrcBuffer;
     ULONG                           SrcPitch;
     PVOID                           DstBuffer;
     ULONG                           DstPitch;
     UINT                            i;
 
+    SrcApertureMapping = NULL;
+    DstApertureMapping = NULL;
     DBG_PRINT(Adapter, DBGLVL_PRESENT,
         (__FUNCTION__":\n"
         "pDmaBuffer(%p), DmaSize(0x%x), pDmaBufferPrivateData(0x%p), DmaBufferPrivateDataSize(0x%x)\n",
@@ -451,6 +461,25 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
     else if (SrcStdAllocationInfo->DriverData.StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHADOWSURFACE)
     {
         // Map shadow buffer from system memory to kernel space.
+        SrcApertureMapping = LJB_DXGK_FindApertureMapping(
+            Adapter,
+            SrcAllocation->hAllocation,
+            SrcSegmentId);
+        if (SrcApertureMapping == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": unable to find SrcApertureMapping?\n"));
+            return;
+        }
+        LJB_DXGK_OpenApertureMapping(Adapter, SrcApertureMapping);
+        SrcBuffer = SrcApertureMapping->MappedSystemMemory;
+        if (SrcBuffer == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": SrcApertureMapping->MappedSystemMemory is NULL?\n"));
+            LJB_DXGK_CloseApertureMapping(Adapter, SrcApertureMapping);
+            return;
+        }
         SrcPitch = SrcStdAllocationInfo->ShadowSurfaceData.Pitch;
     }
 
@@ -462,6 +491,25 @@ LJB_DXGK_PresentDoCopyOnUsbMonitor(
     else if (DstStdAllocationInfo->DriverData.StandardAllocationType == D3DKMDT_STANDARDALLOCATION_SHADOWSURFACE)
     {
         // Map shadow buffer from system memory to kernel space.
+        DstApertureMapping = LJB_DXGK_FindApertureMapping(
+            Adapter,
+            DstAllocation->hAllocation,
+            DstSegmentId);
+        if (DstApertureMapping == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": unable to find DstApertureMapping?\n"));
+            return;
+        }
+        LJB_DXGK_OpenApertureMapping(Adapter, DstApertureMapping);
+        DstBuffer = DstApertureMapping->MappedSystemMemory;
+        if (DstBuffer == NULL)
+        {
+            DBG_PRINT(Adapter, DBGLVL_ERROR,
+                ("?" __FUNCTION__": DstApertureMapping->MappedSystemMemory is NULL?\n"));
+            LJB_DXGK_CloseApertureMapping(Adapter, DstApertureMapping);
+            return;
+        }
         DstPitch = SrcStdAllocationInfo->ShadowSurfaceData.Pitch;
     }
 

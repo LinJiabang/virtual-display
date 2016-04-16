@@ -108,6 +108,9 @@ LJB_DXGK_AddDevice(
     InitializeListHead(&Adapter->OpenedAllocationListHead);
     KeInitializeSpinLock(&Adapter->OpenedAllocationListLock);
 
+    InitializeListHead(&Adapter->ApertureMappingListHead);
+    KeInitializeSpinLock(&Adapter->ApertureMappingListLock);
+
     KeAcquireSpinLock(&GlobalDriverData.ClientAdapterListLock, &oldIrql);
     InsertTailList(&GlobalDriverData.ClientAdapterListHead, &Adapter->ListEntry);
     KeReleaseSpinLock(&GlobalDriverData.ClientAdapterListLock, oldIrql);

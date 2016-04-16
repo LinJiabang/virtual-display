@@ -171,7 +171,7 @@ LJB_DXGK_GetStdAllocationDrvDataPostProcessing(
 }
 
 LJB_STD_ALLOCATION_INFO *
-LJB_FindStdAllocationInfo(
+LJB_DXGK_FindStdAllocationInfo(
     __in LJB_ADAPTER *  Adapter,
     __in PVOID          pAllocationPrivateDriverData,
     __in UINT           AllocationPrivateDriverDataSize

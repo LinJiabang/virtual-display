@@ -239,6 +239,11 @@ typedef struct _LJB_ADAPTER
     PVOID                                   hAdapter;
     LJB_CLIENT_DRIVER_DATA *                ClientDriverData;
     ULONG                                   DebugMask;
+    
+    /*
+     * Test purpose only
+     */
+    BOOLEAN                                 FakeMonitorEnabled;
 
     /*
      * UserModeDriverName hacking
@@ -304,6 +309,12 @@ typedef struct _LJB_ADAPTER
     LONG                                    StdAllocationInfoListCount;
 
     /*
+     * Aperture Mapping entry
+     */
+    LIST_ENTRY                              ApertureMappingListHead;
+    KSPIN_LOCK                              ApertureMappingListLock;
+    LONG                                    ApertureMappingListCount;
+    /*
      * track power component Fstate
      */
     UINT                                    FState[MAX_NUM_OF_POWER_COMPONENTS];
@@ -362,10 +373,10 @@ typedef struct _LJB_CONTEXT
 
 typedef struct _LJB_STD_ALLOCATION_INFO
 {
-    LIST_ENTRY              ListEntry;
+    LIST_ENTRY                              ListEntry;
     DXGKARG_GETSTANDARDALLOCATIONDRIVERDATA DriverData;
-    D3DKMDT_SHAREDPRIMARYSURFACEDATA    PrimarySurfaceData;
-    D3DKMDT_SHADOWSURFACEDATA           ShadowSurfaceData;
+    D3DKMDT_SHAREDPRIMARYSURFACEDATA        PrimarySurfaceData;
+    D3DKMDT_SHADOWSURFACEDATA               ShadowSurfaceData;
 } LJB_STD_ALLOCATION_INFO;
 
 extern CONST CHAR * StdAllocationTypeString[];
@@ -395,6 +406,23 @@ typedef struct _LJB_OPENED_ALLOCATION
     HANDLE                              hAllocation;
     LJB_ALLOCATION *                    MyAllocation;
 } LJB_OPENED_ALLOCATION;
+
+typedef struct _LJB_APERTURE_MAPPING
+{
+    LIST_ENTRY                          ListEntry;
+    HANDLE                              hDevice;
+    HANDLE                              hAllocation;
+    UINT                                SegmentId;
+    SIZE_T                              OffsetInPages;
+    SIZE_T                              NumberOfPages;
+    PMDL                                pMdl;
+    DXGK_MAPAPERTUREFLAGS               Flags;
+    ULONG                               MdlOffset;
+
+    LONG                                ReferenceCount;
+    PMDL                                PartialMdl;
+    PVOID                               MappedSystemMemory;
+}   LJB_APERTURE_MAPPING;
 
 typedef struct _LJB_MONITOR_NODE
 {
@@ -554,7 +582,7 @@ LJB_DXGK_FindContext(
     );
 
 LJB_STD_ALLOCATION_INFO *
-LJB_FindStdAllocationInfo(
+LJB_DXGK_FindStdAllocationInfo(
     __in LJB_ADAPTER *  Adapter,
     __in PVOID          pAllocationPrivateDriverData,
     __in UINT           AllocationPrivateDriverDataSize
@@ -570,6 +598,25 @@ LJB_OPENED_ALLOCATION *
 LJB_DXGK_FindOpenedAllocation(
     __in LJB_ADAPTER*   Adapter,
     __in HANDLE         hDeviceSpecificAllocation
+    );
+
+LJB_APERTURE_MAPPING *
+LJB_DXGK_FindApertureMapping(
+    __in LJB_ADAPTER *      Adapter,
+    __in PVOID              hAllocation,
+    __in UINT               SegmentId
+    );
+
+VOID
+LJB_DXGK_OpenApertureMapping(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_APERTURE_MAPPING * ApertureMapping
+    );
+
+VOID
+LJB_DXGK_CloseApertureMapping(
+    __in LJB_ADAPTER *          Adapter,
+    __in LJB_APERTURE_MAPPING * ApertureMapping
     );
 
 PVOID
