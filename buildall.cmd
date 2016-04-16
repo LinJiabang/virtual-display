@@ -6,11 +6,13 @@ IF "%WindowsSDKDir%" == "" (
 )
 
 nmake2msbuild.exe proxy-wddm\kmd\sources -NoPackageProject -NoSolution
-
 msbuild proxy-wddm\kmd\ljb_proxykmd.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
 msbuild proxy-wddm\kmd\ljb_proxykmd.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
 msbuild proxy-wddm\kmd\ljb_proxykmd.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
 msbuild proxy-wddm\kmd\ljb_proxykmd.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
+
+REM nmake2msbuild.exe proxy-wddm\test\sources -NoPackageProject -NoSolution
+msbuild proxy-wddm\test\ljb_monitor_test.vcxproj /p:Configuration=Release;Platform=Win32
 
 if "%BIN%"== "" set BIN=.\bin
 
@@ -45,6 +47,9 @@ REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               
 REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x64\ljb_umd.dll             %BIN%\package\fre\x64\ljb_umd.dll
 REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %BIN%\package\fre\x86\ljb_umd32.dll
 REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.dll             %BIN%\package\fre\x64\ljb_umd32.dll
+
+copy proxy-wddm\test\Release\x86\ljb_monitor_test.exe   %BIN%\package\
+
 
 REM
 REM Prepare PDB
