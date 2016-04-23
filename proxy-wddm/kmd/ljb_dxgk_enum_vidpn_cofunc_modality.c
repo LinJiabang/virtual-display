@@ -74,7 +74,7 @@ LJB_DXGK_EnumVidPnCofuncModality(
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?"__FUNCTION__": no MyVidPn allocated.\n"));
-        return STATUS_INSUFFICIENT_RESOURCES;
+        return STATUS_NO_MEMORY;
     }
 
     ntStatus = STATUS_SUCCESS;

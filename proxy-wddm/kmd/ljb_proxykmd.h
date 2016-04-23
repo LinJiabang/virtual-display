@@ -170,8 +170,8 @@ typedef DXGK_INTIALIZE *PFN_DXGK_INITIALIZE;
 
 typedef struct _LJB_DRIVER_BINDING_TAG
 {
-    LIST_ENTRY                              ListEntry;
-    ULONG                                   DxgkAddDeviceTag;
+    LIST_ENTRY                          ListEntry;
+    ULONG                               DxgkAddDeviceTag;
 } LJB_DRIVER_BINDING_TAG;
 
 typedef struct _LJB_GLOBAL_DRIVER_DATA
@@ -211,129 +211,129 @@ extern LJB_GLOBAL_DRIVER_DATA   GlobalDriverData;
 
 typedef struct _LJB_CLIENT_DRIVER_DATA
 {
-    LIST_ENTRY                              ListEntry;
-    DRIVER_OBJECT *                         DriverObject;
-    UNICODE_STRING                          RegistryPath;
-    WCHAR                                   RegistryPathBuffer[MAX_PATH];
-    ULONG                                   DxgkAddDeviceTag;
-    LJB_DRIVER_BINDING_TAG *                DriverBindingTag;
-    LONG                                    ReferenceCount;
-    DRIVER_INITIALIZATION_DATA              DriverInitData;
+    LIST_ENTRY                          ListEntry;
+    DRIVER_OBJECT *                     DriverObject;
+    UNICODE_STRING                      RegistryPath;
+    WCHAR                               RegistryPathBuffer[MAX_PATH];
+    ULONG                               DxgkAddDeviceTag;
+    LJB_DRIVER_BINDING_TAG *            DriverBindingTag;
+    LONG                                ReferenceCount;
+    DRIVER_INITIALIZATION_DATA          DriverInitData;
 }   LJB_CLIENT_DRIVER_DATA;
 
 typedef struct _LJB_ENGINE_INFO
 {
-    ULONGLONG                               DependentNodeOrdinalMask;
-    DXGK_ENGINESTATUS                       EngineStatus;
-    ULONG                                   LastSubmittedFenceId;
-    ULONG                                   LastCompletedFenceId;
-    ULONG                                   LastPreemptedFenceId;
-    ULONG                                   LastAbortedFenceId;
-    DXGKARG_CALIBRATEGPUCLOCK               CalibrateGpuClock;
+    ULONGLONG                           DependentNodeOrdinalMask;
+    DXGK_ENGINESTATUS                   EngineStatus;
+    ULONG                               LastSubmittedFenceId;
+    ULONG                               LastCompletedFenceId;
+    ULONG                               LastPreemptedFenceId;
+    ULONG                               LastAbortedFenceId;
+    DXGKARG_CALIBRATEGPUCLOCK           CalibrateGpuClock;
 }   LJB_ENGINE_INFO;
 
 typedef struct _LJB_ADAPTER
 {
-    LIST_ENTRY                              ListEntry;
-    PDEVICE_OBJECT                          PhysicalDeviceObject;
-    PVOID                                   hAdapter;
-    LJB_CLIENT_DRIVER_DATA *                ClientDriverData;
-    ULONG                                   DebugMask;
+    LIST_ENTRY                          ListEntry;
+    PDEVICE_OBJECT                      PhysicalDeviceObject;
+    PVOID                               hAdapter;
+    LJB_CLIENT_DRIVER_DATA *            ClientDriverData;
+    ULONG                               DebugMask;
     
     /*
      * Test purpose only
      */
-    BOOLEAN                                 FakeMonitorEnabled;
+    BOOLEAN                             FakeMonitorEnabled;
 
     /*
      * UserModeDriverName hacking
      */
-    KEY_NAME_INFORMATION                    DriverKeyNameInfo;
-    WCHAR                                   DriverKeyNameBuffer0[MAX_PATH];
-    WCHAR *                                 DriverKeyNameBuffer;
+    KEY_NAME_INFORMATION                DriverKeyNameInfo;
+    WCHAR                               DriverKeyNameBuffer0[MAX_PATH];
+    WCHAR *                             DriverKeyNameBuffer;
 
-    WCHAR                                   UserModeDriverName[MAX_PATH];
-    WCHAR                                   UserModeDriverNameWow[MAX_PATH];
-    ULONG                                   UserModeDriverNameSize;
-    ULONG                                   UserModeDriverNameWowSize;
+    WCHAR                               UserModeDriverName[MAX_PATH];
+    WCHAR                               UserModeDriverNameWow[MAX_PATH];
+    ULONG                               UserModeDriverNameSize;
+    ULONG                               UserModeDriverNameWowSize;
 
     /*
      * information obtained from DxgkDdiStartDevice
      */
-    DXGK_START_INFO                         DxgkStartInfo;
-    DXGKRNL_INTERFACE                       DxgkInterface;
-    ULONG                                   NumberOfVideoPresentSources;
-    ULONG                                   NumberOfChildren;
-    USHORT                                  PciVendorId;
+    DXGK_START_INFO                     DxgkStartInfo;
+    DXGKRNL_INTERFACE                   DxgkInterface;
+    ULONG                               NumberOfVideoPresentSources;
+    ULONG                               NumberOfChildren;
+    USHORT                              PciVendorId;
 
     /*
      * USB MONITOR PNP bookkeeping stuff
      */
-    LIST_ENTRY                              MonitorNodeListHead;
-    LONG                                    MonitorNodeListCount;
-    KSPIN_LOCK                              MonitorNodeListLock;
-    PVOID                                   NotificationHandle;
-    ULONG                                   MonitorNodeMask;
+    LIST_ENTRY                          MonitorNodeListHead;
+    LONG                                MonitorNodeListCount;
+    KSPIN_LOCK                          MonitorNodeListLock;
+    PVOID                               NotificationHandle;
+    ULONG                               MonitorNodeMask;
 
     /*
      * information obtained from DxgkDdiQueryChildRelations/DxgkDdiQueryChildStatus
      */
-    DXGK_CHILD_DESCRIPTOR                   ChildRelations[MAX_NUM_OF_INBOX_MONITOR];
-    BOOLEAN                                 ChildConnectionStatus[MAX_NUM_OF_INBOX_MONITOR];
-    D3DDDI_VIDEO_PRESENT_TARGET_ID          UsbTargetIdBase;
-    ULONG                                   ActualNumberOfChildren;
+    DXGK_CHILD_DESCRIPTOR               ChildRelations[MAX_NUM_OF_INBOX_MONITOR];
+    BOOLEAN                             ChildConnectionStatus[MAX_NUM_OF_INBOX_MONITOR];
+    D3DDDI_VIDEO_PRESENT_TARGET_ID      UsbTargetIdBase;
+    ULONG                               ActualNumberOfChildren;
 
     /*
      * information obtained from DxgkDdiQueryAdapterInfo
      */
-    DXGK_DRIVERCAPS                         DriverCaps;
-    DXGK_QUERYSEGMENTOUT                    SegmentOut;
-    DXGK_SEGMENTDESCRIPTOR                  SegmentDescriptors[MAX_NUM_OF_SEGMENT_DESC];
+    DXGK_DRIVERCAPS                     DriverCaps;
+    DXGK_QUERYSEGMENTOUT                SegmentOut;
+    DXGK_SEGMENTDESCRIPTOR              SegmentDescriptors[MAX_NUM_OF_SEGMENT_DESC];
 
     /*
      * allocations created by DxgkDdiCreateAllocations
      */
-    LIST_ENTRY                              AllocationListHead;
-    KSPIN_LOCK                              AllocationListLock;
-    LONG                                    AllocationListCount;
+    LIST_ENTRY                          AllocationListHead;
+    KSPIN_LOCK                          AllocationListLock;
+    LONG                                AllocationListCount;
 
-    LIST_ENTRY                              OpenedAllocationListHead;
-    KSPIN_LOCK                              OpenedAllocationListLock;
-    LONG                                    OpenedAllocationListCount;
+    LIST_ENTRY                          OpenedAllocationListHead;
+    KSPIN_LOCK                          OpenedAllocationListLock;
+    LONG                                OpenedAllocationListCount;
 
     /*
      * Standard allocation Data
      */
-    LIST_ENTRY                              StdAllocationInfoListHead;
-    KSPIN_LOCK                              StdAllocationInfoListLock;
-    LONG                                    StdAllocationInfoListCount;
+    LIST_ENTRY                          StdAllocationInfoListHead;
+    KSPIN_LOCK                          StdAllocationInfoListLock;
+    LONG                                StdAllocationInfoListCount;
 
     /*
      * Aperture Mapping entry
      */
-    LIST_ENTRY                              ApertureMappingListHead;
-    KSPIN_LOCK                              ApertureMappingListLock;
-    LONG                                    ApertureMappingListCount;
+    LIST_ENTRY                          ApertureMappingListHead;
+    KSPIN_LOCK                          ApertureMappingListLock;
+    LONG                                ApertureMappingListCount;
     /*
      * track power component Fstate
      */
-    UINT                                    FState[MAX_NUM_OF_POWER_COMPONENTS];
+    UINT                                FState[MAX_NUM_OF_POWER_COMPONENTS];
 
     /*
      * Engine information
      */
-    LJB_ENGINE_INFO                         EngineInfo[MAX_NUM_OF_NODE][MAX_NUM_OF_ENGINE];
-    DXGKARG_GETNODEMETADATA                 NodeMetaData[MAX_NUM_OF_NODE];
+    LJB_ENGINE_INFO                     EngineInfo[MAX_NUM_OF_NODE][MAX_NUM_OF_ENGINE];
+    DXGKARG_GETNODEMETADATA             NodeMetaData[MAX_NUM_OF_NODE];
 
     /*
      * VidPn related
      */
-    BOOLEAN                                 FirstVidPnArrived;
-    DXGKARG_COMMITVIDPN                     LastCommitVidPn;
-    SIZE_T                                  NumPathsCommitted;
-    D3DKMDT_VIDPN_PRESENT_PATH              PathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
-    SIZE_T                                  PrevNumPathsCommitted;
-    D3DKMDT_VIDPN_PRESENT_PATH              PrevPathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
+    BOOLEAN                             FirstVidPnArrived;
+    DXGKARG_COMMITVIDPN                 LastCommitVidPn;
+    SIZE_T                              NumPathsCommitted;
+    D3DKMDT_VIDPN_PRESENT_PATH          PathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
+    SIZE_T                              PrevNumPathsCommitted;
+    D3DKMDT_VIDPN_PRESENT_PATH          PrevPathsCommitted[MAX_NUM_OF_INBOX_MONITOR+MAX_NUM_OF_USB_MONITOR];
 
 }   LJB_ADAPTER;
 
