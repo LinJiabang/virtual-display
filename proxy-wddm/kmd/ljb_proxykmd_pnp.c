@@ -18,6 +18,13 @@
 #pragma alloc_text (PAGE, LJB_PROXYKMD_CloseTargetDevice)
 #endif
 
+static
+VOID
+LJB_MonitorNodeGetEdid(
+    __in LJB_ADAPTER *      Adapter,
+    __in LJB_MONITOR_NODE * MonitorNode
+    );
+
 NTSTATUS
 LJB_PROXYKMD_PnpStart(
     __in LJB_ADAPTER *      Adapter
@@ -646,6 +653,11 @@ LJB_PROXYKMD_OpenTargetDevice(
         ));
 
     /*
+     * Get EDID and process EDID
+     */
+    LJB_MonitorNodeGetEdid(Adapter, MonitorNode);
+
+    /*
      * Calculate ChildUid
      */
     AssignChildUid(MonitorNode);
@@ -766,4 +778,26 @@ LJB_DereferenceMonitorNode(
     )
 {
     InterlockedDecrement(&MonitorNode->ReferenceCount);
+}
+
+static
+VOID
+LJB_MonitorNodeGetEdid(
+    __in LJB_ADAPTER *      Adapter,
+    __in LJB_MONITOR_NODE * MonitorNode
+    )
+{
+    LJB_MONITOR_INTERFACE* CONST    MonitorInterface = &MonitorNode->MonitorInterface;
+    NTSTATUS                        myStatus;
+
+    UNREFERENCED_PARAMETER(Adapter);
+    myStatus = (*MonitorInterface->pfnGenericIoctl)(
+        MonitorInterface->Context,
+        LJB_GENERIC_IOCTL_GET_EDID,
+        NULL,
+        0,
+        MonitorNode->Edid,
+        LJB_DEFAULT_EDID_DATA_SIZE,
+        NULL
+        );
 }

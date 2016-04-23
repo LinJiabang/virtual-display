@@ -21,6 +21,15 @@ LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
     IN_CONST_PDXGKARG_ENUMVIDPNCOFUNCMODALITY_CONST pEnumCofuncModality
     );
 
+static
+VOID
+LJB_AddSourceModesFromMonitor(
+    __in CONST DXGK_VIDPNSOURCEMODESET_INTERFACE*   pVidPnSourceModeSetInterface,
+    __in D3DKMDT_HVIDPNSOURCEMODESET                hVidPnSourceModeSet,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID             VidPnSourceId,
+    __in LJB_MONITOR_NODE*                          MonitorNode
+    );
+
 /*
  * Function: LJB_DXGK_EnumVidPnCofuncModality
  *
@@ -137,6 +146,7 @@ LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
     CONST DXGK_VIDPNTARGETMODESET_INTERFACE*    pVidPnTargetModeSetInterface = NULL;
     CONST D3DKMDT_VIDPN_SOURCE_MODE*            pVidPnPinnedSourceModeInfo = NULL;
     CONST D3DKMDT_VIDPN_TARGET_MODE*            pVidPnPinnedTargetModeInfo = NULL;
+    LJB_MONITOR_NODE *                          MonitorNode;
     NTSTATUS                                    ntStatus;
     NTSTATUS                                    TempStatus;
     UINT                                        i;
@@ -202,10 +212,14 @@ LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
                     break;
                 }
 
-                // Add the appropriate modes to the source mode set
-                {
-                    //ntStatus = AddSingleSourceMode(pVidPnSourceModeSetInterface, hVidPnSourceModeSet, ThisPath->VidPnSourceId);
-                }
+                MonitorNode = LJB_GetMonitorNodeFromChildUid(Adapter, ThisPath->VidPnTargetId);
+                LJB_AddSourceModesFromMonitor(
+                    pVidPnSourceModeSetInterface,
+                    hVidPnSourceModeSet,
+                    ThisPath->VidPnSourceId,
+                    MonitorNode
+                    );
+                LJB_DereferenceMonitorNode(MonitorNode);
 
                 if (!NT_SUCCESS(ntStatus))
                 {
@@ -413,4 +427,48 @@ LJB_DXGK_EnumVidPnCofuncModalityPostProcessing(
     }
 
     return ntStatus;
+}
+
+static
+VOID
+LJB_AddSourceModesFromMonitor(
+    __in CONST DXGK_VIDPNSOURCEMODESET_INTERFACE*   pVidPnSourceModeSetInterface,
+    __in D3DKMDT_HVIDPNSOURCEMODESET                hVidPnSourceModeSet,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID             VidPnSourceId,
+    __in LJB_MONITOR_NODE *                         MonitorNode
+    )
+{
+    UINT    i;
+
+    UNREFERENCED_PARAMETER(VidPnSourceId);
+
+    for (i = 0; i < MonitorNode->NumModes; i++)
+    {
+        D3DKMDT_VIDPN_SOURCE_MODE *     SourceMode;
+        D3DKMDT_MONITOR_SOURCE_MODE*    MonitorMode;
+        NTSTATUS                        ntStatus;
+
+        ntStatus = (*pVidPnSourceModeSetInterface->pfnCreateNewModeInfo)(
+            hVidPnSourceModeSet,
+            &SourceMode
+            );
+        if (!NT_SUCCESS(ntStatus))
+            break;
+
+        MonitorMode = &MonitorNode->MonitorModes[i];
+        SourceMode->Type = D3DKMDT_RMT_GRAPHICS;
+        SourceMode->Format.Graphics.PrimSurfSize = MonitorMode->VideoSignalInfo.ActiveSize;
+        SourceMode->Format.Graphics.VisibleRegionSize = MonitorMode->VideoSignalInfo.ActiveSize;
+        SourceMode->Format.Graphics.Stride = MonitorMode->VideoSignalInfo.ActiveSize.cx << 2;
+        SourceMode->Format.Graphics.PixelFormat = D3DDDIFMT_A8R8G8B8;
+        SourceMode->Format.Graphics.ColorBasis = MonitorMode->ColorBasis;
+        SourceMode->Format.Graphics.PixelValueAccessMode = D3DKMDT_PVAM_DIRECT;
+
+        ntStatus = (*pVidPnSourceModeSetInterface->pfnAddMode)(
+            hVidPnSourceModeSet,
+            SourceMode
+            );
+        if (!NT_SUCCESS(ntStatus))
+            break;
+    }
 }

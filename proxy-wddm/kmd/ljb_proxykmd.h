@@ -239,7 +239,7 @@ typedef struct _LJB_ADAPTER
     PVOID                               hAdapter;
     LJB_CLIENT_DRIVER_DATA *            ClientDriverData;
     ULONG                               DebugMask;
-    
+
     /*
      * Test purpose only
      */
@@ -424,19 +424,24 @@ typedef struct _LJB_APERTURE_MAPPING
     PVOID                               MappedSystemMemory;
 }   LJB_APERTURE_MAPPING;
 
+#define MAX_NUM_MONITOR_MODES           32
 typedef struct _LJB_MONITOR_NODE
 {
-    LIST_ENTRY              ListEntry;
-    LJB_ADAPTER *           Adapter;
-    UNICODE_STRING          SymbolicLink;
-    WCHAR                   NameBuffer[MAX_PATH];
-    FILE_OBJECT *           FileObject;
-    DEVICE_OBJECT *         FDO;
-    DEVICE_OBJECT *         PDO;
-    PVOID                   NotificationHandle;
-    ULONG                   ChildUid;
-    LJB_MONITOR_INTERFACE   MonitorInterface;
-    LONG                    ReferenceCount;
+    LIST_ENTRY                  ListEntry;
+    LJB_ADAPTER *               Adapter;
+    UNICODE_STRING              SymbolicLink;
+    WCHAR                       NameBuffer[MAX_PATH];
+    FILE_OBJECT *               FileObject;
+    DEVICE_OBJECT *             FDO;
+    DEVICE_OBJECT *             PDO;
+    PVOID                       NotificationHandle;
+    ULONG                       ChildUid;
+    LJB_MONITOR_INTERFACE       MonitorInterface;
+    LONG                        ReferenceCount;
+    UCHAR                       Edid[LJB_DEFAULT_EDID_DATA_SIZE];
+
+    SIZE_T                      NumModes;
+    D3DKMDT_MONITOR_SOURCE_MODE MonitorModes[MAX_NUM_MONITOR_MODES];
 } LJB_MONITOR_NODE;
 
 /*

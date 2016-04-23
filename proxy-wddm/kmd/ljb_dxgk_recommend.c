@@ -14,6 +14,12 @@
 #pragma alloc_text (PAGE, LJB_DXGK_RecommendVidPnTopology)
 #endif
 
+static VOID
+LJB_GetMonitorModes(
+    __in LJB_ADAPTER *                              Adapter,
+    IN_CONST_PDXGKARG_RECOMMENDMONITORMODES_CONST   pRecommendMonitorModes
+    );
+
 /*
  * Function: LJB_DXGK_RecommendMonitorModes
  *
@@ -54,7 +60,10 @@ LJB_DXGK_RecommendMonitorModes(
      * if the monitor is ours, just return STATUS_SUCCESS;
      */
     if (VidPnTargetId >= Adapter->UsbTargetIdBase)
+    {
+        LJB_GetMonitorModes(Adapter, pRecommendMonitorModes);
         return STATUS_SUCCESS;
+    }
 
     ntStatus = (*DriverInitData->DxgkDdiRecommendMonitorModes)(
         hAdapter,
@@ -67,6 +76,85 @@ LJB_DXGK_RecommendMonitorModes(
     }
 
     return ntStatus;
+}
+
+static VOID
+LJB_GetMonitorModes(
+    __in LJB_ADAPTER *                              Adapter,
+    IN_CONST_PDXGKARG_RECOMMENDMONITORMODES_CONST   pRecommendMonitorModes
+    )
+{
+    D3DDDI_VIDEO_PRESENT_TARGET_ID CONST                VidPnTargetId = pRecommendMonitorModes->VideoPresentTargetId;
+    D3DKMDT_HMONITORSOURCEMODESET CONST                 hMonitorSourceModeSet = pRecommendMonitorModes->hMonitorSourceModeSet;
+    CONST DXGK_MONITORSOURCEMODESET_INTERFACE* CONST    pMonitorSourceModeSetInterface = pRecommendMonitorModes->pMonitorSourceModeSetInterface;
+    LJB_MONITOR_NODE *                                  MonitorNode;
+    UINT                                                i;
+    D3DKMDT_MONITOR_SOURCE_MODE *                       thisMode;
+    D3DKMDT_MONITOR_SOURCE_MODE *                       prevMode;
+
+    MonitorNode = LJB_GetMonitorNodeFromChildUid(Adapter, VidPnTargetId);
+    (*pMonitorSourceModeSetInterface->pfnGetNumModes)(
+        hMonitorSourceModeSet,
+        &MonitorNode->NumModes
+        );
+    DBG_PRINT(Adapter, DBGLVL_FLOW,
+        (__FUNCTION__": NumModes = %u\n",
+        MonitorNode->NumModes
+        ));
+
+    prevMode = NULL;
+    for (i = 0; i < MonitorNode->NumModes; i++)
+    {
+        if (i == 0)
+        {
+            (*pMonitorSourceModeSetInterface->pfnAcquireFirstModeInfo)(
+                hMonitorSourceModeSet,
+                &thisMode
+                );
+            prevMode = thisMode;
+        }
+        else
+        {
+            (*pMonitorSourceModeSetInterface->pfnAcquireNextModeInfo)(
+                hMonitorSourceModeSet,
+                prevMode,
+                &thisMode
+                );
+            (*pMonitorSourceModeSetInterface->pfnReleaseModeInfo)(
+                hMonitorSourceModeSet,
+                prevMode
+                );
+            prevMode = thisMode;
+        }
+
+        MonitorNode->MonitorModes[i] = *thisMode;
+
+        DBG_PRINT(Adapter, DBGLVL_FLOW,
+            (__FUNCTION__
+            ": Modes[%u] = Id(%u)/Standard(%u)/TotalSize(%u,%u)/ActiveSize(%u,%u)/VFreq(%u/%u)/PixelRate(%u)/Preference(%u)\n",
+            i,
+            thisMode->Id,
+            thisMode->VideoSignalInfo.VideoStandard,
+            thisMode->VideoSignalInfo.TotalSize.cx,
+            thisMode->VideoSignalInfo.TotalSize.cy,
+            thisMode->VideoSignalInfo.ActiveSize.cx,
+            thisMode->VideoSignalInfo.ActiveSize.cy,
+            thisMode->VideoSignalInfo.VSyncFreq.Numerator,
+            thisMode->VideoSignalInfo.VSyncFreq.Denominator,
+            thisMode->VideoSignalInfo.PixelRate,
+            thisMode->Preference
+            ));
+    }
+
+    if (prevMode != NULL)
+    {
+        (*pMonitorSourceModeSetInterface->pfnReleaseModeInfo)(
+            hMonitorSourceModeSet,
+            prevMode
+            );
+    }
+
+    LJB_DereferenceMonitorNode(MonitorNode);
 }
 
 /*

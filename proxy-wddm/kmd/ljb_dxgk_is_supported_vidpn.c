@@ -70,9 +70,9 @@ LJB_DXGK_IsSupportedVidPn(
     if (pIsSupportedVidPnArg->hDesiredVidPn == NULL)
     {
         return (*DriverInitData->DxgkDdiIsSupportedVidPn)(
-        hAdapter,
-        pIsSupportedVidPnArg
-        );
+            hAdapter,
+            pIsSupportedVidPnArg
+            );
     }
 
     MyVidPn = LJB_VIDPN_CreateVidPn(Adapter, pIsSupportedVidPnArg->hDesiredVidPn);
@@ -80,7 +80,7 @@ LJB_DXGK_IsSupportedVidPn(
     {
         DBG_PRINT(Adapter, DBGLVL_ERROR,
             ("?"__FUNCTION__": no MyVidPn allocated.\n"));
-        return STATUS_INSUFFICIENT_RESOURCES;
+        return STATUS_NO_MEMORY;
     }
 
     ntStatus = STATUS_SUCCESS;
