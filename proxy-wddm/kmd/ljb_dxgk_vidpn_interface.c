@@ -259,6 +259,29 @@ LJB_VIDPN_GetNumberOfInboxTarget(
     return NumOfInboxTarget;
 }
 
+UINT
+LJB_VIDPN_GetNumberOfInboxTargetFromSource(
+    __in LJB_VIDPN *                    MyVidPn,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    )
+{
+    LJB_ADAPTER * CONST Adapter = MyVidPn->Adapter;
+    UINT                i;
+    UINT                NumOfInboxTarget;
+
+    NumOfInboxTarget = 0;
+    for (i = 0; i < MyVidPn->NumPaths; i++)
+    {
+        D3DKMDT_VIDPN_PRESENT_PATH * CONST Path = MyVidPn->Paths + i;
+
+        if (Path->VidPnSourceId != VidPnSourceId)
+            continue;
+        if (Path->VidPnTargetId < Adapter->UsbTargetIdBase)
+            NumOfInboxTarget++;
+    }
+    return NumOfInboxTarget;
+}
+
 /*
  * Name : LJB_DXGKCB_QueryVidPnInterface
  *

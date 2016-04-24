@@ -70,6 +70,11 @@ UINT
 LJB_VIDPN_GetNumberOfInboxTarget(
     __in LJB_VIDPN *    MyVidPn
     );
+UINT
+LJB_VIDPN_GetNumberOfInboxTargetFromSource(
+    __in LJB_VIDPN *                    MyVidPn,
+    __in D3DDDI_VIDEO_PRESENT_SOURCE_ID VidPnSourceId
+    );
 
 NTSTATUS
 LJB_DXGKCB_QueryVidPnInterface(
