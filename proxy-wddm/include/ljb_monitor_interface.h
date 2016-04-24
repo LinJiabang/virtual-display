@@ -138,4 +138,36 @@ typedef struct _LJB_PRIMARY_SURFACE
  */
 #define LJB_GENERIC_IOCTL_SET_VIDPN_SOURCE_VISIBLE      5
 
+/*
+ * FUNCTION:
+ *  LJB_GENERIC_IOCTL_SET_POINTER_POSITION
+ *
+ * Parameters:
+ *  InputBuffer = pointer to DXGKARG_SETPOINTERPOSITION
+ *  InputBufferSize = sizeof(DXGKARG_SETPOINTERPOSITION)
+ *  OutputBuffer = None
+ *  OutputBufferSize = 0
+ *  BytesReturned = don't care.
+ *
+ * Desciption:
+ *  Notifies the USB monitor driver about the pointer position.
+ */
+#define LJB_GENERIC_IOCTL_SET_POINTER_POSITION          6
+
+/*
+ * FUNCTION:
+ *  LJB_GENERIC_IOCTL_SET_POINTER_SHAPE
+ *
+ * Parameters:
+ *  InputBuffer = pointer to DXGKARG_SETPOINTERSHAPE
+ *  InputBufferSize = sizeof(DXGKARG_SETPOINTERSHAPE)
+ *  OutputBuffer = None
+ *  OutputBufferSize = 0
+ *  BytesReturned = don't care.
+ *
+ * Desciption:
+ *  Notifies the USB monitor driver about the pointer shape.
+ */
+#define LJB_GENERIC_IOCTL_SET_POINTER_SHAPE             7
+
 #endif
