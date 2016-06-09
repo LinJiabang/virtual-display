@@ -73,16 +73,18 @@ REM
 INF2CAT /uselocaltime /drv:%BIN%\package\chk /os:7_X86,7_X64,8_X86,8_X64,6_3_X86,6_3_X64,10_X86,10_X64
 INF2CAT /uselocaltime /drv:%BIN%\package\fre /os:7_X86,7_X64,8_X86,8_X64,6_3_X86,6_3_X64,10_X86,10_X64
 
-signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\chk\*.cat
-signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\chk\x86\*.sys
-REM signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\chk\x86\*.dll
-signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\chk\x64\*.sys
-REM signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\chk\x64\*.dll
+set TEST_SIGN=signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll
 
-signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\fre\*.cat
-signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\fre\x86\*.sys
-REM signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\fre\x86\*.dll
-signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\fre\x64\*.sys
-REM signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll %BIN%\package\fre\x64\*.dll
+%TEST_SIGN% %OUTPUT%\package\chk\*.cat
+%TEST_SIGN% %OUTPUT%\package\chk\x86\*.sys
+%TEST_SIGN% %OUTPUT%\package\chk\x64\*.sys
+
+%TEST_SIGN% %OUTPUT%\package\fre\*.cat
+%TEST_SIGN% %OUTPUT%\package\fre\x86\*.sys
+%TEST_SIGN% %OUTPUT%\package\fre\x64\*.sys
+
+pushd   virtual_monitor
+call    buildall_wdk10.cmd
+popd
 
 ENDLOCAL

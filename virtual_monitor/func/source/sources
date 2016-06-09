@@ -1,0 +1,34 @@
+TARGETNAME=vmon_func
+TARGETTYPE=DRIVER
+
+
+KMDF_VERSION_MAJOR=1
+
+INF_NAME=vmon_func
+
+INCLUDES = $(INCLUDES);..\..\include;
+
+NTTARGETFILE1=$(OBJ_PATH)\$(O)\$(INF_NAME).inf
+
+PASS1_BINPLACE=$(NTTARGETFILE1)
+
+NTTARGETFILE0 = $(OBJ_PATH)\$(O)\vmon_func.bmf
+
+#
+# List of source files to compile.
+#
+SOURCES=                                    \
+            ljb_vmon.rc                     \
+            ljb_vmon_generic_ioctl.c        \
+            ljb_vmon_guid.c                 \
+            ljb_vmon_io_in_caller_ctx.c     \
+            ljb_vmon_io_stop.c              \
+            ljb_vmon_internal_ioctl.c       \
+            ljb_vmon_driver_entry.c                 \
+            ljb_vmon_power.c                \
+            ljb_vmon_wmi.c
+
+C_DEFINES=
+
+TARGET_DESTINATION=wdf
+

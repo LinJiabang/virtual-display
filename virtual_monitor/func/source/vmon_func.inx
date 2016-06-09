@@ -1,0 +1,105 @@
+;/*++
+;
+;Copyright (c) Microsoft Corporation.  All rights reserved.
+;
+;Module Name:
+;
+;    TOASTER.INF
+;
+;Abstract:
+;    INF file for installing toaster device drivers
+;    NOTE: ClassInstall32 section gets executed only if the Toaster
+;    doesn't exist in the registry -
+;    HKLM\System\CurrentControlSet\Control\Class\{B85B7C50-6A01-11d2-B841-00C04FAD5171}
+;
+;--*/
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       =System
+ClassGuid   ={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider    = %LJBSoftware%
+DriverVer   = 06/16/1999,5.00.2064
+CatalogFile = vmon_func.cat
+
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+; ================= Class section =====================
+
+;*****************************************
+; Toaster Device  Install Section
+;*****************************************
+
+[Manufacturer]
+%StdMfg%=vmon_func, NTx86, NTamd64
+
+; For XP and later
+; DisplayName                   Section           DeviceId
+; -----------                   -------           --------
+[vmon_func.NTx86]
+%VMON_FUNC.DeviceDesc%=vmon_func_install, vmonbus\{B85B7C50-6A01-11d2-B841-00C04FAD5171}
+
+[vmon_func.NTamd64]
+%VMON_FUNC.DeviceDesc%=vmon_func_install, vmonbus\{B85B7C50-6A01-11d2-B841-00C04FAD5171}
+
+[vmon_func_install]
+CopyFiles=vmon_func_install.CopyFiles
+
+[vmon_func_install.CopyFiles]
+vmon_func.sys
+
+;-------------- Service installation
+
+[vmon_func_install.Services]
+AddService = vmon_func, %SPSVCINST_ASSOCSERVICE%, vmon_func.Service.Install
+
+[vmon_func.Service.Install]
+DisplayName     = %Toaster.SVCDESC%
+ServiceType     = 1               ; SERVICE_KERNEL_DRIVER
+StartType       = 3               ; SERVICE_DEMAND_START
+ErrorControl    = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary   = %12%\vmon_func.sys
+LoadOrderGroup  = Extended Base
+
+[SourceDisksNames.x86]
+1=%DiskId1%, vmon_func.sys,,\x86
+
+[SourceDisksNames.amd64]
+1=%DiskId1%, vmon_func.sys,,\x64
+
+[SourceDisksFiles]
+vmon_func.sys = 1,,
+
+;
+;--- vmon_func_install Coinstaller installation ------
+;
+[DestinationDirs]
+
+[vmon_func_install.CoInstallers]
+AddReg          = Toaster_Device_CoInstaller_AddReg
+CopyFiles       = Toaster_Device_CoInstaller_CopyFiles
+
+[Toaster_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[Toaster_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[SourceDisksFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+[vmon_func_install.Wdf]
+KmdfService              = vmon_func, lci_vmon_wdfsect
+
+[lci_vmon_wdfsect]
+KmdfLibraryVersion       = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE  = 0x00000002
+LJBSoftware             = "LJB Software"
+StdMfg                  = "(Vmon system devices)"
+DiskId1                 = "LJB Virtual Monitor Installation Disk #1"
+VMON_FUNC.DeviceDesc    = "LJB Virtual Monitor "
+Toaster.SVCDESC         = "LJB Virtual Monitor Driver"
+

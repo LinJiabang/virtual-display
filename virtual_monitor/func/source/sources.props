@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <TARGETNAME Condition="'$(OVERRIDE_TARGETNAME)'!='true'">vmon_func</TARGETNAME>
+    <TARGETTYPE Condition="'$(OVERRIDE_TARGETTYPE)'!='true'">DRIVER</TARGETTYPE>
+    <KMDF_VERSION_MAJOR Condition="'$(OVERRIDE_KMDF_VERSION_MAJOR)'!='true'">1</KMDF_VERSION_MAJOR>
+    <INF_NAME Condition="'$(OVERRIDE_INF_NAME)'!='true'">vmon_func</INF_NAME>
+    <INCLUDES Condition="'$(OVERRIDE_INCLUDES)'!='true'">$(INCLUDES);..\..\include;</INCLUDES>
+    <NTTARGETFILE1 Condition="'$(OVERRIDE_NTTARGETFILE1)'!='true'">$(OBJ_PATH)\$(O)\$(INF_NAME).inf</NTTARGETFILE1>
+    <PASS1_BINPLACE Condition="'$(OVERRIDE_PASS1_BINPLACE)'!='true'">$(NTTARGETFILE1)</PASS1_BINPLACE>
+    <NTTARGETFILE0 Condition="'$(OVERRIDE_NTTARGETFILE0)'!='true'">$(OBJ_PATH)\$(O)\vmon_func.bmf</NTTARGETFILE0>
+    <SOURCES Condition="'$(OVERRIDE_SOURCES)'!='true'">ljb_vmon.rc                                  ljb_vmon_generic_ioctl.c                     ljb_vmon_guid.c                              ljb_vmon_io_in_caller_ctx.c                  ljb_vmon_io_stop.c                           ljb_vmon_internal_ioctl.c                    ljb_vmon_driver_entry.c                              ljb_vmon_power.c                             ljb_vmon_wmi.c</SOURCES>
+    <C_DEFINES Condition="'$(OVERRIDE_C_DEFINES)'!='true'" />
+    <TARGET_DESTINATION Condition="'$(OVERRIDE_TARGET_DESTINATION)'!='true'">wdf</TARGET_DESTINATION>
+  </PropertyGroup>
+  <ItemGroup>
+    <InvokedTargetsList Include="$(OBJ_PATH)\$(O)\$(INF_NAME).inf">
+      <Pass>1</Pass>
+      <Condition>
+      </Condition>
+    </InvokedTargetsList>
+    <InvokedTargetsList Include="$(OBJ_PATH)\$(O)\vmon_func.bmf">
+      <Pass>0</Pass>
+      <Condition>
+      </Condition>
+    </InvokedTargetsList>
+  </ItemGroup>
+</Project>

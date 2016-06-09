@@ -1,0 +1,113 @@
+;/*++
+;
+;Copyright (c) 1990-1999 Microsoft Corporation All rights Reserved
+;
+;Module Name:
+;
+;    vmon_bus.INF
+;
+;Abstract:
+;    INF file for installing toaster bus enumerator driver
+;
+;Installation Notes:
+;    Using Devcon: Type "devcon install vmon_bus.inf root\vmon_bus" to install
+;
+;--*/
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider=%LJBSoftware%
+DriverVer=06/17/1999, 5.00.2064
+CatalogFile=vmon_bus.cat
+
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+[SourceDisksFiles]
+vmon_bus.sys  = 1,,
+
+;*****************************************
+; LJB_VMON_BUS  Install Section
+;*****************************************
+
+[Manufacturer]
+%StdMfg%=vmon_bus, NTx86, NTamd64
+
+; For Win2K because it cannot parse decorated sections
+[vmon_bus.NTx86]
+%LJB_VMON_BUS.DeviceDesc%=LJB_VMON_BUS, root\vmon_bus
+
+; For XP and later
+[vmon_bus.NTamd64]
+%LJB_VMON_BUS.DeviceDesc%=LJB_VMON_BUS, root\vmon_bus
+
+[LJB_VMON_BUS.NT]
+CopyFiles=Drivers_Dir
+
+[LJB_VMON_BUS.NT.HW]
+AddReg=LJB_VMON_BUS.NT.AddReg
+
+[LJB_VMON_BUS.NT.AddReg]                            
+HKR,,DeviceCharacteristics,0x10001,0x0100         ; Use same security checks on relative opens
+HKR,,Security,,"D:P(A;;GA;;;BA)(A;;GA;;;SY)"      ; Allow generic-all access to Built-in administrators and Local system 
+
+[Drivers_Dir]
+vmon_bus.sys
+
+;-------------- Service installation
+[LJB_VMON_BUS.NT.Services]
+AddService = vmon_bus,%SPSVCINST_ASSOCSERVICE%, dynambus_Service_Inst
+
+; -------------- vmon_bus driver install sections
+[dynambus_Service_Inst]
+DisplayName    = %vmon_bus.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START 
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\vmon_bus.sys
+LoadOrderGroup = Extended Base
+
+[SourceDisksNames.x86]
+1=%DiskId1%, vmon_bus.sys,,\x86
+
+[SourceDisksNames.amd64]
+1=%DiskId1%, vmon_bus.bus,,\x64
+
+[SourceDisksFiles]
+vmon_bus.sys = 1
+
+;
+;--- LJB_VMON_BUS Coinstaller installation ------
+;
+[DestinationDirs]
+LJB_VMON_BUS.Device.CoInstaller.CopyFiles = 11
+
+[LJB_VMON_BUS.NT.CoInstallers]
+AddReg=ToasterDynamicBus_Device_CoInstaller_AddReg
+CopyFiles=LJB_VMON_BUS.Device.CoInstaller.CopyFiles
+
+[ToasterDynamicBus_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[LJB_VMON_BUS.Device.CoInstaller.CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[SourceDisksFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+[LJB_VMON_BUS.NT.Wdf]
+KmdfService = vmon_bus, vmonbus_wdfsect
+[vmonbus_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+LJBSoftware = "LJB Software"
+StdMfg = "(vmon_bus system devices)"
+DiskId1 = "LJB Virtual Monitor Bus Installation Disk #1"
+LJB_VMON_BUS.DeviceDesc = "LJB Virtual Monitor Bus"
+vmon_bus.SVCDESC = "LJB Virtual Monitor Bus Enumerator"
+
