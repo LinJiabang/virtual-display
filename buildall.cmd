@@ -14,64 +14,64 @@ msbuild proxy-wddm\kmd\ljb_proxykmd.vcxproj /p:Configuration=Release;Platform=x6
 REM nmake2msbuild.exe proxy-wddm\test\sources -NoPackageProject -NoSolution
 msbuild proxy-wddm\test\ljb_monitor_test.vcxproj /p:Configuration=Release;Platform=Win32
 
-if "%BIN%"== "" set BIN=.\bin
+if "%OUTPUT%"== "" set OUTPUT=%CD%\output
 
-if NOT exist %BIN%\package\chk\x86   MKDIR %BIN%\package\chk\x86
-if NOT exist %BIN%\package\fre\x86   MKDIR %BIN%\package\fre\x86
-if NOT exist %BIN%\package\chk\x64   MKDIR %BIN%\package\chk\x64
-if NOT exist %BIN%\package\fre\x64   MKDIR %BIN%\package\fre\x64
-if NOT exist %BIN%\pdb\chk\x86       MKDIR %BIN%\pdb\chk\x86
-if NOT exist %BIN%\pdb\fre\x86       MKDIR %BIN%\pdb\fre\x86
-if NOT exist %BIN%\pdb\chk\x64       MKDIR %BIN%\pdb\chk\x64
-if NOT exist %BIN%\pdb\fre\x64       MKDIR %BIN%\pdb\fre\x64
-if NOT exist %BIN%\devcon\x86        MKDIR %BIN%\devcon\x86
-if NOT exist %BIN%\devcon\x64        MKDIR %BIN%\devcon\x64
+if NOT exist %OUTPUT%\package\chk\x86   MKDIR %OUTPUT%\package\chk\x86
+if NOT exist %OUTPUT%\package\fre\x86   MKDIR %OUTPUT%\package\fre\x86
+if NOT exist %OUTPUT%\package\chk\x64   MKDIR %OUTPUT%\package\chk\x64
+if NOT exist %OUTPUT%\package\fre\x64   MKDIR %OUTPUT%\package\fre\x64
+if NOT exist %OUTPUT%\pdb\chk\x86       MKDIR %OUTPUT%\pdb\chk\x86
+if NOT exist %OUTPUT%\pdb\fre\x86       MKDIR %OUTPUT%\pdb\fre\x86
+if NOT exist %OUTPUT%\pdb\chk\x64       MKDIR %OUTPUT%\pdb\chk\x64
+if NOT exist %OUTPUT%\pdb\fre\x64       MKDIR %OUTPUT%\pdb\fre\x64
+if NOT exist %OUTPUT%\devcon\x86        MKDIR %OUTPUT%\devcon\x86
+if NOT exist %OUTPUT%\devcon\x64        MKDIR %OUTPUT%\devcon\x64
 
 REM
 REM Prepare package
 REM
-copy proxy-wddm\kmd\ljb_proxykmd.inf                    %BIN%\package\chk\
-stampinf -f                                             %BIN%\package\chk\ljb_proxykmd.inf -v *
-copy proxy-wddm\kmd\Debug\x86\ljb_proxykmd.sys          %BIN%\package\chk\x86\
-copy proxy-wddm\kmd\Debug\x64\ljb_proxykmd.sys          %BIN%\package\chk\x64\
-REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %BIN%\package\chk\x86\ljb_umd.dll
-REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x64\ljb_umd.dll               %BIN%\package\chk\x64\ljb_umd.dll
-REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %BIN%\package\chk\x86\ljb_umd32.dll
-REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %BIN%\package\chk\x64\ljb_umd32.dll
+copy proxy-wddm\kmd\ljb_proxykmd.inf                    %OUTPUT%\package\chk\
+stampinf -f                                             %OUTPUT%\package\chk\ljb_proxykmd.inf -v *
+copy proxy-wddm\kmd\Debug\x86\ljb_proxykmd.sys          %OUTPUT%\package\chk\x86\
+copy proxy-wddm\kmd\Debug\x64\ljb_proxykmd.sys          %OUTPUT%\package\chk\x64\
+REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %OUTPUT%\package\chk\x86\ljb_umd.dll
+REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x64\ljb_umd.dll               %OUTPUT%\package\chk\x64\ljb_umd.dll
+REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %OUTPUT%\package\chk\x86\ljb_umd32.dll
+REM NOT YET_IMPLMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %OUTPUT%\package\chk\x64\ljb_umd32.dll
 
-copy proxy-wddm\kmd\ljb_proxykmd.inf                    %BIN%\package\fre\
-stampinf -f                                             %BIN%\package\fre\ljb_proxykmd.inf -v *
-copy proxy-wddm\kmd\Release\x86\ljb_proxykmd.sys        %BIN%\package\fre\x86\
-copy proxy-wddm\kmd\Release\x64\ljb_proxykmd.sys        %BIN%\package\fre\x64\
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %BIN%\package\fre\x86\ljb_umd.dll
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x64\ljb_umd.dll             %BIN%\package\fre\x64\ljb_umd.dll
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %BIN%\package\fre\x86\ljb_umd32.dll
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.dll             %BIN%\package\fre\x64\ljb_umd32.dll
+copy proxy-wddm\kmd\ljb_proxykmd.inf                    %OUTPUT%\package\fre\
+stampinf -f                                             %OUTPUT%\package\fre\ljb_proxykmd.inf -v *
+copy proxy-wddm\kmd\Release\x86\ljb_proxykmd.sys        %OUTPUT%\package\fre\x86\
+copy proxy-wddm\kmd\Release\x64\ljb_proxykmd.sys        %OUTPUT%\package\fre\x64\
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %OUTPUT%\package\fre\x86\ljb_umd.dll
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x64\ljb_umd.dll             %OUTPUT%\package\fre\x64\ljb_umd.dll
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.dll               %OUTPUT%\package\fre\x86\ljb_umd32.dll
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.dll             %OUTPUT%\package\fre\x64\ljb_umd32.dll
 
-copy proxy-wddm\test\Release\x86\ljb_monitor_test.exe   %BIN%\package\
+copy proxy-wddm\test\Release\x86\ljb_monitor_test.exe   %OUTPUT%\package\
 
 
 REM
 REM Prepare PDB
 REM
-copy proxy-wddm\kmd\Debug\x86\ljb_proxykmd.pdb          %BIN%\pdb\chk\x86\
-copy proxy-wddm\kmd\Debug\x64\ljb_proxykmd.pdb          %BIN%\pdb\chk\x64\
-copy proxy-wddm\kmd\Release\x86\ljb_proxykmd.pdb        %BIN%\pdb\fre\x86\
-copy proxy-wddm\kmd\Release\x64\ljb_proxykmd.pdb        %BIN%\pdb\fre\x64\
+copy proxy-wddm\kmd\Debug\x86\ljb_proxykmd.pdb          %OUTPUT%\pdb\chk\x86\
+copy proxy-wddm\kmd\Debug\x64\ljb_proxykmd.pdb          %OUTPUT%\pdb\chk\x64\
+copy proxy-wddm\kmd\Release\x86\ljb_proxykmd.pdb        %OUTPUT%\pdb\fre\x86\
+copy proxy-wddm\kmd\Release\x64\ljb_proxykmd.pdb        %OUTPUT%\pdb\fre\x64\
 
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.pdb               %BIN%\pdb\chk\x86\
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x64\ljb_umd.pdb               %BIN%\pdb\chk\x64\
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.pdb               %BIN%\pdb\chk\x64\ljb_umd32.pdb
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.pdb             %BIN%\pdb\fre\x86\
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x64\ljb_umd.pdb             %BIN%\pdb\fre\x64\
-REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.pdb             %BIN%\pdb\fre\x64\ljb_umd32.pdb
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.pdb               %OUTPUT%\pdb\chk\x86\
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x64\ljb_umd.pdb               %OUTPUT%\pdb\chk\x64\
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Debug\x86\ljb_umd.pdb               %OUTPUT%\pdb\chk\x64\ljb_umd32.pdb
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.pdb             %OUTPUT%\pdb\fre\x86\
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x64\ljb_umd.pdb             %OUTPUT%\pdb\fre\x64\
+REM NOT_YET_IMPLEMENTED copy proxy-wddm\umd\Release\x86\ljb_umd.pdb             %OUTPUT%\pdb\fre\x64\ljb_umd32.pdb
 
-xcopy /s /I /Y testcert %BIN%\testcert
+xcopy /s /I /Y testcert %OUTPUT%\testcert
 REM
 REM run INF2CAT
 REM
-INF2CAT /uselocaltime /drv:%BIN%\package\chk /os:7_X86,7_X64,8_X86,8_X64,6_3_X86,6_3_X64,10_X86,10_X64
-INF2CAT /uselocaltime /drv:%BIN%\package\fre /os:7_X86,7_X64,8_X86,8_X64,6_3_X86,6_3_X64,10_X86,10_X64
+INF2CAT /uselocaltime /drv:%OUTPUT%\package\chk /os:7_X86,7_X64,8_X86,8_X64,6_3_X86,6_3_X64,10_X86,10_X64
+INF2CAT /uselocaltime /drv:%OUTPUT%\package\fre /os:7_X86,7_X64,8_X86,8_X64,6_3_X86,6_3_X64,10_X86,10_X64
 
 set TEST_SIGN=signtool sign /v /s PrivateCertStore /n LJB(Test) /t http://timestamp.verisign.com/scripts/timstamp.dll
 
