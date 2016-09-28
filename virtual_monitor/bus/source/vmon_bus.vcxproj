@@ -19,12 +19,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="PropertySheets">
-    <PlatformToolset>WindowsApplicationForDrivers10.0</PlatformToolset>
-    <ConfigurationType>Application</ConfigurationType>
-    <DriverType />
-    <TARGETNAME>notify</TARGETNAME>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <TARGETNAME>vmon_bus</TARGETNAME>
     <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>
+    <ConvertedTarget0_Disabled>True</ConvertedTarget0_Disabled>
+    <ConvertedTarget1_Disabled>True</ConvertedTarget1_Disabled>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="PropertySheets">
@@ -38,7 +40,7 @@
     <Import Project="$(VCTargetsPath)\WDKConversion\PreConfiguration.props" />
   </ImportGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{F1A4750A-8F93-40F4-BEC1-3F27C0B08F94}</ProjectGuid>
+    <ProjectGuid>{C1305740-0BA1-45C5-9F5B-8641F675B8C0}</ProjectGuid>
     <RootNamespace>$(MSBuildProjectName)</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -76,7 +78,18 @@
   <PropertyGroup Label="UserMacros" />
   <!-- The WrappedTaskItems label is used by the conversion tool to identify the location where items 
         associated with wrapped tasks will reside.-->
-  <ItemGroup Label="WrappedTaskItems" />
+  <ItemGroup Label="WrappedTaskItems">
+    <Inf Include="$(_INX)\$(INF_NAME).inx">
+      <Architecture>$(_BUILDARCH)</Architecture>
+      <SpecifyArchitecture>true</SpecifyArchitecture>
+      <KmdfVersionNumber>1.$(KMDF_VERSION_MINOR)</KmdfVersionNumber>
+      <CopyOutput>$(OBJ_PATH)\$(O)\$(INF_NAME).inf</CopyOutput>
+    </Inf>
+    <MofComp Include="busenum.mof">
+      <CreateBinaryMofFile>"$(OBJ_PATH)\$(O)\busenum.bmf"</CreateBinaryMofFile>
+    </MofComp>
+    <Wmimofck Include="$(OBJ_PATH)\$(O)\busenum.bmf" />
+  </ItemGroup>
   <ItemGroup>
     <!-- We only add items (e.g. form ClSourceFiles) that do not already exist (e.g in the ClCompile list), this avoids duplication -->
     <ClCompile Include="@(ClSourceFiles)" Exclude="@(ClCompile)" />
