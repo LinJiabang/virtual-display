@@ -23,11 +23,6 @@ Revision History:
 #ifndef __NOTIFY_H
 #define __NOTIFY_H
 
-/*
-|| High performance counter.
-*/
-#define LCI_VMON_COUNT_FRAME_RATE
-
 
 //
 // Copied Macros from ntddk.h
@@ -70,96 +65,37 @@ Revision History:
     }
 
 // Copy VMON stuff header.	
-typedef struct _LCI_VMON_DEV_CTX      	LCI_VMON_DEV_CTX;
-typedef struct _LCI_VMON_REQ_CTX      	LCI_VMON_REQ_CTX;
-typedef struct _DEVICE_INFO      		DEVICE_INFO;
+typedef struct _LJB_VMON_DEV_CTX      	LJB_VMON_DEV_CTX;
+#define LPARAM_NOTIFY_FRAME_UPDATE      0x12345678
 
-#define LCI_MAX_NUM_OF_BITMAP_CTX   4
-#define LCI_MAX_NUM_OF_VIRTUAL_MEM	32
+typedef struct _DEVICE_INFO
+{
+   HANDLE                       hDevice; // file handle
+   HDEVNOTIFY                   hHandleNotification; // notification handle
+   WCHAR                        DeviceName[MAX_PATH];// friendly name of device description
+   WCHAR                        DevicePath[MAX_PATH];//
+   ULONG                        SerialNum; // Serial number of the device.
+   LIST_ENTRY                   ListEntry;
+   HANDLE                       VMONThread;
+   ULONG                        VMONThreadId;
+   PVOID                        BitmapBuffer;
+   ULONG                        Width;
+   ULONG                        Height;
+   HWND                         hWndList;
+   HWND                         hParentWnd;
+   LJB_VMON_DEV_CTX *           dev_ctx;
+} DEVICE_INFO, *PDEVICE_INFO;
 
-typedef VOID
-LCI_VMON_GENERIC_DONE(
-    __in LCI_VMON_DEV_CTX *    	pDevCtx,
-    __in PVOID                 	pDoneCtx
-    );
-typedef struct _LCI_VMON_REQ_CTX
-    {
-
-    LIST_ENTRY                      	ListEntry;
-    LCI_VMON_GENERIC_DONE *        		pCompressionDoneFn;
-    PVOID                           	pCompressionDoneCtx;
-    PVOID                           	pClientCtx; // FrameInfo
-    DWORD                            	CompletionStatus;
-
-    /*	
-     The original Bitmap buffer	
-     */	
-    ULONG                           	BitmapSize;
-    PVOID                           	BitmapBuffer;
-    ULONG                           	Width;
-    ULONG                           	Height;
-	ULONG								BitsPerPixel;	/* 32 or 24 */
-
-	ULONG             		            OutBufferSize;
-    PVOID                   	        OutBuffer;
-    ULONG                       	    ActualBufferSize;
-	
-    PVOID					            pBusRequest; //pAvRequest for maanshan project
-    } LCI_VMON_REQ_CTX;
-
-typedef struct _LCI_VMON_DEV_CTX
+typedef struct _LJB_VMON_DEV_CTX
     {
     HANDLE                              hDevice;
     HDEVINFO                            HardwareDeviceInfo;
     PSP_DEVICE_INTERFACE_DETAIL_DATA    pDevIfcDetailData;
-    LCI_VMON_REQ_CTX                    BitmapReqPool[LCI_MAX_NUM_OF_BITMAP_CTX];
-	LONG                        		PendingBitmapReqCount;
-    LIST_ENTRY                  		FreeBitmapReqListHead;
-    HANDLE                      		FreeBitmapReqListMutex;
-    HANDLE                      		FreeBitmapReqListEvent;
-    PVOID				               	pClientCompressionCtx;
-	
-	HANDLE                              VirtualMemMutex;
-    ULONG                               VirtualMemFlag[LCI_MAX_NUM_OF_VIRTUAL_MEM];
-    ULONG                               VirtualMemSize[LCI_MAX_NUM_OF_VIRTUAL_MEM];
-    PVOID                               VirtualMemBuffer[LCI_MAX_NUM_OF_VIRTUAL_MEM];
-	
-	DEVICE_INFO *						pDeviceInfo;
-	BOOL								bStartVMONThread;
 
-#ifdef	LCI_VMON_COUNT_FRAME_RATE
-	LONGLONG							llFrequency;
-	LONGLONG							llCurrenTime;
-	float								flElapsedTime;
-	UINT								uFrameCount;
-	UINT								uTempFrameCount;
-	BOOL								blDisplayFrameRateNum;
-	BOOL								blFrameRateControl;
-#endif
-	
-    } LCI_VMON_DEV_CTX;	
+    PDEVICE_INFO                        pDeviceInfo;
+    BOOL                                exit_vmon_thread;
 
-	
-typedef struct _DEVICE_INFO
-{
-   HANDLE       hDevice; // file handle
-   HDEVNOTIFY   hHandleNotification; // notification handle
-   WCHAR        DeviceName[MAX_PATH];// friendly name of device description
-   WCHAR        DevicePath[MAX_PATH];//
-   ULONG        SerialNo; // Serial number of the device.
-   LIST_ENTRY   ListEntry;
-   HANDLE       VMONThread;
-   ULONG        VMONThreadId;
-   PVOID		BitmapBuffer;
-   ULONG		Width;
-   ULONG		Height;
-   HWND        	hWndList;
-   HWND			hParentWnd;
-   LCI_VMON_GENERIC_DONE *        		pCompressionDoneFn;
-   PVOID                           		pCompressionDoneCtx;
-   LCI_VMON_DEV_CTX *					pDevCtx;
-} DEVICE_INFO, *PDEVICE_INFO;
-
+    } LJB_VMON_DEV_CTX;
 
 typedef enum {
 
@@ -171,7 +107,7 @@ typedef enum {
 
 typedef struct _DIALOG_RESULT
 {
-    ULONG    SerialNo;
+    ULONG    SerialNum;
     PWCHAR  DeviceId;
 } DIALOG_RESULT, *PDIALOG_RESULT;
 
@@ -242,12 +178,12 @@ GetDeviceDescription(
     __in LPTSTR DevPath,
     __out_bcount_full(OutBufferLen) LPTSTR OutBuffer,
     __in ULONG OutBufferLen,
-    __in PULONG SerialNo
+    __in PULONG SerialNum
     );
 
 BOOLEAN
 OpenBusInterface (
-    __in ULONG SerialNo,
+    __in ULONG SerialNum,
     __in_opt LPWSTR DeviceId,
     __in USER_ACTION_TYPE Action
     );
@@ -265,7 +201,7 @@ SendIoctlToFilterDevice();
 
 // VMON functions
 DWORD
-LCI_VMON_Main(
+LJB_VMON_Main(
     __in LPVOID     lpThreadParameter
     );
 

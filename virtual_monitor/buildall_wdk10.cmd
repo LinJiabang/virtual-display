@@ -1,15 +1,15 @@
 @echo off
-REM nmake2msbuild DIRS -NoSolution -NoPackageProject
+nmake2msbuild DIRS -NoSolution -NoPackageProject
 
-msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
-msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
-msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
-msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
-
-msbuild func\source\vmon_func.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
-msbuild func\source\vmon_func.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
-msbuild func\source\vmon_func.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
-msbuild func\source\vmon_func.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild bus\source\vmon_bus.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
+REM 
+REM msbuild func\source\vmon_func.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild func\source\vmon_func.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild func\source\vmon_func.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
+REM msbuild func\source\vmon_func.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
 
 msbuild notify\source\notify.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
 msbuild notify\source\notify.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
@@ -35,10 +35,10 @@ REM
 REM preparing driver package
 REM
 
-copy "%WindowsSdkDir%"Redist\wdf\x86\WdfCoInstaller01011.dll .\%OUTPUT%\package\chk\x86\
-copy "%WindowsSdkDir%"Redist\wdf\x64\WdfCoInstaller01011.dll .\%OUTPUT%\package\chk\x64\
-copy "%WindowsSdkDir%"Redist\wdf\x86\WdfCoInstaller01011.dll .\%OUTPUT%\package\fre\x86\
-copy "%WindowsSdkDir%"Redist\wdf\x64\WdfCoInstaller01011.dll .\%OUTPUT%\package\fre\x64\
+copy "%WindowsSdkDir%"Redist\wdf\x86\WdfCoInstaller01011.dll %OUTPUT%\package\chk\x86\
+copy "%WindowsSdkDir%"Redist\wdf\x64\WdfCoInstaller01011.dll %OUTPUT%\package\chk\x64\
+copy "%WindowsSdkDir%"Redist\wdf\x86\WdfCoInstaller01011.dll %OUTPUT%\package\fre\x86\
+copy "%WindowsSdkDir%"Redist\wdf\x64\WdfCoInstaller01011.dll %OUTPUT%\package\fre\x64\
 
 copy bus\source\Debug\x86\vmon_bus.inf          %OUTPUT%\package\chk\
 copy bus\source\Release\x86\vmon_bus.inf        %OUTPUT%\package\fre\

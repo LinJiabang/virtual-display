@@ -26,7 +26,7 @@ Environment:
 #include "wmilib.h"
 #include "driver.h"
 #include "public.h"
-#include "lci_usbav_ioctl.h"
+#include "ljb_vmon_ioctl.h"
 #include "lci_display_internal_ioctl.h"
 
 #define LJB_VMON_POOL_TAG (ULONG) 'nomV'
@@ -70,7 +70,7 @@ LJB_VMON_GetPoolZero(
 #define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER)
 
 #if DBG
-#define LJB_VMON_Printf(pDevCtx, Mask, _x_)      \
+#define LJB_VMON_Printf(pDevCtx, Mask, _x_)         \
     if (pDevCtx->DebugLevel & Mask)                 \
         {                                           \
         DbgPrint(" LJB_VMON:");                     \
@@ -80,14 +80,14 @@ LJB_VMON_GetPoolZero(
 #define LJB_VMON_Printf(pDevCtx, Mask, _x_)
 #endif
 
-#define LJB_VMON_PrintfAlways(pDevCtx, Mask, _x_)      \
+#define LJB_VMON_PrintfAlways(pDevCtx, Mask, _x_)   \
         DbgPrint(" LJB_VMON:");                     \
         DbgPrint _x_;
 
 
 
 #define MAX_POINTER_SIZE        (256*256*4)   /* width(256)/height(256)/4Byte */
-typedef struct _LCI_USBAV_PRIMARY_SURFACE
+typedef struct _LJB_VMON_PRIMARY_SURFACE
     {
     LIST_ENTRY                  ListEntry;
     HANDLE                      hPrimarySurface;
@@ -116,12 +116,12 @@ typedef struct _LCI_USBAV_PRIMARY_SURFACE
 	ULONG						FrameId;
 	BOOLEAN						bTransferDone;
 	BOOLEAN						bBusyBltting;
-    } LCI_USBAV_PRIMARY_SURFACE;
+    } LJB_VMON_PRIMARY_SURFACE;
 
-typedef struct _LCI_POINTER_INFO
+typedef struct _LJB_POINTER_INFO
     {
     /*
-     updated by DxgiDdiSetPointerPosition
+     * updated by DxgiDdiSetPointerPosition
      */
     INT                             X;
     INT                             Y;
@@ -137,16 +137,16 @@ typedef struct _LCI_POINTER_INFO
     UCHAR                           Bitmap[MAX_POINTER_SIZE];
     UINT                            XHot;
     UINT                            YHot;
-    } LCI_POINTER_INFO;
+    } LJB_POINTER_INFO;
 
-typedef struct _LCI_WAIT_UPDATE_REQUEST
+typedef struct _LJB_VMON_WAIT_FOR_UPDATE_REQ
     {
     LIST_ENTRY                      ListEntry;
     WDFREQUEST                      Request;
-    LCI_WAIT_FOR_UPDATE *           pInputWaitUpdateData;
-    LCI_WAIT_FOR_UPDATE *           pOutputWaitUpdateData;
+    LJB_VMON_WAIT_FOR_UPDATE_DATA * pInputWaitUpdateData;
+    LJB_VMON_WAIT_FOR_UPDATE_DATA * pOutputWaitUpdateData;
     ULONG                           IoctlCode;
-    } LCI_WAIT_UPDATE_REQUEST;
+    } LJB_VMON_WAIT_FOR_UPDATE_REQ;
 
 typedef struct _LJB_VMON_CTX
     {
@@ -166,20 +166,19 @@ typedef struct _LJB_VMON_CTX
 
     KSPIN_LOCK                      PendingIoctlListLock;
 
-//    volatile ULONG                  LatestFrameId;
+    ULONG                           LatestFrameId;
     PVOID                           hLatestPrimarySurface;
 
 	/*
-	 Store pointer shape and position
-	*/
-	LCI_POINTER_INFO				PointerInfo;
+	 * Store pointer shape and position
+	 */
+	LJB_POINTER_INFO				PointerInfo;
     BOOLEAN                         DeviceDead;
 
-    ULONG                           MediaPlayerState;
     BOOLEAN                         bCursorUpdatePending;
     ULONG			                FrameIdSent;
 	LONG 		                    AcquirelistCount;
-	ULONG							LatestFrameId;
+
     } LJB_VMON_CTX, *PLJB_VMON_CTX;
 
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(LJB_VMON_CTX, LJB_VMON_GetVMonCtx)

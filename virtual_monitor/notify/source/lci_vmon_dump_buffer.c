@@ -1,35 +1,17 @@
-/*!
- 	\file		lci_usbav_dump_buffer.c
-	\brief		Home of LCI_VMON_DumpBuffer()
-	\details	Home of LCI_VMON_DumpBuffer()
-	\authors	lucaslin
-	\version	0.01a
-	\date		May 28, 2013
-	\todo		(Optional)
-	\bug		(Optional)
-	\warning	(Optional)
-	\copyright	(c) 2013 Luminon Core Incorporated. All Rights Reserved.
-
-	Revision Log
-	+ 0.01a;	May 28, 2013;	lucaslin
-	 - Created.
-
- */
-
 #define IS_PRINTABLE(c) ((31 < c) && (c < 127))
 
 #include <stdio.h>
-#include "lci_vmon.h"
+#include "ljb_vmon.h"
 //#include "lci_usbav_private.h"
 
 #define  LINE_SIZE       512
 
 /*!
- Name:  LCI_VMON_DumpBuffer
+ Name:  LJB_VMON_DumpBuffer
 
  Definition:
 	VOID
-	LCI_VMON_DumpBuffer(
+	LJB_VMON_DumpBuffer(
         __in UCHAR CONST *  pBuf,
         __in ULONG          BufSize
 		);
@@ -42,7 +24,7 @@
 */
 
 VOID
-LCI_VMON_DumpBuffer(
+LJB_VMON_DumpBuffer(
 	__in UCHAR  *      pBuf,
     __in ULONG         BufSize
     )

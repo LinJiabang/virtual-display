@@ -266,20 +266,20 @@ Return Value:
     // the WDF_DECLARE_CONTEXT_TYPE_WITH_NAME macro for LJB_VMON_CTX.
     //
     pVMonCtx = LJB_VMON_GetVMonCtx(device);
-	pVMonCtx->DebugLevel = 0xFFFFFFFF;
-	
-	// Initial some parameters.
-	pVMonCtx->FrameIdSent  = 0;
-	pVMonCtx->AcquirelistCount = 0;
-	pVMonCtx->LatestFrameId = 0;
-    
+    pVMonCtx->DebugLevel = 0xFFFFFFFF;
+
+    // Initial some parameters.
+    pVMonCtx->FrameIdSent  = 0;
+    pVMonCtx->AcquirelistCount = 0;
+    pVMonCtx->LatestFrameId = 0;
+
     //
     // Tell the Framework that this device will need an interface so that
     // application can find our device and talk to it.
     //
     ntStatus = WdfDeviceCreateDeviceInterface(
         device,
-        (LPGUID) &GUID_DEVINTERFACE_VMON,
+        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
         NULL
         );
 
@@ -482,41 +482,41 @@ LJB_VMON_EvtDeviceReleaseHardware(
     IN  WDFCMRESLIST ResourcesTranslated
     )
     {
-    PLJB_VMON_CTX   			pDevCtx = LJB_VMON_GetVMonCtx(Device);
-	LIST_ENTRY * CONST 			pListHead = &pDevCtx->WaitRequestListHead;
-	LCI_WAIT_UPDATE_REQUEST *   pWaitRequest;
-	LIST_ENTRY * pListEntry;
-	KIRQL		OldIrql;
+    PLJB_VMON_CTX                   pDevCtx = LJB_VMON_GetVMonCtx(Device);
+    LIST_ENTRY * CONST              pListHead = &pDevCtx->WaitRequestListHead;
+    LJB_VMON_WAIT_FOR_UPDATE_REQ *  pWaitRequest;
+    LIST_ENTRY *                    pListEntry;
+    KIRQL                           OldIrql;
 
     UNREFERENCED_PARAMETER(ResourcesTranslated);
 
     KdPrint(("LJB_VMON_EvtDeviceReleaseHardware called\n"));
 
-	/*
-	 Release any pending Wait request
-	 */
-	KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
-	while (!IsListEmpty(pListHead))
-		{
-		pListEntry = RemoveHeadList(pListHead);
-		pWaitRequest = CONTAINING_RECORD(
-				pListEntry,
-				LCI_WAIT_UPDATE_REQUEST,
-				ListEntry
-				);
-		WdfRequestCompleteWithInformation(
-			pWaitRequest->Request,
-			STATUS_CANCELLED,
-			0
-			);
-		LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-			(" " __FUNCTION__ ": "
-			"Complete pWaitRequest(%p) immediately with STATUS_CANCELLED\n",
-			pWaitRequest
-			));
-		LJB_VMON_FreePool(pWaitRequest);
-		}
-	KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
+    /*
+     Release any pending Wait request
+     */
+    KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
+    while (!IsListEmpty(pListHead))
+        {
+        pListEntry = RemoveHeadList(pListHead);
+        pWaitRequest = CONTAINING_RECORD(
+                pListEntry,
+                LJB_VMON_WAIT_FOR_UPDATE_REQ,
+                ListEntry
+                );
+        WdfRequestCompleteWithInformation(
+            pWaitRequest->Request,
+            STATUS_CANCELLED,
+            0
+            );
+        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+            (" " __FUNCTION__ ": "
+            "Complete pWaitRequest(%p) immediately with STATUS_CANCELLED\n",
+            pWaitRequest
+            ));
+        LJB_VMON_FreePool(pWaitRequest);
+        }
+    KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
 
     return STATUS_SUCCESS;
     }
@@ -526,39 +526,39 @@ LJB_VMON_EvtDeviceSurpriseRemoval(
     IN  WDFDEVICE    Device
     )
     {
-    PLJB_VMON_CTX   			pDevCtx = LJB_VMON_GetVMonCtx(Device);
-	LIST_ENTRY * CONST 			pListHead = &pDevCtx->WaitRequestListHead;
-	LCI_WAIT_UPDATE_REQUEST *   pWaitRequest;
-	LIST_ENTRY * pListEntry;
-	KIRQL		OldIrql;
+    PLJB_VMON_CTX                   pDevCtx = LJB_VMON_GetVMonCtx(Device);
+    LIST_ENTRY * CONST              pListHead = &pDevCtx->WaitRequestListHead;
+    LJB_VMON_WAIT_FOR_UPDATE_REQ *  pWaitRequest;
+    LIST_ENTRY *                    pListEntry;
+    KIRQL                           OldIrql;
 
     KdPrint((" " __FUNCTION__ "\n"));
 
-	/*
-	 Release any pending Wait request
-	 */
-	KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
-	while (!IsListEmpty(pListHead))
-		{
-		pListEntry = RemoveHeadList(pListHead);
-		pWaitRequest = CONTAINING_RECORD(
-				pListEntry,
-				LCI_WAIT_UPDATE_REQUEST,
-				ListEntry
-				);
-		WdfRequestCompleteWithInformation(
-			pWaitRequest->Request,
-			STATUS_CANCELLED,
-			0
-			);
-		LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-			(" " __FUNCTION__ ": "
-			"Complete pWaitRequest(%p) immediately with STATUS_CANCELLED\n",
-			pWaitRequest
-			));
-		LJB_VMON_FreePool(pWaitRequest);
-		}
-	KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
+    /*
+     Release any pending Wait request
+     */
+    KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
+    while (!IsListEmpty(pListHead))
+        {
+        pListEntry = RemoveHeadList(pListHead);
+        pWaitRequest = CONTAINING_RECORD(
+                pListEntry,
+                LJB_VMON_WAIT_FOR_UPDATE_REQ,
+                ListEntry
+                );
+        WdfRequestCompleteWithInformation(
+            pWaitRequest->Request,
+            STATUS_CANCELLED,
+            0
+            );
+        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+            (" " __FUNCTION__ ": "
+            "Complete pWaitRequest(%p) immediately with STATUS_CANCELLED\n",
+            pWaitRequest
+            ));
+        LJB_VMON_FreePool(pWaitRequest);
+        }
+    KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
     }
 
 NTSTATUS
@@ -690,12 +690,12 @@ Return Value:
     KeAcquireSpinLock(&pVMonCtx->PrimarySurfaceListLock, &OldIrql);
     while (!IsListEmpty(pListHead))
         {
-        LCI_USBAV_PRIMARY_SURFACE *     pThisSurface;
+        LJB_VMON_PRIMARY_SURFACE *     pThisSurface;
 
         pListEntry = RemoveHeadList(pListHead);
         pThisSurface = CONTAINING_RECORD(
             pListEntry,
-            LCI_USBAV_PRIMARY_SURFACE,
+            LJB_VMON_PRIMARY_SURFACE,
             ListEntry
             );
         LJB_VMON_Printf(pVMonCtx, DBGLVL_FLOW,
@@ -782,12 +782,12 @@ LJB_VMON_EvtFileClose (
          pListEntry != pListHead;
          pListEntry = pListNext)
         {
-        LCI_USBAV_PRIMARY_SURFACE *     pThisSurface;
+        LJB_VMON_PRIMARY_SURFACE *     pThisSurface;
 
         pListNext = pListEntry->Flink;
         pThisSurface = CONTAINING_RECORD(
             pListEntry,
-            LCI_USBAV_PRIMARY_SURFACE,
+            LJB_VMON_PRIMARY_SURFACE,
             ListEntry
             );
         if (pThisSurface->bIsAcquiredByUserMode &&
@@ -942,23 +942,23 @@ Return Value:
 
 static VOID
 LJB_VMON_WaitForUpdate(
-    __in LJB_VMON_CTX *  		pDevCtx,
+    __in LJB_VMON_CTX *         pDevCtx,
     __in WDFREQUEST             Request
     )
     {
-	LCI_WAIT_FOR_UPDATE 		InputWaitUpdateData;
-    LCI_WAIT_FOR_UPDATE *       pInputWaitUpdateData;
-    LCI_WAIT_FOR_UPDATE *       pOutputWaitUpdateData;
-    LCI_WAIT_UPDATE_REQUEST *   pWaitRequest;
-    KIRQL                       OldIrql;
-    KIRQL                       PendingIoctlIrql;
-    NTSTATUS                    ntStatus;
-    BOOLEAN                     bCompleteNow;
+    LJB_VMON_WAIT_FOR_UPDATE_DATA   InputWaitUpdateData;
+    LJB_VMON_WAIT_FOR_UPDATE_DATA * pInputWaitUpdateData;
+    LJB_VMON_WAIT_FOR_UPDATE_DATA * pOutputWaitUpdateData;
+    LJB_VMON_WAIT_FOR_UPDATE_REQ *  pWaitRequest;
+    KIRQL                           OldIrql;
+    KIRQL                           PendingIoctlIrql;
+    NTSTATUS                        ntStatus;
+    BOOLEAN                         bCompleteNow;
 
     bCompleteNow = FALSE;
     ntStatus = WdfRequestRetrieveInputBuffer(
         Request,
-        sizeof(LCI_WAIT_FOR_UPDATE),
+        sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA),
         &pInputWaitUpdateData,
         NULL
         );
@@ -975,7 +975,7 @@ LJB_VMON_WaitForUpdate(
         }
     ntStatus = WdfRequestRetrieveOutputBuffer(
         Request,
-        sizeof(LCI_WAIT_FOR_UPDATE),
+        sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA),
         &pOutputWaitUpdateData,
         NULL
         );
@@ -992,10 +992,10 @@ LJB_VMON_WaitForUpdate(
         }
 
     /*
-     Check if we could complete it now.
+     * Check if we could complete it now.
      */
     KeAcquireSpinLock(&pDevCtx->PendingIoctlListLock, &PendingIoctlIrql);
-	InputWaitUpdateData = *pInputWaitUpdateData;
+    InputWaitUpdateData = *pInputWaitUpdateData;
     if (InputWaitUpdateData.Flags.Frame &&
         (pDevCtx->LatestFrameId != InputWaitUpdateData.FrameId) &&
         ((pDevCtx->LatestFrameId - InputWaitUpdateData.FrameId) <
@@ -1025,7 +1025,7 @@ LJB_VMON_WaitForUpdate(
         }
 
     /*
-     Not able to complete it. Queue the request for later completion!
+     * Not able to complete it. Queue the request for later completion!
      */
     pWaitRequest = LJB_VMON_GetPoolZero(sizeof(*pWaitRequest));
     if (pWaitRequest == NULL)
@@ -1037,27 +1037,27 @@ LJB_VMON_WaitForUpdate(
         WdfRequestCompleteWithInformation(Request, ntStatus, 0);
         return;
         }
-    pWaitRequest->IoctlCode = IOCTL_LCI_WAIT_FOR_UPDATE;
+    pWaitRequest->IoctlCode = IOCTL_LJB_VMON_WAIT_FOR_UPDATE;
     pWaitRequest->Request = Request;
     pWaitRequest->pInputWaitUpdateData = pInputWaitUpdateData;
     pWaitRequest->pOutputWaitUpdateData = pOutputWaitUpdateData;
 
-	/*
-	 Once it the request is queued, the request might be free immediately.
-	 Do not reference pWaitRequest/pInputWaitData
-	 */
+    /*
+     Once it the request is queued, the request might be free immediately.
+     Do not reference pWaitRequest/pInputWaitData
+     */
     KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
     InsertTailList(&pDevCtx->WaitRequestListHead, &pWaitRequest->ListEntry);
     KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
 
     KeReleaseSpinLock(&pDevCtx->PendingIoctlListLock, PendingIoctlIrql);
-	LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-		(" " __FUNCTION__ ": "
-		"Queue pWaitRequest(%p), LatestFrameId(0x%x)/UserFrameId(0x%x)\n",
-		pWaitRequest,
-		pDevCtx->LatestFrameId,
-		InputWaitUpdateData.FrameId
-		));
+    LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+        (" " __FUNCTION__ ": "
+        "Queue pWaitRequest(%p), LatestFrameId(0x%x)/UserFrameId(0x%x)\n",
+        pWaitRequest,
+        pDevCtx->LatestFrameId,
+        InputWaitUpdateData.FrameId
+        ));
     }
 
 VOID
@@ -1097,7 +1097,7 @@ Return Value:
     NTSTATUS             ntStatus= STATUS_SUCCESS;
     WDF_DEVICE_STATE     deviceState;
     WDFDEVICE            hDevice = WdfIoQueueGetDevice(Queue);
-	LJB_VMON_CTX * CONST    pDevCtx = LJB_VMON_GetVMonCtx(hDevice);
+    LJB_VMON_CTX * CONST    pDevCtx = LJB_VMON_GetVMonCtx(hDevice);
 
     UNREFERENCED_PARAMETER(OutputBufferLength);
     UNREFERENCED_PARAMETER(InputBufferLength);
@@ -1108,8 +1108,8 @@ Return Value:
 
     switch (IoControlCode)
         {
-	case IOCTL_LCI_WAIT_FOR_UPDATE:
-        if (OutputBufferLength < sizeof(LCI_WAIT_FOR_UPDATE))
+    case IOCTL_LJB_VMON_WAIT_FOR_UPDATE:
+        if (OutputBufferLength < sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA))
             {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?" __FUNCTION__
@@ -1120,7 +1120,7 @@ Return Value:
             break;
             }
 
-        if (InputBufferLength < sizeof(LCI_WAIT_FOR_UPDATE))
+        if (InputBufferLength < sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA))
             {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?" __FUNCTION__

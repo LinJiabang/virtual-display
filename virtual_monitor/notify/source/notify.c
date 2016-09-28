@@ -35,7 +35,7 @@ Revision History:
 // Annotation to indicate to prefast that this is nondriver user-mode code.
 //
 #include <DriverSpecs.h>
-__user_code  
+__user_code
 
 #include <windows.h>
 #include <stdlib.h>
@@ -46,6 +46,7 @@ __user_code
 #include <strsafe.h>
 #include "public.h"
 #include "notify.h"
+//#include "ljb_vmon.h"
 #include <dontuse.h>
 
 BOOL
@@ -64,14 +65,14 @@ LIST_ENTRY  ListHead;
 HDEVNOTIFY  hInterfaceNotification;
 TCHAR       OutText[500];
 UINT        ListBoxIndex = 0;
-GUID        InterfaceGuid;// = GUID_DEVINTERFACE_VMON;
+GUID        InterfaceGuid;// = LJB_MONITOR_INTERFACE_GUID;
 BOOLEAN     Verbose= FALSE;
 PDEVICE_INFO   gDeviceInfo = NULL;
 
 #if (DBG)
-#define	DBG_PRINT(x)	MyDebugPrint x
+#define DBG_PRINT(x)    MyDebugPrint x
 #else
-#define	DBG_PRINT(x)
+#define DBG_PRINT(x)
 #endif
 
 VOID
@@ -81,7 +82,6 @@ MyDebugPrint(
     )
     {
     va_list arg;
-//    WCHAR    OutputString[1024];
 
     va_start (arg, format);
     (VOID) _vsnwprintf_s(
@@ -92,11 +92,9 @@ MyDebugPrint(
         arg
         );
     va_end (arg);
-    
+
     OutputDebugString(OutText);
     }
-
-
 
 _inline BOOLEAN
 IsValid(
@@ -112,169 +110,63 @@ IsValid(
                         thisEntry = thisEntry->Flink)
     {
             deviceInfo = CONTAINING_RECORD(thisEntry, DEVICE_INFO, ListEntry);
-            if((No) == deviceInfo->SerialNo) {
+            if((No) == deviceInfo->SerialNum) {
                 return TRUE;
         }
     }
     return FALSE;
 }
 
-VOID
-Display(
-    __in LPWSTR pstrFormat,  // @parm A printf style format string
-    ...                 // @parm | ... | Variable paramters based on <p pstrFormat>
-    )
-{
-    HRESULT hr;
-    va_list va;
-
-    va_start(va, pstrFormat);
-    //
-    // Truncation is acceptable.
-    //
-    hr = StringCbVPrintf(OutText, sizeof(OutText)-sizeof(WCHAR), pstrFormat, va);
-    va_end(va);
-
-    if(FAILED(hr)){
-        return;
-    }
-
-//    SendMessage(hWndList, LB_INSERTSTRING, ListBoxIndex, (LPARAM)OutText);
-//    SendMessage(hWndList, LB_SETCURSEL, ListBoxIndex, 0);
-    ListBoxIndex++;
-
-}
-
-VOID
-DisplayV(
-    __in LPWSTR pstrFormat,  // @parm A printf style format string
-    ...                 // @parm | ... | Variable paramters based on <p pstrFormat>
-    )
-{
-    va_list va;
-
-    if (Verbose)
-    {
-        va_start(va, pstrFormat);
-            Display(pstrFormat, va);
-        va_end(va);
-    }
-}
-
-
-
-
 void makebmp(BYTE* pBits, long width, long height, HDC hdc, HWND hWnd)
 {
+    int                 iRet;
+    RECT                rect;
+    BOOL                Status;
+    BITMAPINFO          BitmapInfo;
+    BITMAPINFO * CONST  pBMI = &BitmapInfo;
 
-//bool bUseRGBQuad;
-int iRet;
-RECT rect;
-BOOL Status;
+    memset(pBMI, 0, sizeof(BITMAPINFO));
+    pBMI->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 
-#if 0
-RGBQUAD rgb[256];
-for(int i = 0;i<256;i++)
-{
-rgb[i].rgbRed =
-rgb[i].rgbGreen=
-rgb[i].rgbBlue=i;
-rgb[i].rgbReserved=0;
-}
+    pBMI->bmiHeader.biWidth = width;
+    pBMI->bmiHeader.biHeight = -height;  // negative means top down!!!!
+    pBMI->bmiHeader.biPlanes = 1;
+    pBMI->bmiHeader.biBitCount = 32;
+    pBMI->bmiHeader.biCompression = BI_RGB;//BI_BITFIELDS;//BI_RGB;
+    pBMI->bmiHeader.biSizeImage = width*height*4;
+    pBMI->bmiHeader.biXPelsPerMeter = 0;
+    pBMI->bmiHeader.biYPelsPerMeter = 0;
+    pBMI->bmiHeader.biClrUsed = 0;
+    pBMI->bmiHeader.biClrImportant = 0;
 
-#endif
+    //memcpy(pBMI+ sizeof(BITMAPINFOHEADER), bmiColors, sizeof(RGBQUAD)*3);
+    Status = GetWindowRect(
+        hWnd,
+        &rect
+        );
 
-BITMAPINFO BitmapInfo;
-BITMAPINFO *pBMI;
-
-#if 0
-RGBQUAD bmiColors[3];
-
-bmiColors[0].rgbBlue = 0xff; 
-bmiColors[0].rgbGreen = 0; 
-bmiColors[0].rgbRed = 0; 
-bmiColors[0].rgbReserved = 0; 
-
-bmiColors[0].rgbBlue = 0; 
-bmiColors[0].rgbGreen = 0xff; 
-bmiColors[0].rgbRed = 0; 
-bmiColors[0].rgbReserved = 0; 
-
-bmiColors[0].rgbBlue = 0; 
-bmiColors[0].rgbGreen = 0; 
-bmiColors[0].rgbRed = 0xff; 
-bmiColors[0].rgbReserved = 0; 
-
-#endif 
-
-
-pBMI = &BitmapInfo;
-memset(pBMI, 0, sizeof(BITMAPINFO));
-
-#if 0
-pBMI = HeapAlloc(
-				GetProcessHeap(),
-                HEAP_ZERO_MEMORY,
-                sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD)*3
-				);
-#endif
-				
-pBMI->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-
-pBMI->bmiHeader.biWidth = width;
-pBMI->bmiHeader.biHeight = -height;  // negative means top down!!!!
-pBMI->bmiHeader.biPlanes = 1;
-pBMI->bmiHeader.biBitCount = 32;
-pBMI->bmiHeader.biCompression = BI_RGB;//BI_BITFIELDS;//BI_RGB;
-pBMI->bmiHeader.biSizeImage = width*height*4;
-pBMI->bmiHeader.biXPelsPerMeter = 0;
-pBMI->bmiHeader.biYPelsPerMeter = 0;
-pBMI->bmiHeader.biClrUsed = 0;
-pBMI->bmiHeader.biClrImportant = 0;
-
-
-//memcpy(pBMI+ sizeof(BITMAPINFOHEADER), bmiColors, sizeof(RGBQUAD)*3);
-
-
-
-Status = GetWindowRect(
-	hWnd,
-	&rect
-	);
-	
-if (Status == 0)
-	{
-	Display(TEXT("?Failed to get rect."));
-	}
-
-else
-	{
-//	Display(TEXT("rect.left: %d, rect.top: %d, rect.right: %d, rect.bottom: %d"), 
-//			rect.left,
-//			rect.top,
-//			rect.right,
-//			rect.bottom
-//			);
-	iRet = StretchDIBits(
-		hdc,
-		0,//rect.left,//0,
-		0,//rect.top,//0, 
-		width,//rect.right - rect.left,//width, 
-		height,//rect.bottom - rect.top,//height,
-		0,
-		0,
-		width, 
-		height,
-		pBits,
-		pBMI,
-		DIB_RGB_COLORS,//DIB_PAL_COLORS,
-		SRCCOPY
-		);
-	}
-
-//if (pBMI != NULL)
-//		HeapFree (GetProcessHeap(), 0, pBMI);
-	
+    if (Status == 0)
+    {
+        DBG_PRINT((TEXT("?"__FUNCTION__":Failed to get rect?\n")));
+    }
+    else
+    {
+        iRet = StretchDIBits(
+            hdc,
+            0,//rect.left,//0,
+            0,//rect.top,//0,
+            width,//rect.right - rect.left,//width,
+            height,//rect.bottom - rect.top,//height,
+            0,
+            0,
+            width,
+            height,
+            pBits,
+            pBMI,
+            DIB_RGB_COLORS,//DIB_PAL_COLORS,
+            SRCCOPY
+            );
+    }
 }
 
 int PASCAL
@@ -285,14 +177,14 @@ WinMain (
     __in int nShowCmd
     )
 {
-    static    TCHAR szAppName[]=TEXT("LCI_VMON Notify");
+    static    TCHAR szAppName[]=TEXT("LJB_VMON Notify");
     HWND      hWnd;
     MSG       msg;
     WNDCLASS  wndclass;
 
     UNREFERENCED_PARAMETER( lpCmdLine );
 
-    InterfaceGuid = GUID_DEVINTERFACE_VMON;
+    InterfaceGuid = LJB_MONITOR_INTERFACE_GUID;
     hInst=hInstance;
 
     if (!hPrevInstance)
@@ -311,21 +203,22 @@ WinMain (
          RegisterClass(&wndclass);
     }
 
-    hWnd = CreateWindow (szAppName,
-                         szTitle,
-                         WS_OVERLAPPEDWINDOW,
-                         CW_USEDEFAULT,
-                         CW_USEDEFAULT,
-                         CW_USEDEFAULT,
-                         CW_USEDEFAULT,
-                         NULL,
-                         NULL,
-                         hInstance,
-                         NULL);
+    hWnd = CreateWindow(
+        szAppName,
+        szTitle,
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        NULL,
+        NULL,
+        hInstance,
+        NULL);
 
-    ShowWindow (hWnd, nShowCmd);
+    ShowWindow(hWnd, nShowCmd);
     UpdateWindow(hWnd);
-		
+
     while (GetMessage (&msg, NULL, 0,0))
     {
         TranslateMessage(&msg);
@@ -338,7 +231,7 @@ WinMain (
 
 LRESULT
 FAR PASCAL
-WndProc (
+WndProc(
     HWND hWnd,
     UINT message,
     WPARAM wParam,
@@ -348,65 +241,39 @@ WndProc (
     DWORD nEventType = (DWORD)wParam;
     PDEV_BROADCAST_HDR p = (PDEV_BROADCAST_HDR) lParam;
     DEV_BROADCAST_DEVICEINTERFACE filter;
-
-	// For WM_PAINT
-	PAINTSTRUCT ps; 
-    HDC hdc; 
+    // For WM_PAINT
+    PAINTSTRUCT ps;
+    HDC hdc;
 
     switch (message)
     {
- 	
-	case WM_PAINT: 
-		    DBG_PRINT((TEXT(" Received WM_PAINT message.\n")));
-		//	DisplayV(TEXT("Received WM_PAINT message"));
-		
-            
-//			
-#if 1
-			if (gDeviceInfo != NULL && gDeviceInfo->BitmapBuffer != NULL
-					&& wParam == 333)
-				{
-				//hdc = BeginPaint(hWndList, &ps); 
-				hdc = GetDC(hWndList);
-				makebmp(
-					gDeviceInfo->BitmapBuffer,	// pBits,
-					gDeviceInfo->Width,			//width, 
-					gDeviceInfo->Height,		//height, 
-					hdc,
-					hWndList
-					);
-				ReleaseDC(
-					hWndList,
-					hdc
-					);
-				//EndPaint(hWndList, &ps); 
-				
-				if (gDeviceInfo->pCompressionDoneFn != NULL)
-					{
-					/*
-					Release FrameBuffer and return BitmapReq
-					*/
-					(*gDeviceInfo->pCompressionDoneFn)(
-						gDeviceInfo->pDevCtx,
-						gDeviceInfo->pCompressionDoneCtx
-						);
-					
-					gDeviceInfo->BitmapBuffer = NULL;	
-					}				
-				}
+    case WM_PAINT:
+        DBG_PRINT((TEXT(" Received WM_PAINT message.\n")));
+        if (gDeviceInfo != NULL && gDeviceInfo->BitmapBuffer != NULL &&
+            wParam == LPARAM_NOTIFY_FRAME_UPDATE)
+        {
+            //hdc = BeginPaint(hWndList, &ps);
+            hdc = GetDC(hWndList);
+            makebmp(
+                gDeviceInfo->BitmapBuffer,  // pBits,
+                gDeviceInfo->Width,         //width,
+                gDeviceInfo->Height,        //height,
+                hdc,
+                hWndList
+                );
+            ReleaseDC(
+                hWndList,
+                hdc
+                );
+            //EndPaint(hWndList, &ps);
+        }
+        return DefWindowProc(hWnd,message, wParam, lParam);
 
-#endif
-		//	return 0;
-            return DefWindowProc(hWnd,message, wParam, lParam);
-
-	
-        case WM_COMMAND:
+    case WM_COMMAND:
             HandleCommands(hWnd, message, wParam, lParam);
             return 0;
 
-        case WM_CREATE:
-			
-			DisplayV(TEXT("Received WM_CREATE message"));
+    case WM_CREATE:
             //
             // Load and set the icon of the program
             //
@@ -433,68 +300,66 @@ WndProc (
 
             InitializeListHead(&ListHead);
             EnumExistingDevices(hWnd);
-			
-			return 0;
-
-      case WM_SIZE:
-
-            MoveWindow(hWndList, 0, 0, LOWORD(lParam), HIWORD(lParam), TRUE);
             return 0;
 
-      case WM_SETFOCUS:
-            SetFocus(hWndList);
+    case WM_SIZE:
+        MoveWindow(hWndList, 0, 0, LOWORD(lParam), HIWORD(lParam), TRUE);
+        return 0;
+
+    case WM_SETFOCUS:
+        SetFocus(hWndList);
+        return 0;
+
+    case WM_DEVICECHANGE:
+        //
+        // The DBT_DEVNODES_CHANGED broadcast message is sent
+        // everytime a device is added or removed. This message
+        // is typically handled by Device Manager kind of apps,
+        // which uses it to refresh window whenever something changes.
+        // The lParam is always NULL in this case.
+        //
+        if(DBT_DEVNODES_CHANGED == wParam) {
+            DBG_PRINT((TEXT("Received DBT_DEVNODES_CHANGED broadcast message")));
             return 0;
+        }
 
-      case WM_DEVICECHANGE:
-
-            //
-            // The DBT_DEVNODES_CHANGED broadcast message is sent
-            // everytime a device is added or removed. This message
-            // is typically handled by Device Manager kind of apps,
-            // which uses it to refresh window whenever something changes.
-            // The lParam is always NULL in this case.
-            //
-            if(DBT_DEVNODES_CHANGED == wParam) {
-                DisplayV(TEXT("Received DBT_DEVNODES_CHANGED broadcast message"));
+        //
+        // All the events we're interested in come with lParam pointing to
+        // a structure headed by a DEV_BROADCAST_HDR.  This is denoted by
+        // bit 15 of wParam being set, and bit 14 being clear.
+        //
+        if((wParam & 0xC000) == 0x8000)
+        {
+            if (!p)
                 return 0;
+
+            if (p->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE)
+            {
+                HandleDeviceInterfaceChange(hWnd, nEventType, (PDEV_BROADCAST_DEVICEINTERFACE) p);
             }
-
-            //
-            // All the events we're interested in come with lParam pointing to
-            // a structure headed by a DEV_BROADCAST_HDR.  This is denoted by
-            // bit 15 of wParam being set, and bit 14 being clear.
-            //
-            if((wParam & 0xC000) == 0x8000) {
-
-                if (!p)
-                    return 0;
-
-                if (p->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE) {
-					fprintf(stderr, " DBT_DEVTYP_DEVICEINTERFACE.\n");
-                    HandleDeviceInterfaceChange(hWnd, nEventType, (PDEV_BROADCAST_DEVICEINTERFACE) p);
-					
-                } else if (p->dbch_devicetype == DBT_DEVTYP_HANDLE) {
-					fprintf(stderr, " DBT_DEVTYP_HANDLE.\n");
-                    HandleDeviceChange(hWnd, nEventType, (PDEV_BROADCAST_HANDLE) p);
-                }
+            else
+            if (p->dbch_devicetype == DBT_DEVTYP_HANDLE)
+            {
+                HandleDeviceChange(hWnd, nEventType, (PDEV_BROADCAST_HANDLE) p);
             }
-            return 0;
+        }
+        return 0;
 
-      case WM_POWERBROADCAST:
-            HandlePowerBroadcast(hWnd, wParam, lParam);
-            return 0;
+    case WM_POWERBROADCAST:
+        HandlePowerBroadcast(hWnd, wParam, lParam);
+        return 0;
 
-      case WM_CLOSE:
-            Cleanup(hWnd);
-            UnregisterDeviceNotification(hInterfaceNotification);
-            return  DefWindowProc(hWnd,message, wParam, lParam);
+    case WM_CLOSE:
+        Cleanup(hWnd);
+        UnregisterDeviceNotification(hInterfaceNotification);
+        return  DefWindowProc(hWnd,message, wParam, lParam);
 
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
     }
     return DefWindowProc(hWnd,message, wParam, lParam);
-  }
+}
 
 
 LRESULT
@@ -502,9 +367,8 @@ HandleCommands(
     HWND     hWnd,
     UINT     uMsg,
     WPARAM   wParam,
-    LPARAM     lParam
+    LPARAM   lParam
     )
-
 {
     PDIALOG_RESULT result = NULL;
 
@@ -512,110 +376,132 @@ HandleCommands(
     UNREFERENCED_PARAMETER( lParam );
 
     switch (wParam) {
+    case IDM_OPEN:
+        Cleanup(hWnd); // close all open handles
+        EnumExistingDevices(hWnd);
+        break;
 
-        case IDM_OPEN:
-            Cleanup(hWnd); // close all open handles
-            EnumExistingDevices(hWnd);
-            break;
+    case IDM_CLOSE:
+        Cleanup(hWnd);
+        break;
 
-        case IDM_CLOSE:
-            Cleanup(hWnd);
-            break;
+    case IDM_HIDE:
+        result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgProc);
+        if(result && result->SerialNum && IsValid(result->SerialNum))
+        {
+            DWORD bytes;
+            PDEVICE_INFO deviceInfo = NULL;
+            PLIST_ENTRY thisEntry;
 
-        case IDM_HIDE:
-            result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgProc);
-            if(result && result->SerialNo && IsValid(result->SerialNo)) {
-                DWORD bytes;
-                PDEVICE_INFO deviceInfo = NULL;
-                PLIST_ENTRY thisEntry;
-
-                //
-                // Find out the deviceInfo that matches this SerialNo.
-                // We need the deviceInfo to get the handle to the device.
-                //
-                for(thisEntry = ListHead.Flink; thisEntry != &ListHead;
-                    thisEntry = thisEntry->Flink)
-                {
-                    deviceInfo = CONTAINING_RECORD(thisEntry, DEVICE_INFO, ListEntry);
-                    if(result->SerialNo == deviceInfo->SerialNo) {
-                        break;
-                    }
-                    deviceInfo = NULL;
+            //
+            // Find out the deviceInfo that matches this SerialNum.
+            // We need the deviceInfo to get the handle to the device.
+            //
+            for(thisEntry = ListHead.Flink; thisEntry != &ListHead;
+                thisEntry = thisEntry->Flink)
+            {
+                deviceInfo = CONTAINING_RECORD(thisEntry, DEVICE_INFO, ListEntry);
+                if(result->SerialNum == deviceInfo->SerialNum) {
+                    break;
                 }
-
-                //
-                // If found send I/O control
-                //
-
-                if (deviceInfo && !DeviceIoControl (deviceInfo->hDevice,
-                          IOCTL_TOASTER_DONT_DISPLAY_IN_UI_DEVICE,
-                          NULL, 0,
-                          NULL, 0,
-                          &bytes, NULL)) {
-                       MessageBox(hWnd, TEXT("Request Failed or Invalid Serial No"),
-                                   TEXT("Error"), MB_OK);
-                }
-             }
-            break;
-        case IDM_PLUGIN:
-
-            result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG), hWnd, DlgProc);
-            if(result) {
-                if(!result->SerialNo || !OpenBusInterface(result->SerialNo, result->DeviceId, PLUGIN)){
-                    MessageBox(hWnd, TEXT("Invalid Serial Number or OpenBusInterface Failed"), TEXT("Error"), MB_OK);
-                }
-             }
-            break;
-        case IDM_UNPLUG:
-            result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgProc);
-
-            if(result && IsValid(result->SerialNo)) {
-                if(!OpenBusInterface(result->SerialNo, NULL, UNPLUG)) {
-                       MessageBox(hWnd, TEXT("Invalid Serial Number or OpenBusInterface Failed"), TEXT("Error"), MB_OK);
-                }
-             }
-            break;
-        case IDM_EJECT:
-            result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgProc);
-            if(result && IsValid(result->SerialNo)) {
-                if(!OpenBusInterface(result->SerialNo, NULL, EJECT)) {
-                       MessageBox(hWnd, TEXT("Invalid Serial Number or OpenBusInterface  Failed"), TEXT("Error"), MB_OK);
-                }
-             }
-            break;
-
-        case IDM_CLEAR:
-            SendMessage(hWndList, LB_RESETCONTENT, 0, 0);
-            ListBoxIndex = 0;
-            break;
-
-        case IDM_IOCTL:
-            SendIoctlToFilterDevice();
-            break;
-
-        case IDM_VERBOSE: {
-
-                HMENU hMenu = GetMenu(hWnd);
-                Verbose = !Verbose;
-                if(Verbose) {
-                    CheckMenuItem(hMenu, (UINT)wParam, MF_CHECKED);
-                } else {
-                    CheckMenuItem(hMenu, (UINT)wParam, MF_UNCHECKED);
-                }
+                deviceInfo = NULL;
             }
-            break;
 
-        case IDM_EXIT:
-            PostQuitMessage(0);
-            break;
+            //
+            // If found send I/O control
+            //
 
-        default:
-            break;
+            if (deviceInfo && !DeviceIoControl (deviceInfo->hDevice,
+                      IOCTL_TOASTER_DONT_DISPLAY_IN_UI_DEVICE,
+                      NULL, 0,
+                      NULL, 0,
+                      &bytes, NULL)) {
+                   MessageBox(hWnd, TEXT("Request Failed or Invalid Serial No"),
+                               TEXT("Error"), MB_OK);
+            }
+        }
+        break;
+
+    case IDM_PLUGIN:
+        result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG), hWnd, DlgProc);
+        if(result)
+        {
+            if(!result->SerialNum || !OpenBusInterface(result->SerialNum, result->DeviceId, PLUGIN))
+            {
+               MessageBox(hWnd, TEXT("Invalid Serial Number or OpenBusInterface Failed"), TEXT("Error"), MB_OK);
+            }
+        }
+        break;
+
+    case IDM_UNPLUG:
+        result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgProc);
+        if(result && IsValid(result->SerialNum))
+        {
+            if(!OpenBusInterface(result->SerialNum, NULL, UNPLUG))
+            {
+                MessageBox(
+                    hWnd,
+                    TEXT("Invalid Serial Number or OpenBusInterface Failed"),
+                    TEXT("Error"),
+                    MB_OK
+                    );
+            }
+        }
+        break;
+
+    case IDM_EJECT:
+        result = (PDIALOG_RESULT)DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG1), hWnd, DlgProc);
+        if(result && IsValid(result->SerialNum))
+        {
+            if(!OpenBusInterface(result->SerialNum, NULL, EJECT))
+            {
+                MessageBox(
+                    hWnd,
+                    TEXT("Invalid Serial Number or OpenBusInterface  Failed"),
+                    TEXT("Error"),
+                    MB_OK
+                    );
+            }
+        }
+        break;
+
+    case IDM_CLEAR:
+        SendMessage(hWndList, LB_RESETCONTENT, 0, 0);
+        ListBoxIndex = 0;
+        break;
+
+    case IDM_IOCTL:
+        SendIoctlToFilterDevice();
+        break;
+
+    case IDM_VERBOSE:
+        {
+            HMENU hMenu = GetMenu(hWnd);
+
+            Verbose = !Verbose;
+            if(Verbose)
+            {
+                CheckMenuItem(hMenu, (UINT)wParam, MF_CHECKED);
+            } else
+            {
+                CheckMenuItem(hMenu, (UINT)wParam, MF_UNCHECKED);
+            }
+        }
+        break;
+
+    case IDM_EXIT:
+        PostQuitMessage(0);
+        break;
+
+    default:
+        break;
     }
 
-    if(result) {
-        HeapFree (GetProcessHeap(), 0, result);
+    if(result)
+    {
+        HeapFree(GetProcessHeap(), 0, result);
     }
+
     return TRUE;
 }
 
@@ -634,35 +520,35 @@ DlgProc(
 
     switch(message)
     {
-        case WM_INITDIALOG:
-               SetDlgItemText(hDlg, IDC_DEVICEID, BUS_HARDWARE_IDS);
+    case WM_INITDIALOG:
+        SetDlgItemText(hDlg, IDC_DEVICEID, BUS_HARDWARE_IDS);
+        return TRUE;
+
+    case WM_COMMAND:
+        switch( wParam)
+        {
+        case ID_OK:
+            dialogResult = HeapAlloc(GetProcessHeap(),
+                                    HEAP_ZERO_MEMORY,
+                                    (sizeof(DIALOG_RESULT) + MAX_PATH * sizeof(WCHAR)));
+            if(dialogResult)
+            {
+                dialogResult->DeviceId = (PWCHAR)((PCHAR)dialogResult + sizeof(DIALOG_RESULT));
+                dialogResult->SerialNum = GetDlgItemInt(hDlg,IDC_SERIALNO, &success, FALSE );
+                GetDlgItemText(hDlg, IDC_DEVICEID, dialogResult->DeviceId, MAX_PATH-1 );
+            }
+            EndDialog(hDlg, (UINT_PTR)dialogResult);
             return TRUE;
 
-        case WM_COMMAND:
-            switch( wParam)
-            {
-            case ID_OK:
-                dialogResult = HeapAlloc(GetProcessHeap(),
-                                        HEAP_ZERO_MEMORY,
-                                        (sizeof(DIALOG_RESULT) + MAX_PATH * sizeof(WCHAR)));
-                if(dialogResult) {
-                    dialogResult->DeviceId = (PWCHAR)((PCHAR)dialogResult + sizeof(DIALOG_RESULT));
-                    dialogResult->SerialNo = GetDlgItemInt(hDlg,IDC_SERIALNO, &success, FALSE );
-                    GetDlgItemText(hDlg, IDC_DEVICEID, dialogResult->DeviceId, MAX_PATH-1 );
-                }
-                EndDialog(hDlg, (UINT_PTR)dialogResult);
-                return TRUE;
-            case ID_CANCEL:
-                EndDialog(hDlg, 0);
-                return TRUE;
-
-            }
-            break;
-
+        case ID_CANCEL:
+            EndDialog(hDlg, 0);
+            return TRUE;
+        }
+        break;
     }
+
     return FALSE;
 }
-
 
 BOOL
 HandleDeviceInterfaceChange(
@@ -677,7 +563,7 @@ HandleDeviceInterfaceChange(
 
     switch (evtype)
     {
-        case DBT_DEVICEARRIVAL:
+    case DBT_DEVICEARRIVAL:
         //
         // New device arrived. Open handle to the device
         // and register notification of type DBT_DEVTYP_HANDLE
@@ -694,12 +580,13 @@ HandleDeviceInterfaceChange(
         if(!GetDeviceDescription(dip->dbcc_name,
                                  deviceInfo->DeviceName,
                                  sizeof(deviceInfo->DeviceName),
-                                 &deviceInfo->SerialNo)) {
+                                 &deviceInfo->SerialNum)) {
             MessageBox(hWnd, TEXT("GetDeviceDescription failed"), TEXT("Error!"), MB_OK);
         }
 
-        Display(TEXT("New device Arrived (Interface Change Notification): %ws"),
-                    deviceInfo->DeviceName);
+        DBG_PRINT((
+            TEXT("New device Arrived (Interface Change Notification): %ws"),
+            deviceInfo->DeviceName));
 
         hr = StringCchCopy(deviceInfo->DevicePath, MAX_PATH, dip->dbcc_name);
         if(FAILED(hr)){
@@ -707,15 +594,19 @@ HandleDeviceInterfaceChange(
             break;
         }
 
-        deviceInfo->hDevice = CreateFile(dip->dbcc_name,
-                                        GENERIC_READ |GENERIC_WRITE, 0, NULL,
-                                        OPEN_EXISTING, 0, NULL);
-        if(deviceInfo->hDevice == INVALID_HANDLE_VALUE) {
-            Display(TEXT("Failed to open the device: %ws"), deviceInfo->DeviceName);
+        deviceInfo->hDevice = CreateFile(
+            dip->dbcc_name,
+            GENERIC_READ |GENERIC_WRITE, 0, NULL,
+            OPEN_EXISTING, 0, NULL);
+        if(deviceInfo->hDevice == INVALID_HANDLE_VALUE)
+        {
+            DBG_PRINT((TEXT("Failed to open the device: %ws"),
+                deviceInfo->DeviceName));
             break;
         }
 
-        Display(TEXT("Opened handled to the device: %ws"),  deviceInfo->DeviceName);
+        DBG_PRINT((TEXT("Opened handled to the device: %ws"),
+            deviceInfo->DeviceName));
         memset (&filter, 0, sizeof(filter)); //zero the structure
         filter.dbch_size = sizeof(filter);
         filter.dbch_devicetype = DBT_DEVTYP_HANDLE;
@@ -723,38 +614,34 @@ HandleDeviceInterfaceChange(
 
         deviceInfo->hHandleNotification =
                             RegisterDeviceNotification(hWnd, &filter, 0);
-		
-		//robert
-		/*
-		 create VMON main thread.
-		*/
-		deviceInfo->hWndList = hWndList;
-		deviceInfo->hParentWnd = hWnd;
-//		deviceInfo->pDevCtx->bStartVMONThread = TRUE;
-		gDeviceInfo = deviceInfo;
-		deviceInfo->VMONThread = CreateThread(
-			NULL,
-			0,      /* use default statck size */
-			&LCI_VMON_Main,
-			deviceInfo,
-			0,       /* the thread runs after completion */
-			&deviceInfo->VMONThreadId
-			);
-			
+
+        /*
+         * create VMON main thread.
+         */
+        deviceInfo->hWndList = hWndList;
+        deviceInfo->hParentWnd = hWnd;
+        gDeviceInfo = deviceInfo;
+        deviceInfo->VMONThread = CreateThread(
+            NULL,
+            0,      /* use default statck size */
+            &LJB_VMON_Main,
+            deviceInfo,
+            0,       /* the thread runs after completion */
+            &deviceInfo->VMONThreadId
+            );
+
         break;
 
-        case DBT_DEVICEREMOVECOMPLETE:
-        Display(TEXT("Remove Complete (Interface Change Notification)"));
-		
-		
+    case DBT_DEVICEREMOVECOMPLETE:
+        DBG_PRINT((TEXT("Remove Complete (Interface Change Notification)")));
         break;
 
         //
         // Device Removed.
         //
 
-        default:
-        Display(TEXT("Unknown (Interface Change Notification)"));
+    default:
+        DBG_PRINT((TEXT("Unknown (Interface Change Notification)")));
         break;
     }
     return TRUE;
@@ -785,18 +672,19 @@ HandleDeviceChange(
         deviceInfo = NULL;
     }
 
-    if(!deviceInfo) {
-        Display(TEXT("Error: spurious message, Event Type %x, Device Type %x"),
-                                evtype, dhp->dbch_devicetype);
+    if(!deviceInfo)
+    {
+        DBG_PRINT((
+            TEXT("Error: spurious message, Event Type %x, Device Type %x"),
+            evtype, dhp->dbch_devicetype));
         return FALSE;
     }
 
     switch (evtype)
     {
-
     case DBT_DEVICEQUERYREMOVE:
-
-        Display(TEXT("Query Remove (Handle Notification)"), deviceInfo->DeviceName);
+        DBG_PRINT((TEXT("Query Remove (Handle Notification)"),
+            deviceInfo->DeviceName));
 
         // User is trying to disable, uninstall, or eject our device.
         // Close the handle to the device so that the target device can
@@ -804,88 +692,93 @@ HandleDeviceChange(
         // at this point, because we want to know whether
         // the device is successfully removed or not.
         //
-        if (deviceInfo->hDevice != INVALID_HANDLE_VALUE) {
-
+        if (deviceInfo->hDevice != INVALID_HANDLE_VALUE)
+        {
             CloseHandle(deviceInfo->hDevice);
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
-            Display(TEXT("Closed handle to device %ws"), deviceInfo->DeviceName );
+            DBG_PRINT((TEXT("Closed handle to device %ws"),
+                deviceInfo->DeviceName));
         }
         break;
 
     case DBT_DEVICEREMOVECOMPLETE:
 
-        Display(TEXT("Remove Complete (Handle Notification):%ws"),
-                    deviceInfo->DeviceName);
+        DBG_PRINT((TEXT("Remove Complete (Handle Notification):%ws"),
+            deviceInfo->DeviceName));
         //
         // Device is getting surprise removed. So close
         // the handle to device and unregister the PNP notification.
         //
-
-        if (deviceInfo->hHandleNotification) {
+        if (deviceInfo->hHandleNotification)
+        {
             UnregisterDeviceNotification(deviceInfo->hHandleNotification);
             deviceInfo->hHandleNotification = NULL;
         }
-        if (deviceInfo->hDevice != INVALID_HANDLE_VALUE) {
-
+        if (deviceInfo->hDevice != INVALID_HANDLE_VALUE)
+        {
             CloseHandle(deviceInfo->hDevice);
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
-            Display(TEXT("Closed handle to device %ws"), deviceInfo->DeviceName );
+            DBG_PRINT((TEXT("Closed handle to device %ws"),
+                deviceInfo->DeviceName));
         }
-		
-		// Clean up
-		if (deviceInfo->pDevCtx != NULL)
-			{
-			DBG_PRINT((TEXT(" Set bStartVMONThread to False.\n")));
-			deviceInfo->pDevCtx->bStartVMONThread = FALSE;
-			}
-		
+
+        // Clean up
+        if (deviceInfo->dev_ctx != NULL)
+        {
+            DBG_PRINT((TEXT(" Set exit_vmon_thread to TRUE.\n")));
+            deviceInfo->dev_ctx->exit_vmon_thread = TRUE;
+        }
+
         //
         // Unlink this deviceInfo from the list and free the memory
         //
         RemoveEntryList(&deviceInfo->ListEntry);
         HeapFree (GetProcessHeap(), 0, deviceInfo);
-
         break;
 
     case DBT_DEVICEREMOVEPENDING:
-
-        Display(TEXT("Remove Pending (Handle Notification):%ws"),
-                                        deviceInfo->DeviceName);
+        DBG_PRINT((TEXT("Remove Pending (Handle Notification):%ws"),
+            deviceInfo->DeviceName));
         //
         // Device is successfully removed so unregister the notification
         // and free the memory.
         //
-        if (deviceInfo->hHandleNotification) {
+        if (deviceInfo->hHandleNotification)
+        {
             UnregisterDeviceNotification(deviceInfo->hHandleNotification);
             deviceInfo->hHandleNotification = NULL;
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
         }
+
         //
         // Unlink this deviceInfo from the list and free the memory
         //
-         RemoveEntryList(&deviceInfo->ListEntry);
-         HeapFree (GetProcessHeap(), 0, deviceInfo);
-
+        RemoveEntryList(&deviceInfo->ListEntry);
+        HeapFree (GetProcessHeap(), 0, deviceInfo);
         break;
 
     case DBT_DEVICEQUERYREMOVEFAILED :
-        Display(TEXT("Remove failed (Handle Notification):%ws"),
-                                    deviceInfo->DeviceName);
+        DBG_PRINT((
+            TEXT("Remove failed (Handle Notification):%ws"),
+            deviceInfo->DeviceName));
         //
         // Remove failed. So reopen the device and register for
         // notification on the new handle. But first we should unregister
         // the previous notification.
         //
-        if (deviceInfo->hHandleNotification) {
+        if (deviceInfo->hHandleNotification)
+        {
             UnregisterDeviceNotification(deviceInfo->hHandleNotification);
             deviceInfo->hHandleNotification = NULL;
-         }
-        deviceInfo->hDevice = CreateFile(deviceInfo->DevicePath,
-                                GENERIC_READ | GENERIC_WRITE,
-                                0, NULL, OPEN_EXISTING, 0, NULL);
+        }
+        deviceInfo->hDevice = CreateFile(
+            deviceInfo->DevicePath,
+            GENERIC_READ | GENERIC_WRITE,
+            0, NULL, OPEN_EXISTING, 0, NULL);
         if(deviceInfo->hDevice == INVALID_HANDLE_VALUE) {
-            Display(TEXT("Failed to reopen the device: %ws"),
-                    deviceInfo->DeviceName);
+            DBG_PRINT((
+                TEXT("Failed to reopen the device: %ws"),
+                deviceInfo->DeviceName));
             HeapFree (GetProcessHeap(), 0, deviceInfo);
             break;
         }
@@ -901,11 +794,12 @@ HandleDeviceChange(
 
         deviceInfo->hHandleNotification =
                             RegisterDeviceNotification(hWnd, &filter, 0);
-        Display(TEXT("Reopened device %ws"), deviceInfo->DeviceName);
+        DBG_PRINT((TEXT("Reopened device %ws"), deviceInfo->DeviceName));
         break;
 
     default:
-        Display(TEXT("Unknown (Handle Notification)"), deviceInfo->DeviceName);
+        DBG_PRINT((TEXT("Unknown (Handle Notification)"),
+            deviceInfo->DeviceName));
         break;
 
     }
@@ -945,11 +839,15 @@ EnumExistingDevices(
     //
     deviceInterfaceData.cbSize = sizeof(deviceInterfaceData);
 
-    for(i=0; SetupDiEnumDeviceInterfaces (hardwareDeviceInfo,
-                                 0, // No care about specific PDOs
-                                 (LPGUID)&InterfaceGuid,
-                                 i, //
-                                 &deviceInterfaceData); i++ ) {
+    for(i=0;
+        SetupDiEnumDeviceInterfaces(
+            hardwareDeviceInfo,
+            0, // No care about specific PDOs
+            (LPGUID)&InterfaceGuid,
+            i, //
+            &deviceInterfaceData);
+        i++)
+    {
 
         //
         // Allocate a function class device data structure to
@@ -962,7 +860,7 @@ EnumExistingDevices(
         if(deviceInterfaceDetailData)
                 HeapFree (GetProcessHeap(), 0, deviceInterfaceDetailData);
 
-        if(!SetupDiGetDeviceInterfaceDetail (
+        if(!SetupDiGetDeviceInterfaceDetail(
                 hardwareDeviceInfo,
                 &deviceInterfaceData,
                 NULL, // probing so no output buffer yet
@@ -976,7 +874,8 @@ EnumExistingDevices(
 
         deviceInterfaceDetailData = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
                                                predictedLength);
-        if (deviceInterfaceDetailData == NULL) {
+        if (deviceInterfaceDetailData == NULL)
+        {
             goto Error;
         }
         deviceInterfaceDetailData->cbSize =
@@ -989,13 +888,17 @@ EnumExistingDevices(
                    deviceInterfaceDetailData,
                    predictedLength,
                    &requiredLength,
-                   NULL)) {
+                   NULL))
+        {
             goto Error;
         }
 
-        deviceInfo = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
-                                sizeof(DEVICE_INFO));
-        if (deviceInfo == NULL) {
+        deviceInfo = HeapAlloc(
+            GetProcessHeap(),
+            HEAP_ZERO_MEMORY,
+            sizeof(DEVICE_INFO));
+        if (deviceInfo == NULL)
+        {
             goto Error;
         }
 
@@ -1003,16 +906,17 @@ EnumExistingDevices(
         InsertTailList(&ListHead, &deviceInfo->ListEntry);
 
         //
-        // Get the device details such as friendly name and SerialNo
+        // Get the device details such as friendly name and SerialNum
         //
         if(!GetDeviceDescription(deviceInterfaceDetailData->DevicePath,
                                  deviceInfo->DeviceName,
                                  sizeof(deviceInfo->DeviceName),
-                                 &deviceInfo->SerialNo)){
+                                 &deviceInfo->SerialNum))
+        {
             goto Error;
         }
 
-        Display(TEXT("Found device %ws"), deviceInfo->DeviceName );
+        DBG_PRINT((TEXT("Found device %ws"), deviceInfo->DeviceName));
 
         hr = StringCchCopy(deviceInfo->DevicePath, MAX_PATH, deviceInterfaceDetailData->DevicePath);
         if(FAILED(hr)){
@@ -1031,11 +935,15 @@ EnumExistingDevices(
                 NULL);
 
         if (INVALID_HANDLE_VALUE == deviceInfo->hDevice) {
-            Display(TEXT("Failed to open the device: %ws"), deviceInfo->DeviceName);
+            DBG_PRINT((
+                TEXT("Failed to open the device: %ws"),
+                deviceInfo->DeviceName));
             continue;
         }
 
-        Display(TEXT("Opened handled to the device: %ws"), deviceInfo->DeviceName);
+        DBG_PRINT((
+            TEXT("Opened handled to the device: %ws"),
+            deviceInfo->DeviceName));
         //
         // Register handle based notification to receive pnp
         // device change notification on the handle.
@@ -1069,36 +977,40 @@ Error:
 
 BOOLEAN Cleanup(HWND hWnd)
 {
-    PDEVICE_INFO    deviceInfo =NULL;
+    PDEVICE_INFO    deviceInfo = NULL;
     PLIST_ENTRY     thisEntry;
 
-    UNREFERENCED_PARAMETER( hWnd );
+    UNREFERENCED_PARAMETER(hWnd);
 
-    while (!IsListEmpty(&ListHead)) {
+    while (!IsListEmpty(&ListHead))
+    {
         thisEntry = RemoveHeadList(&ListHead);
         deviceInfo = CONTAINING_RECORD(thisEntry, DEVICE_INFO, ListEntry);
-        if (deviceInfo->hHandleNotification) {
+        if (deviceInfo->hHandleNotification)
+        {
             UnregisterDeviceNotification(deviceInfo->hHandleNotification);
             deviceInfo->hHandleNotification = NULL;
         }
+
         if (deviceInfo->hDevice != INVALID_HANDLE_VALUE &&
-                deviceInfo->hDevice != NULL) {
+                deviceInfo->hDevice != NULL)
+        {
             CloseHandle(deviceInfo->hDevice);
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
-            Display(TEXT("Closed handle to device %ws"), deviceInfo->DeviceName );
+            DBG_PRINT((TEXT("Closed handle to device %ws"),
+                deviceInfo->DeviceName));
         }
-        HeapFree (GetProcessHeap(), 0, deviceInfo);
+        HeapFree(GetProcessHeap(), 0, deviceInfo);
     }
     return TRUE;
 }
-
 
 BOOL
 GetDeviceDescription(
     __in LPTSTR DevPath,
     __out_bcount_full(OutBufferLen) LPTSTR OutBuffer,
     __in ULONG OutBufferLen,
-    __in PULONG SerialNo
+    __in PULONG SerialNum
 )
 {
     HDEVINFO                            hardwareDeviceInfo;
@@ -1153,8 +1065,6 @@ GetDeviceDescription(
             goto Error;
 
         }
-
-
     }
 
     //
@@ -1165,10 +1075,12 @@ GetDeviceDescription(
                  &deviceInfoData,
                  SPDRP_UI_NUMBER,
                  &dwRegType,
-                 (BYTE*) SerialNo,
+                 (BYTE*) SerialNum,
                  sizeof(PULONG),
-                 NULL)) {
-        Display(TEXT("SerialNo is not available for device: %ws"), OutBuffer );
+                 NULL))
+    {
+        DBG_PRINT((TEXT("SerialNum is not available for device: %ws"),
+            OutBuffer));
     }
 
 
@@ -1185,7 +1097,7 @@ Error:
 
 BOOLEAN
 OpenBusInterface (
-    __in ULONG SerialNo,
+    __in ULONG SerialNum,
     __in_opt LPWSTR DeviceId,
     __in USER_ACTION_TYPE Action
     )
@@ -1296,7 +1208,7 @@ OpenBusInterface (
         if(hardware) {
             memset(hardware, 0, bytes);
             hardware->Size = sizeof (BUSENUM_PLUGIN_HARDWARE);
-            hardware->SerialNo = SerialNo;
+            hardware->SerialNo = SerialNum;
         } else {
             goto Clean2;
         }
@@ -1325,7 +1237,7 @@ OpenBusInterface (
     if(Action == UNPLUG) {
 
         unplug.Size = bytes = sizeof (unplug);
-        unplug.SerialNo = SerialNo;
+        unplug.SerialNo = SerialNum;
         if (DeviceIoControl (hDevice,
                               IOCTL_BUSENUM_UNPLUG_HARDWARE,
                               &unplug, bytes,
@@ -1344,7 +1256,7 @@ OpenBusInterface (
     {
 
         eject.Size = bytes = sizeof (eject);
-        eject.SerialNo = SerialNo;
+        eject.SerialNo = SerialNum;
         if (DeviceIoControl (hDevice,
                               IOCTL_BUSENUM_EJECT_HARDWARE,
                               &eject, bytes,
@@ -1377,46 +1289,46 @@ HandlePowerBroadcast(
     switch (wParam)
     {
         case PBT_APMQUERYSTANDBY:
-            DisplayV(TEXT("PBT_APMQUERYSTANDBY"));
+            DBG_PRINT((TEXT("PBT_APMQUERYSTANDBY")));
             break;
         case PBT_APMQUERYSUSPEND:
-            DisplayV(TEXT("PBT_APMQUERYSUSPEND"));
+            DBG_PRINT((TEXT("PBT_APMQUERYSUSPEND")));
             break;
         case PBT_APMSTANDBY :
-            DisplayV(TEXT("PBT_APMSTANDBY"));
+            DBG_PRINT((TEXT("PBT_APMSTANDBY")));
             break;
         case PBT_APMSUSPEND :
-            DisplayV(TEXT("PBT_APMSUSPEND"));
+            DBG_PRINT((TEXT("PBT_APMSUSPEND")));
             break;
         case PBT_APMQUERYSTANDBYFAILED:
-            DisplayV(TEXT("PBT_APMQUERYSTANDBYFAILED"));
+            DBG_PRINT((TEXT("PBT_APMQUERYSTANDBYFAILED")));
             break;
         case PBT_APMRESUMESTANDBY:
-            DisplayV(TEXT("PBT_APMRESUMESTANDBY"));
+            DBG_PRINT((TEXT("PBT_APMRESUMESTANDBY")));
             break;
         case PBT_APMQUERYSUSPENDFAILED:
-            DisplayV(TEXT("PBT_APMQUERYSUSPENDFAILED"));
+            DBG_PRINT((TEXT("PBT_APMQUERYSUSPENDFAILED")));
             break;
         case PBT_APMRESUMESUSPEND:
-            DisplayV(TEXT("PBT_APMRESUMESUSPEND"));
+            DBG_PRINT((TEXT("PBT_APMRESUMESUSPEND")));
             break;
         case PBT_APMBATTERYLOW:
-            DisplayV(TEXT("PBT_APMBATTERYLOW"));
+            DBG_PRINT((TEXT("PBT_APMBATTERYLOW")));
             break;
         case PBT_APMOEMEVENT:
-            DisplayV(TEXT("PBT_APMOEMEVENT"));
+            DBG_PRINT((TEXT("PBT_APMOEMEVENT")));
             break;
         case PBT_APMRESUMEAUTOMATIC:
-            DisplayV(TEXT("PBT_APMRESUMEAUTOMATIC"));
+            DBG_PRINT((TEXT("PBT_APMRESUMEAUTOMATIC")));
             break;
         case PBT_APMRESUMECRITICAL:
-            DisplayV(TEXT("PBT_APMRESUMECRITICAL"));
+            DBG_PRINT((TEXT("PBT_APMRESUMECRITICAL")));
             break;
         case PBT_APMPOWERSTATUSCHANGE:
-            DisplayV(TEXT("PBT_APMPOWERSTATUSCHANGE"));
+            DBG_PRINT((TEXT("PBT_APMPOWERSTATUSCHANGE")));
             break;
         default:
-            DisplayV(TEXT("Default"));
+            DBG_PRINT((TEXT("Default")));
             break;
     }
     return fRet;
@@ -1449,17 +1361,20 @@ SendIoctlToFilterDevice()
                         0, // No special attributes
                         NULL); // No template file
 
-    if (INVALID_HANDLE_VALUE == hControlDevice) {
-        Display(TEXT("Failed to open ToasterFilter device"));
-    } else {
+    if (INVALID_HANDLE_VALUE == hControlDevice)
+    {
+        DBG_PRINT((TEXT("Failed to open ToasterFilter device")));
+    }
+    else
+    {
         if (!DeviceIoControl (hControlDevice,
                               IOCTL_CUSTOM_CODE,
                               NULL, 0,
                               NULL, 0,
                               &bytes, NULL)) {
-            Display(TEXT("Ioctl to ToasterFilter device failed"));
+            DBG_PRINT((TEXT("Ioctl to ToasterFilter device failed\n")));
         } else {
-            Display(TEXT("Ioctl to ToasterFilter device succeeded"));
+            DBG_PRINT((TEXT("Ioctl to ToasterFilter device succeeded\n")));
         }
         CloseHandle(hControlDevice);
     }

@@ -1,21 +1,3 @@
-/*!
-    \file       lci_vmon_generic_ioctl.c
-    \brief      LJB_VMON_GenericIoctl implementation.
-    \details    LJB_VMON_GenericIoctl Implementation.
-    \authors    lucaslin
-    \version    0.01a
-    \date       July 25, 2013
-    \todo       (Optional)
-    \bug        (Optional)
-    \warning    (Optional)
-    \copyright  (c) 2013 Luminon Core Incorporated. All Rights Reserved.
-
-    Revision Log
-    + 0.01a;    July 25, 2013;   lucaslin
-     - Created.
-
- */
-
 #include "ljb_vmon_private.h"
 
 CONST UCHAR gkBuiltInEdidData[] = {
@@ -50,15 +32,15 @@ LJB_VMON_GenericIoctl(
     __in SIZE_T         OutputBufferSize,
     __out ULONG *       BytesReturned
     )
-    {
+{
     LJB_VMON_CTX * CONST                    pDevCtx = ProviderContext;
     LCI_GENERIC_INTERFACE * CONST           pTargetInterface = &pDevCtx->TargetGenericInterface;
     LCI_PROXYKMD_PRIMARY_SURFACE_CREATE *   pCreateData;
     LCI_PROXYKMD_PRIMARY_SURFACE_DESTROY *  pDestroyData;
     LCI_PROXYKMD_PRIMARY_SURFACE_UPDATE *   pUpdateData;
     LCI_PROXYKMD_CURSOR_UPDATE *            pCursorData;
-    LCI_USBAV_PRIMARY_SURFACE *             pPrimarySurface;
-    LCI_WAIT_UPDATE_REQUEST *               pWaitRequest;
+    LJB_VMON_PRIMARY_SURFACE *              pPrimarySurface;
+    LJB_VMON_WAIT_FOR_UPDATE_REQ *          pWaitRequest;
     LIST_ENTRY *                            pListHead;
     LIST_ENTRY *                            pListEntry;
     LIST_ENTRY *                            pNextEntry;
@@ -67,7 +49,7 @@ LJB_VMON_GenericIoctl(
     LONG                                    ReferenceCount;
     NTSTATUS                                ntStatus;
     UINT                                    i;
-      LCI_USBAV_PRIMARY_SURFACE *                 pThisSurface;
+    LJB_VMON_PRIMARY_SURFACE *              pThisSurface;
 
     UNREFERENCED_PARAMETER(OutputBuffer);
     UNREFERENCED_PARAMETER(OutputBufferSize);
@@ -76,10 +58,10 @@ LJB_VMON_GenericIoctl(
     *BytesReturned = 0;
     ntStatus = STATUS_NOT_SUPPORTED;
     switch (IoctlCode)
-        {
+    {
     case LCI_PROXYKMD_GET_EDID:
         if (OutputBufferSize < FAKE_EDID_SIZE)
-            {
+        {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?"__FUNCTION__ ": "
                 "OutputBufferSize(0x%x) too small, required 0x%x bytes?\n",
@@ -88,7 +70,7 @@ LJB_VMON_GenericIoctl(
                 ));
             ntStatus = STATUS_BUFFER_TOO_SMALL;
             break;
-            }
+        }
         RtlCopyMemory(
             OutputBuffer,
             gkBuiltInEdidData,
@@ -99,7 +81,7 @@ LJB_VMON_GenericIoctl(
 
     case LCI_PROXYKMD_NOTIFY_PRIMARY_SURFACE_CREATE:
         if (InputBufferSize < sizeof(LCI_PROXYKMD_PRIMARY_SURFACE_CREATE))
-            {
+        {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?"__FUNCTION__ ": "
                 "InputBufferSize(0x%x) too small, required 0x%x bytes?\n",
@@ -108,33 +90,33 @@ LJB_VMON_GenericIoctl(
                 ));
             ntStatus = STATUS_BUFFER_TOO_SMALL;
             break;
-            }
+        }
 
         pCreateData = InputBuffer;
         for (i = 0; i < NUM_OF_BUFFERS_PER_SURFACE; i++)
-            {
+        {
             pPrimarySurface = LJB_VMON_GetPoolZero(sizeof(*pPrimarySurface));
             if (pPrimarySurface == NULL)
-                {
+            {
                 LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                     ("?" __FUNCTION__ ": no pPrimarySurface created?\n"
                     ));
                 ntStatus = STATUS_INSUFFICIENT_RESOURCES;
                 break;
-                }
+            }
 
             pPrimarySurface->pBuffer = LJB_VMON_GetPoolZero(
                 pCreateData->BufferSize
                 );
             if (pPrimarySurface->pBuffer == NULL)
-                {
+            {
                 LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                     ("?" __FUNCTION__ ": No pBuffer allocated?\n"
                     ));
                 LJB_VMON_FreePool(pPrimarySurface);
                 ntStatus = STATUS_INSUFFICIENT_RESOURCES;
                 break;
-                }
+            }
 
             pPrimarySurface->pMdl = IoAllocateMdl(
                 pPrimarySurface->pBuffer,
@@ -144,7 +126,7 @@ LJB_VMON_GenericIoctl(
                 NULL
                 );
             if (pPrimarySurface->pMdl == NULL)
-                {
+            {
                 LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                     ("?" __FUNCTION__ ": no pMdl allocated?\n"
                     ));
@@ -152,7 +134,7 @@ LJB_VMON_GenericIoctl(
                 LJB_VMON_FreePool(pPrimarySurface);
                 ntStatus = STATUS_INSUFFICIENT_RESOURCES;
                 break;
-                }
+            }
             MmBuildMdlForNonPagedPool(pPrimarySurface->pMdl);
 
             pPrimarySurface->hPrimarySurface    = pCreateData->hPrimarySurface;
@@ -175,7 +157,7 @@ LJB_VMON_GenericIoctl(
                 );
             KeReleaseSpinLock(&pDevCtx->PrimarySurfaceListLock, OldIrql);
             LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                (" " __FUNCTION__ ": "
+                (__FUNCTION__ ": "
                 "pPrimarySurface(%p)/pMdl(%p) created, "
                 "Width(%u)/Height(%u)/Size(0x%x)\n",
                 pPrimarySurface,
@@ -184,12 +166,12 @@ LJB_VMON_GenericIoctl(
                 pPrimarySurface->Height,
                 pPrimarySurface->BufferSize
                 ));
-            }
+        }
         break;
 
     case LCI_PROXYKMD_NOTIFY_PRIMARY_SURFACE_DESTROY:
         if (InputBufferSize < sizeof(LCI_PROXYKMD_PRIMARY_SURFACE_DESTROY))
-            {
+        {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?"__FUNCTION__ ": "
                 "InputBufferSize(0x%x) too small, required 0x%x bytes?\n",
@@ -198,10 +180,10 @@ LJB_VMON_GenericIoctl(
                 ));
             ntStatus = STATUS_BUFFER_TOO_SMALL;
             break;
-            }
+        }
 
         /*
-         Locate pPrimarySurface with matched hPrimarySurface
+         * Locate pPrimarySurface with matched hPrimarySurface
          */
         pDestroyData = InputBuffer;
         pListHead = &pDevCtx->PrimarySurfaceListHead;
@@ -211,27 +193,27 @@ LJB_VMON_GenericIoctl(
         for (pListEntry = pListHead->Flink;
             pListEntry != pListHead;
             pListEntry = pNextEntry)
-            {
+        {
             pNextEntry = pListEntry->Flink;
             pThisSurface = CONTAINING_RECORD(
                 pListEntry,
-                LCI_USBAV_PRIMARY_SURFACE,
+                LJB_VMON_PRIMARY_SURFACE,
                 ListEntry
                 );
             if (pThisSurface->hPrimarySurface == pDestroyData->hPrimarySurface)
-                {
+            {
                 /*
-                If nobody is holding a reference on the object, we are safe
-                to remove it from the list
-                */
+                 * If nobody is holding a reference on the object, we are safe
+                 * to remove it from the list
+                 */
                 ReferenceCount = InterlockedDecrement(&pThisSurface->ReferenceCount);
                 if (ReferenceCount == 0)
-                    {
+                {
                     RemoveEntryList(&pThisSurface->ListEntry);
                     pPrimarySurface = pThisSurface;
 
                     LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                        (" " __FUNCTION__ ": "
+                        (__FUNCTION__ ": "
                         "pPrimarySurface(%p)/pMdl(%p) destroyed\n",
                         pPrimarySurface,
                         pPrimarySurface->pMdl
@@ -239,91 +221,27 @@ LJB_VMON_GenericIoctl(
                     IoFreeMdl(pPrimarySurface->pMdl);
                     LJB_VMON_FreePool(pPrimarySurface->pBuffer);
                     LJB_VMON_FreePool(pPrimarySurface);
-                    }
+                }
                 else
-                    {
+                {
                     LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                        (" " __FUNCTION__ ": "
+                        (__FUNCTION__ ": "
                         "pThisSurface(%p) has ReferenceCount(%d), "
                         "Defer destruction to later.\n",
                         pThisSurface,
                         ReferenceCount
                         ));
-                    }
                 }
             }
+        }
         KeReleaseSpinLock(&pDevCtx->PrimarySurfaceListLock, OldIrql);
-#if 0
-        do
-            {
-            pPrimarySurface = NULL;
-            KeAcquireSpinLock(&pDevCtx->PrimarySurfaceListLock, &OldIrql);
-            for (pListEntry = pListHead->Flink;
-                pListEntry != pListHead;
-                pListEntry = pListEntry->Flink)
-                {
-                LCI_USBAV_PRIMARY_SURFACE * pThisSurface;
-
-                pThisSurface = CONTAINING_RECORD(
-                    pListEntry,
-                    LCI_USBAV_PRIMARY_SURFACE,
-                    ListEntry
-                    );
-                if (pThisSurface->hPrimarySurface == pDestroyData->hPrimarySurface)
-                    {
-                    /*
-                    If nobody is holding a reference on the object, we are safe
-                    to remove it from the list
-                    */
-                    ReferenceCount = InterlockedDecrement(&pThisSurface->ReferenceCount);
-                    if (ReferenceCount == 0)
-                        {
-                        RemoveEntryList(&pThisSurface->ListEntry);
-                        pPrimarySurface = pThisSurface;
-                        }
-                    else
-                        {
-                        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                            (" " __FUNCTION__ ": "
-                            "pPrimarySurface(%p) has ReferenceCount(%u), "
-                            "Defer destruction to later.\n",
-                            pPrimarySurface,
-                            ReferenceCount
-                            ));
-                        }
-                    break;
-                    }
-                }
-            KeReleaseSpinLock(&pDevCtx->PrimarySurfaceListLock, OldIrql);
-
-            if (pPrimarySurface == NULL)
-                {
-                LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
-                    ("?" __FUNCTION__ ": "
-                    "No pPrimarySurface found for hPrimarySurface(%p)\n",
-                    pDestroyData->hPrimarySurface
-                    ));
-                break;
-                }
-
-            LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                (" " __FUNCTION__ ": "
-                "pPrimarySurface(%p)/pMdl(%p) destroyed\n",
-                pPrimarySurface,
-                pPrimarySurface->pMdl
-                ));
-            IoFreeMdl(pPrimarySurface->pMdl);
-            LJB_VMON_FreePool(pPrimarySurface->pBuffer);
-            LJB_VMON_FreePool(pPrimarySurface);
-            } while (pPrimarySurface != NULL);
-#endif
 
         ntStatus = STATUS_SUCCESS;
         break;
 
     case LCI_PROXYKMD_NOTIFY_PRIMARY_SURFACE_UPDATE:
         if (InputBufferSize < sizeof(LCI_PROXYKMD_PRIMARY_SURFACE_UPDATE))
-            {
+        {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?"__FUNCTION__ ": "
                 "InputBufferSize(0x%x) too small, required 0x%x bytes?\n",
@@ -332,16 +250,15 @@ LJB_VMON_GenericIoctl(
                 ));
             ntStatus = STATUS_BUFFER_TOO_SMALL;
             break;
-            }
+        }
 
         KeAcquireSpinLock(&pDevCtx->PendingIoctlListLock, &PendingIoctlIrql);
         pUpdateData = InputBuffer;
         pDevCtx->LatestFrameId = pUpdateData->FrameId;
         pDevCtx->hLatestPrimarySurface = pUpdateData->hPrimarySurface;
 
-#if 1
         /*
-         ask KMD to copy pixels to our backbuffer, if one is found.
+         * ask KMD to copy pixels to our backbuffer, if one is found.
          */
         pPrimarySurface = NULL;
         pListHead = &pDevCtx->PrimarySurfaceListHead;
@@ -349,31 +266,31 @@ LJB_VMON_GenericIoctl(
         for (pListEntry = pListHead->Flink;
             pListEntry != pListHead;
             pListEntry = pListEntry->Flink)
-            {
+        {
             pThisSurface = CONTAINING_RECORD(
                 pListEntry,
-                LCI_USBAV_PRIMARY_SURFACE,
+                LJB_VMON_PRIMARY_SURFACE,
                 ListEntry
                 );
             if (pThisSurface->hPrimarySurface != pUpdateData->hPrimarySurface)
                 continue;
             if (pThisSurface->bTransferDone && !pThisSurface->bBusyBltting)
-                {
+            {
                 pPrimarySurface= pThisSurface;
                 pPrimarySurface->bBusyBltting = TRUE;
                 break;
-                }
             }
+        }
         KeReleaseSpinLock(&pDevCtx->PrimarySurfaceListLock, OldIrql);
         if (pPrimarySurface == NULL)
-            {
+        {
             LJB_VMON_PrintfAlways(pDevCtx, DBGLVL_ERROR,
                 ("?" __FUNCTION__ ": No free AV buffer. Drop FrameId(%d).\n",
                 pDevCtx->LatestFrameId
                 ));
-            }
+        }
         else
-            {
+        {
             LCI_USBAV_BLT_DATA  MyBltData;
             ULONG               BytesReturned;
 
@@ -383,7 +300,6 @@ LJB_VMON_GenericIoctl(
             MyBltData.pPrimaryBuffer    = pPrimarySurface->pRemoteBuffer;
             MyBltData.pShadowBuffer     = pPrimarySurface->pBuffer;
             MyBltData.BufferSize        = pPrimarySurface->BufferSize;
-    //      pPrimarySurface->bBusyBltting = TRUE;
             (VOID) (*pTargetInterface->pfnGenericIoctl)(
                 pTargetInterface->ProviderContext,
                 LCI_USBAV_BLT_PRIMARY_TO_SHADOW,
@@ -396,72 +312,72 @@ LJB_VMON_GenericIoctl(
 
             InterlockedIncrement(&pDevCtx->AcquirelistCount);
             LJB_VMON_PrintfAlways(pDevCtx, DBGLVL_FLOW,
-                (" " __FUNCTION__ ": FrameId(%d) blt done, count(%d).\n",
+                (__FUNCTION__ ": FrameId(%d) blt done, count(%d).\n",
                 pDevCtx->LatestFrameId,
                 pDevCtx->AcquirelistCount
                 ));
 
             pPrimarySurface->bBusyBltting = FALSE;
             pPrimarySurface->bTransferDone = FALSE;
-            }
-#endif
+        }
 
         /*
-         Check if there is pending wait request
+         * Check if there is pending wait request
          */
         pListHead = &pDevCtx->WaitRequestListHead;
-        do  {
-            LCI_WAIT_UPDATE_REQUEST *   pThisRequest;
-            LCI_WAIT_FOR_UPDATE *       pInputWaitUpdateData;
-            LCI_WAIT_FOR_UPDATE *       pOutputWaitUpdateData;
+        do
+        {
+            LJB_VMON_WAIT_FOR_UPDATE_REQ *  pThisRequest;
+            LJB_VMON_WAIT_FOR_UPDATE_DATA * pInputWaitUpdateData;
+            LJB_VMON_WAIT_FOR_UPDATE_DATA * pOutputWaitUpdateData;
 
             pWaitRequest = NULL;
             KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
             for (pListEntry = pListHead->Flink;
                  pListEntry != pListHead;
                  pListEntry = pListEntry->Flink)
-                {
+            {
                 pThisRequest = CONTAINING_RECORD(
                     pListEntry,
-                    LCI_WAIT_UPDATE_REQUEST,
+                    LJB_VMON_WAIT_FOR_UPDATE_REQ,
                     ListEntry
                     );
-                if (pThisRequest->IoctlCode == IOCTL_LCI_WAIT_FOR_UPDATE &&
+                if (pThisRequest->IoctlCode == IOCTL_LJB_VMON_WAIT_FOR_UPDATE &&
                     pThisRequest->pInputWaitUpdateData->Flags.Frame)
-                    {
+                {
                     RemoveEntryList(&pThisRequest->ListEntry);
                     pWaitRequest = pThisRequest;
                     break;
-                    }
-
-                if (pThisRequest->IoctlCode == IOCTL_LCI_USBAV_ACQUIRE_FRAME)
-                    {
-                    RemoveEntryList(&pThisRequest->ListEntry);
-                    pWaitRequest = pThisRequest;
-                    break;
-                    }
                 }
+
+                if (pThisRequest->IoctlCode == IOCTL_LJB_VMON_ACQUIRE_FRAME)
+                {
+                    RemoveEntryList(&pThisRequest->ListEntry);
+                    pWaitRequest = pThisRequest;
+                    break;
+                }
+            }
             KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
             if (pWaitRequest == NULL)
                 break;
 
-            if (pWaitRequest->IoctlCode == IOCTL_LCI_WAIT_FOR_UPDATE)
-                {
+            if (pWaitRequest->IoctlCode == IOCTL_LJB_VMON_WAIT_FOR_UPDATE)
+            {
                 pInputWaitUpdateData = pWaitRequest->pInputWaitUpdateData;
                 pOutputWaitUpdateData = pWaitRequest->pOutputWaitUpdateData;
-                RtlZeroMemory(&pOutputWaitUpdateData->Flags, sizeof(LCI_WAIT_FLAGS));
+                RtlZeroMemory(&pOutputWaitUpdateData->Flags, sizeof(LJB_WAIT_FLAGS));
                 pOutputWaitUpdateData->Flags.Frame = 1;
                 pOutputWaitUpdateData->FrameId = pDevCtx->LatestFrameId;
                 /*
                  * check for bCursorUpdatePending
                  */
                 if (pDevCtx->bCursorUpdatePending)
-                    {
+                {
                     pDevCtx->bCursorUpdatePending = FALSE;
                     pOutputWaitUpdateData->Flags.Cursor = 1;
-                    }
+                }
                 LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                    (" " __FUNCTION__ ": complete Request(%p), FrameId(0x%x).\n",
+                    (__FUNCTION__ ": complete Request(%p), FrameId(0x%x).\n",
                     pWaitRequest,
                     pDevCtx->LatestFrameId
                     ));
@@ -471,11 +387,11 @@ LJB_VMON_GenericIoctl(
                     sizeof(*pOutputWaitUpdateData)
                     );
                 LJB_VMON_FreePool(pWaitRequest);
-                }
-            else if (pWaitRequest->IoctlCode == IOCTL_LCI_USBAV_ACQUIRE_FRAME)
-                {
+            }
+            else if (pWaitRequest->IoctlCode == IOCTL_LJB_VMON_ACQUIRE_FRAME)
+            {
                 LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                    (" " __FUNCTION__ ": complete pWaitRequest(%p) with FAILURE.\n",
+                    (__FUNCTION__ ": complete pWaitRequest(%p) with FAILURE.\n",
                     pWaitRequest
                     ));
                 WdfRequestComplete(
@@ -483,14 +399,14 @@ LJB_VMON_GenericIoctl(
                     STATUS_UNSUCCESSFUL
                     );
                 LJB_VMON_FreePool(pWaitRequest);
-                }
-            } while (pWaitRequest != NULL);
+            }
+        } while (pWaitRequest != NULL);
         KeReleaseSpinLock(&pDevCtx->PendingIoctlListLock, PendingIoctlIrql);
         break;
 
     case LCI_PROXYKMD_NOTIFY_CURSOR_UPDATE:
         if (InputBufferSize < sizeof(LCI_PROXYKMD_CURSOR_UPDATE))
-            {
+        {
             LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
                 ("?"__FUNCTION__ ": "
                 "InputBufferSize(0x%x) too small, required 0x%x bytes?\n",
@@ -499,23 +415,23 @@ LJB_VMON_GenericIoctl(
                 ));
             ntStatus = STATUS_BUFFER_TOO_SMALL;
             break;
-            }
+        }
 
         KeAcquireSpinLock(&pDevCtx->PendingIoctlListLock, &PendingIoctlIrql);
         pCursorData = InputBuffer;
 
         if (pCursorData->pPositionUpdate != NULL)
-            {
+        {
             CONST DXGKARG_SETPOINTERPOSITION * pSetPointerPosition;
 
             pSetPointerPosition = pCursorData->pPositionUpdate;
             pDevCtx->PointerInfo.X         = pSetPointerPosition->X;
             pDevCtx->PointerInfo.Y         = pSetPointerPosition->Y;
             pDevCtx->PointerInfo.Visible   = (pSetPointerPosition->Flags.Visible == 1);
-            }
+        }
 
         if (pCursorData->pShapeUpdate != NULL)
-            {
+        {
             ULONG   BitmapSize;
             CONST DXGKARG_SETPOINTERSHAPE * pSetPointerShape;
 
@@ -537,44 +453,36 @@ LJB_VMON_GenericIoctl(
                 pSetPointerShape->pPixels,
                 BitmapSize
                 );
-            }
+        }
 
-        /*
-         Check if there is pending wait request
-         */
-        if (pDevCtx->MediaPlayerState != 0)
-            {
-            pDevCtx->bCursorUpdatePending = TRUE;
-            }
-        else
-            {
         pListHead = &pDevCtx->WaitRequestListHead;
-        do  {
-            LCI_WAIT_UPDATE_REQUEST *   pThisRequest;
-            LCI_WAIT_FOR_UPDATE *       pInputWaitUpdateData;
-            LCI_WAIT_FOR_UPDATE *       pOutputWaitUpdateData;
+        do
+        {
+            LJB_VMON_WAIT_FOR_UPDATE_REQ *      pThisRequest;
+            LJB_VMON_WAIT_FOR_UPDATE_DATA *     pInputWaitUpdateData;
+            LJB_VMON_WAIT_FOR_UPDATE_DATA *     pOutputWaitUpdateData;
 
             pWaitRequest = NULL;
             KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
             for (pListEntry = pListHead->Flink;
-                 pListEntry != pListHead;
-                 pListEntry = pListEntry->Flink)
-                {
+                pListEntry != pListHead;
+                pListEntry = pListEntry->Flink)
+            {
                 pThisRequest = CONTAINING_RECORD(
                     pListEntry,
-                    LCI_WAIT_UPDATE_REQUEST,
+                    LJB_VMON_WAIT_FOR_UPDATE_REQ,
                     ListEntry
                     );
                 if (pThisRequest->pInputWaitUpdateData == NULL)
                     continue;
 
                 if (pThisRequest->pInputWaitUpdateData->Flags.Cursor)
-                    {
+                {
                     RemoveEntryList(&pThisRequest->ListEntry);
                     pWaitRequest = pThisRequest;
                     break;
-                    }
                 }
+            }
             KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
             if (pWaitRequest == NULL)
                 break;
@@ -584,7 +492,7 @@ LJB_VMON_GenericIoctl(
             pOutputWaitUpdateData->Flags.Cursor = 1;
             pOutputWaitUpdateData->FrameId = pDevCtx->LatestFrameId;
             LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-                (" " __FUNCTION__ ": complete Request(%p), Cursor got updated. FrameId(0x%x).\n",
+                (__FUNCTION__ ": complete Request(%p), Cursor got updated. FrameId(0x%x).\n",
                 pWaitRequest,
                 pDevCtx->LatestFrameId
                 ));
@@ -594,21 +502,15 @@ LJB_VMON_GenericIoctl(
                 sizeof(*pOutputWaitUpdateData)
                 );
             LJB_VMON_FreePool(pWaitRequest);
-            } while (pWaitRequest != NULL);
-            }
+        } while (pWaitRequest != NULL);
+
         KeReleaseSpinLock(&pDevCtx->PendingIoctlListLock, PendingIoctlIrql);
 
         break;
 
-
-    case LCI_PROXYKMD_NOTIFY_MEDIA_STATE:
-        pDevCtx->MediaPlayerState = *((ULONG *) InputBuffer);
-        ntStatus = STATUS_SUCCESS;
-        break;
-
     default:
         break;
-        }
+    }
 
     return ntStatus;
-    }
+}

@@ -313,7 +313,7 @@ Return Value:
     // precedence over the DeviceDesc from the INF file.
     //
     status = RtlUnicodeStringPrintf( &buffer,
-                                     L"LCI Virtual Monitor %02d",
+                                     L"Virtual Monitor %02d",
                                      SerialNo );
     if (!NT_SUCCESS(status)) {
         return status;

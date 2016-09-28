@@ -1,67 +1,39 @@
-/*!
-    \file       main.c
-    \brief      entry point of lci_usbav_test.exe
-    \details    entry point of lci_usbav_test.exe
-    \authors    lucaslin
-    \version    0.01a
-    \date       May 25, 2013
-    \todo       (Optional)
-    \bug        (Optional)
-    \warning    (Optional)
-    \copyright  (c) 2013 Luminon Core Incorporated. All Rights Reserved.
-
-    Revision Log
-    + 0.01a;    May 25, 2013;   lucaslin
-     - Created.
-
- */
-
-#include "lci_vmon.h"
+#include "ljb_vmon.h"
 
 DWORD
-LCI_VMON_Main(
-	__in LPVOID     lpThreadParameter
+LJB_VMON_Main(
+    __in LPVOID         lpThreadParameter
     )
     {
-	PDEVICE_INFO 				pDeviceInfo;
-    HANDLE CONST                hDefaultHeap = GetProcessHeap();
-    LCI_VMON_DEV_CTX *         pDevCtx;
-    BOOL                        bRet;
-	
-	pDeviceInfo = lpThreadParameter;
-    pDevCtx = HeapAlloc(hDefaultHeap, HEAP_ZERO_MEMORY, sizeof(*pDevCtx));
-    
-	
-	DBG_PRINT(("+" __FUNCTION__
-                ": Start thread.\n"));
-	
-	if (pDevCtx == NULL)
-        {
-        printf("unable to get pDevCtx?\n");
+    HANDLE CONST        hDefaultHeap = GetProcessHeap();
+    PDEVICE_INFO        pDeviceInfo;
+    LJB_VMON_DEV_CTX *  dev_ctx;
+    BOOL                bRet;
+
+    pDeviceInfo = lpThreadParameter;
+    dev_ctx = HeapAlloc(hDefaultHeap, HEAP_ZERO_MEMORY, sizeof(*dev_ctx));
+
+    if (dev_ctx == NULL)
+    {
+        DBG_PRINT(("unable to get dev_ctx?\n"));
         return 0;
-        }
-	/*
-	 Check the existence of the device
-	*/
-    bRet = LCI_VMON_GetDeviceHandle(
-			pDevCtx
-			);
-    
-    if (bRet)
-        {
-		pDevCtx->pDeviceInfo = pDeviceInfo;
-		pDeviceInfo->pDevCtx = pDevCtx;
-		pDevCtx->bStartVMONThread = TRUE;
-        bRet = LCI_VMON_PixelMain(pDevCtx);
-        
-		// stop
-		LCI_VMON_CloseDeviceHandle(pDevCtx);
-        }
-    HeapFree(hDefaultHeap, 0, pDevCtx);
-	
-	DBG_PRINT(("-" __FUNCTION__
-                ": End thread.\n"));
-    return 1;
     }
 
-    
+    /*
+     * Check the existence of the device
+     */
+    bRet = LJB_VMON_GetDeviceHandle(dev_ctx);
+    if (bRet)
+        {
+        dev_ctx->pDeviceInfo = pDeviceInfo;
+        pDeviceInfo->dev_ctx = dev_ctx;
+        dev_ctx->exit_vmon_thread = FALSE;
+        LJB_VMON_PixelMain(dev_ctx);
+
+        // stop
+        LJB_VMON_CloseDeviceHandle(dev_ctx);
+        }
+    HeapFree(hDefaultHeap, 0, dev_ctx);
+
+    return 1;
+    }

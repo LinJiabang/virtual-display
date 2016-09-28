@@ -13,10 +13,10 @@
 	Revision Log
 	+ 0.01a;	June 28, 2013;  lucaslin
 	 - Created.
-	 
+
 	+ 0.01a;    Sep. 4, 2013;   robert
      - Add visibility IOCTL support.
- 
+
  */
 
 #ifndef _LCI_USBAV_INTERNAL_IOCTL_H_
@@ -27,33 +27,27 @@
 #define LCI_USBAV_INTERNAL_IOCTL_BASE   0x0000
 
 /*!
- Name:  INTERNAL_IOCTL_LCI_ACQUIRE_AV_INTERFACE
+ Name:  INTERNAL_IOCTL_QUERY_USB_MONITOR_INTERFACE
 
  \details
-    ProxyKmd sends this internal IOCTL to USB-AV driver to obtain access to
-    the USB-AV device. The USB-AV driver could only be acquired by one proxy
+    LCI PROXY WDDM driver sends this internal IOCTL to USB monitor driver to obtain
+    access to the USB Monitor device. The USB Monitor driver could only be acquired by one proxy
     driver. In an multiple display cards environment, the ProxyKmd driver
-    registers Pnp interface notification for USB-AV device on behalf of each
+    registers Pnp interface notification for USB Monitor device on behalf of each
     adapter found in the system. This creates multiple accessing to the same USB
-    AV device from multiple display adapter. The USB-AV driver guards multiple
+    AV device from multiple display adapter. The USB Monitor driver guards multiple
     access, and only allow the first ProxyKmd access.
 
-    Once the access is granted by USB-AV driver, the USB-AV driver returns its
+    Once the access is granted by USB Monitor driver, the USB Monitor driver returns its
     generic access interface in OutputBuffer of the InternalIoctl.
 
     The ProxyKmd driver also provides a generic access interface in InputBuffer
     of the internal IOCTL.
 
  */
-#define INTERNAL_IOCTL_LCI_ACQUIRE_AV_INTERFACE     \
+#define INTERNAL_IOCTL_QUERY_USB_MONITOR_INTERFACE  \
     CTL_CODE(FILE_DEVICE_UNKNOWN,                   \
     LCI_USBAV_INTERNAL_IOCTL_BASE,                  \
-    METHOD_NEITHER,                                 \
-    FILE_ANY_ACCESS)
-
-#define INTERNAL_IOCTL_LCI_RELEASE_AV_INTERFACE     \
-    CTL_CODE(FILE_DEVICE_UNKNOWN,                   \
-    LCI_USBAV_INTERNAL_IOCTL_BASE + 1,              \
     METHOD_NEITHER,                                 \
     FILE_ANY_ACCESS)
 
@@ -68,13 +62,19 @@ LCI_GENERIC_IOCTL(
     __out ULONG *       BytesReturned
     );
 
+typedef VOID
+LCI_RELEASE_INTERFACE(
+    __in PVOID          ProviderContext
+    );
+
 typedef struct _LCI_GENERIC_INTERFACE
     {
-    ULONG               Version;
-    SIZE_T              Size;
+    ULONG                   Version;
+    SIZE_T                  Size;
 
-    PVOID               ProviderContext;
-    LCI_GENERIC_IOCTL * pfnGenericIoctl;
+    PVOID                   ProviderContext;
+    LCI_GENERIC_IOCTL *     pfnGenericIoctl;
+    LCI_RELEASE_INTERFACE * pfnReleaseInterface;
 
     } LCI_GENERIC_INTERFACE;
 
@@ -94,10 +94,10 @@ typedef struct _LCI_PROXYKMD_PRIMARY_SURFACE_CREATE
     PVOID               pBuffer;
     SIZE_T              BufferSize;
 
-    UINT32                Width;
-    UINT32                Height;
-    UINT32                Pitch;
-    UINT32                BytesPerPixel;
+    UINT                Width;
+    UINT                Height;
+    UINT                Pitch;
+    UINT                BytesPerPixel;
     } LCI_PROXYKMD_PRIMARY_SURFACE_CREATE;
 
 #define LCI_PROXYKMD_NOTIFY_PRIMARY_SURFACE_DESTROY     2
@@ -106,6 +106,11 @@ typedef struct _LCI_PROXYKMD_PRIMARY_SURFACE_DESTROY
     HANDLE              hPrimarySurface;
     PVOID               pBuffer;
     SIZE_T              BufferSize;
+
+    UINT                Width;
+    UINT                Height;
+    UINT                Pitch;
+    UINT                BytesPerPixel;
     } LCI_PROXYKMD_PRIMARY_SURFACE_DESTROY;
 
 #define LCI_PROXYKMD_NOTIFY_PRIMARY_SURFACE_UPDATE      3
@@ -114,8 +119,12 @@ typedef struct _LCI_PROXYKMD_PRIMARY_SURFACE_UPDATE
     HANDLE              hPrimarySurface;
     PVOID               pBuffer;
     SIZE_T              BufferSize;
+	ULONG				FrameId;
 
-    UINT32                FrameId;
+    UINT                Width;
+    UINT                Height;
+    UINT                Pitch;
+    UINT                BytesPerPixel;
     } LCI_PROXYKMD_PRIMARY_SURFACE_UPDATE;
 
 #define LCI_PROXYKMD_NOTIFY_CURSOR_UPDATE               4
@@ -136,7 +145,19 @@ typedef struct _LCI_PROXYKMD_VISIBILITY_UPDATE
 
 #define LCI_PROXYKMD_NOTIFY_MEDIA_STATE                 7
 
-	
+#define LCI_PROXYKMD_NOTIFY_COMMIT_VIDPN                8
+typedef struct _LCI_PROXYKMD_COMMIT_VIDPN
+    {
+    UINT                                            Width;
+    UINT                                            Height;
+    UINT                                            Pitch;
+    UINT                                            BytesPerPixel;
+
+    D3DKMDT_VIDPN_PRESENT_PATH_TRANSFORMATION       ContentTransformation;
+    } LCI_PROXYKMD_COMMIT_VIDPN;
+
+#define LCI_PROXYKMD_NOTIFY_IS_INTEL_INTEGRATED_GPU     9
+
 /*
  Generic IOCTL call from UsbAV to ProxyKmd driver. All generic IOCTL up calls
  has the prefix LCI_USBAV_xxx.
@@ -145,10 +166,10 @@ typedef struct _LCI_PROXYKMD_VISIBILITY_UPDATE
  of pixel update are defined:
 
  1. USB AV driver request ProxyKmd driver to copy pixels from primary surface
-    buffer managed by ProxyKMD to shadow buffer allocated by USB AV driver. 
-    ProxyKmd ensures the update operation is tear-free. That is to say, when 
-    ProxyKmd is performing bits copy operation, ProxyKmd guards against 
-    concurrent access to the primary buffer surface. While ProxyKmd is accessing 
+    buffer managed by ProxyKMD to shadow buffer allocated by USB AV driver.
+    ProxyKmd ensures the update operation is tear-free. That is to say, when
+    ProxyKmd is performing bits copy operation, ProxyKmd guards against
+    concurrent access to the primary buffer surface. While ProxyKmd is accessing
     the primary buffer, DxgkDdiSubmitCommand processing is not allowed to change
     the contents of primary surface until after ProxyKmd  finishes the copy.
 
@@ -157,14 +178,14 @@ typedef struct _LCI_PROXYKMD_VISIBILITY_UPDATE
 
  2. USB AV driver locks the primary surface until it finishes using the buffers.
     ProxyKmd keeps track of the lock state, and block-out the access to the
-    primary surface. If the USB-AV driver fails to unlock the primary buffer,
+    primary surface. If the USB Monitor driver fails to unlock the primary buffer,
     it would causes system freeze, and timout recovery process in Direct X
     runtime.
-    
+
     The suggested usage of this mechanism is to hold the lock as short as possible.
-    For example, the USB-AV driver could lock the buffer down, and perform
-    kernel mode compression without involving user mode app, and unlock the 
-    surface in one routine. It is not suggested to lock and unlock the buffer 
+    For example, the USB Monitor driver could lock the buffer down, and perform
+    kernel mode compression without involving user mode app, and unlock the
+    surface in one routine. It is not suggested to lock and unlock the buffer
     from user mode app since the user mode app is not trusty.
 
  */

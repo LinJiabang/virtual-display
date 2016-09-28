@@ -1,24 +1,21 @@
 TARGETNAME=notify
 TARGETTYPE=PROGRAM
 
-INCLUDES=..\..\include;$(DDK_INC_PATH); 
+INCLUDES=..\..\include;$(DDK_INC_PATH);
 
 
-SOURCES=notify.rc \
-	notify.c  \
-	lci_gcloud_compression_init.c        \
-    lci_gcloud_compression_thread.c  \
-	lci_vmon_guid.c						\
-    lci_vmon_dump_buffer.c             \
-    lci_vmon_dbgprint.c					\
-    lci_vmon_pixel_main.c              \
-    lci_vmon_allocate_bmp_req.c        \
-	lci_vmon_release_bmp_req.c         \
-    main.c                              \	
+SOURCES=                                \
+    lci_vmon_guid.c                     \
+    lci_vmon_dump_buffer.c              \
+    lci_vmon_dbgprint.c                 \
+    ljb_vmon_pixel_main.c               \
+    main.c                              \
+    notify.c                            \
+    notify.rc                           \
 
 
-TARGETLIBS=$(SDK_LIB_PATH)\setupapi.lib 
-	
+TARGETLIBS=$(SDK_LIB_PATH)\setupapi.lib
+
 UMTYPE=windows
 UMBASE=0x01000000
 UMENTRY=winmain

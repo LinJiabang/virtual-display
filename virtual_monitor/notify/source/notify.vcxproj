@@ -38,7 +38,7 @@
     <Import Project="$(VCTargetsPath)\WDKConversion\PreConfiguration.props" />
   </ImportGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{E3CA3908-3749-4EE4-93BD-38C0B45C1074}</ProjectGuid>
+    <ProjectGuid>{E5EB6C0E-B804-44BB-A68C-0BE07C0E0822}</ProjectGuid>
     <RootNamespace>$(MSBuildProjectName)</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
