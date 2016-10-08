@@ -29,7 +29,8 @@ Revision History:
 --*/
 #define UNICODE
 #define _UNICODE
-#define INITGUID
+
+//#define INITGUID
 
 //
 // Annotation to indicate to prefast that this is nondriver user-mode code.
@@ -46,7 +47,7 @@ __user_code
 #include <strsafe.h>
 #include "public.h"
 #include "notify.h"
-//#include "ljb_vmon.h"
+#include "ljb_vmon.h"
 #include <dontuse.h>
 
 BOOL
@@ -63,16 +64,15 @@ HWND        hWndList;
 TCHAR       szTitle[]=TEXT("Virtual Monitor Test Application");
 LIST_ENTRY  ListHead;
 HDEVNOTIFY  hInterfaceNotification;
-TCHAR       OutText[500];
 UINT        ListBoxIndex = 0;
 GUID        InterfaceGuid;// = LJB_MONITOR_INTERFACE_GUID;
 BOOLEAN     Verbose= FALSE;
 PDEVICE_INFO   gDeviceInfo = NULL;
 
 #if (DBG)
-#define DBG_PRINT(x)    MyDebugPrint x
+#define DBG_PRINT_W(x)    MyDebugPrint x
 #else
-#define DBG_PRINT(x)
+#define DBG_PRINT_W(x)
 #endif
 
 VOID
@@ -82,6 +82,7 @@ MyDebugPrint(
     )
     {
     va_list arg;
+    WCHAR   OutText[1024];
 
     va_start (arg, format);
     (VOID) _vsnwprintf_s(
@@ -147,7 +148,7 @@ void makebmp(BYTE* pBits, long width, long height, HDC hdc, HWND hWnd)
 
     if (Status == 0)
     {
-        DBG_PRINT((TEXT("?"__FUNCTION__":Failed to get rect?\n")));
+        DBG_PRINT_W((TEXT("?"__FUNCTION__":Failed to get rect?\n")));
     }
     else
     {
@@ -248,7 +249,7 @@ WndProc(
     switch (message)
     {
     case WM_PAINT:
-        DBG_PRINT((TEXT(" Received WM_PAINT message.\n")));
+        DBG_PRINT_W((TEXT(" Received WM_PAINT message.\n")));
         if (gDeviceInfo != NULL && gDeviceInfo->BitmapBuffer != NULL &&
             wParam == LPARAM_NOTIFY_FRAME_UPDATE)
         {
@@ -319,7 +320,7 @@ WndProc(
         // The lParam is always NULL in this case.
         //
         if(DBT_DEVNODES_CHANGED == wParam) {
-            DBG_PRINT((TEXT("Received DBT_DEVNODES_CHANGED broadcast message")));
+            DBG_PRINT_W((TEXT("Received DBT_DEVNODES_CHANGED broadcast message")));
             return 0;
         }
 
@@ -584,7 +585,7 @@ HandleDeviceInterfaceChange(
             MessageBox(hWnd, TEXT("GetDeviceDescription failed"), TEXT("Error!"), MB_OK);
         }
 
-        DBG_PRINT((
+        DBG_PRINT_W((
             TEXT("New device Arrived (Interface Change Notification): %ws"),
             deviceInfo->DeviceName));
 
@@ -600,12 +601,12 @@ HandleDeviceInterfaceChange(
             OPEN_EXISTING, 0, NULL);
         if(deviceInfo->hDevice == INVALID_HANDLE_VALUE)
         {
-            DBG_PRINT((TEXT("Failed to open the device: %ws"),
+            DBG_PRINT_W((TEXT("Failed to open the device: %ws"),
                 deviceInfo->DeviceName));
             break;
         }
 
-        DBG_PRINT((TEXT("Opened handled to the device: %ws"),
+        DBG_PRINT_W((TEXT("Opened handled to the device: %ws"),
             deviceInfo->DeviceName));
         memset (&filter, 0, sizeof(filter)); //zero the structure
         filter.dbch_size = sizeof(filter);
@@ -633,7 +634,7 @@ HandleDeviceInterfaceChange(
         break;
 
     case DBT_DEVICEREMOVECOMPLETE:
-        DBG_PRINT((TEXT("Remove Complete (Interface Change Notification)")));
+        DBG_PRINT_W((TEXT("Remove Complete (Interface Change Notification)")));
         break;
 
         //
@@ -641,7 +642,7 @@ HandleDeviceInterfaceChange(
         //
 
     default:
-        DBG_PRINT((TEXT("Unknown (Interface Change Notification)")));
+        DBG_PRINT_W((TEXT("Unknown (Interface Change Notification)")));
         break;
     }
     return TRUE;
@@ -674,7 +675,7 @@ HandleDeviceChange(
 
     if(!deviceInfo)
     {
-        DBG_PRINT((
+        DBG_PRINT_W((
             TEXT("Error: spurious message, Event Type %x, Device Type %x"),
             evtype, dhp->dbch_devicetype));
         return FALSE;
@@ -683,7 +684,7 @@ HandleDeviceChange(
     switch (evtype)
     {
     case DBT_DEVICEQUERYREMOVE:
-        DBG_PRINT((TEXT("Query Remove (Handle Notification)"),
+        DBG_PRINT_W((TEXT("Query Remove (Handle Notification)"),
             deviceInfo->DeviceName));
 
         // User is trying to disable, uninstall, or eject our device.
@@ -696,14 +697,14 @@ HandleDeviceChange(
         {
             CloseHandle(deviceInfo->hDevice);
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
-            DBG_PRINT((TEXT("Closed handle to device %ws"),
+            DBG_PRINT_W((TEXT("Closed handle to device %ws"),
                 deviceInfo->DeviceName));
         }
         break;
 
     case DBT_DEVICEREMOVECOMPLETE:
 
-        DBG_PRINT((TEXT("Remove Complete (Handle Notification):%ws"),
+        DBG_PRINT_W((TEXT("Remove Complete (Handle Notification):%ws"),
             deviceInfo->DeviceName));
         //
         // Device is getting surprise removed. So close
@@ -718,14 +719,14 @@ HandleDeviceChange(
         {
             CloseHandle(deviceInfo->hDevice);
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
-            DBG_PRINT((TEXT("Closed handle to device %ws"),
+            DBG_PRINT_W((TEXT("Closed handle to device %ws"),
                 deviceInfo->DeviceName));
         }
 
         // Clean up
         if (deviceInfo->dev_ctx != NULL)
         {
-            DBG_PRINT((TEXT(" Set exit_vmon_thread to TRUE.\n")));
+            DBG_PRINT_W((TEXT(" Set exit_vmon_thread to TRUE.\n")));
             deviceInfo->dev_ctx->exit_vmon_thread = TRUE;
         }
 
@@ -737,7 +738,7 @@ HandleDeviceChange(
         break;
 
     case DBT_DEVICEREMOVEPENDING:
-        DBG_PRINT((TEXT("Remove Pending (Handle Notification):%ws"),
+        DBG_PRINT_W((TEXT("Remove Pending (Handle Notification):%ws"),
             deviceInfo->DeviceName));
         //
         // Device is successfully removed so unregister the notification
@@ -758,7 +759,7 @@ HandleDeviceChange(
         break;
 
     case DBT_DEVICEQUERYREMOVEFAILED :
-        DBG_PRINT((
+        DBG_PRINT_W((
             TEXT("Remove failed (Handle Notification):%ws"),
             deviceInfo->DeviceName));
         //
@@ -776,7 +777,7 @@ HandleDeviceChange(
             GENERIC_READ | GENERIC_WRITE,
             0, NULL, OPEN_EXISTING, 0, NULL);
         if(deviceInfo->hDevice == INVALID_HANDLE_VALUE) {
-            DBG_PRINT((
+            DBG_PRINT_W((
                 TEXT("Failed to reopen the device: %ws"),
                 deviceInfo->DeviceName));
             HeapFree (GetProcessHeap(), 0, deviceInfo);
@@ -794,11 +795,11 @@ HandleDeviceChange(
 
         deviceInfo->hHandleNotification =
                             RegisterDeviceNotification(hWnd, &filter, 0);
-        DBG_PRINT((TEXT("Reopened device %ws"), deviceInfo->DeviceName));
+        DBG_PRINT_W((TEXT("Reopened device %ws"), deviceInfo->DeviceName));
         break;
 
     default:
-        DBG_PRINT((TEXT("Unknown (Handle Notification)"),
+        DBG_PRINT_W((TEXT("Unknown (Handle Notification)"),
             deviceInfo->DeviceName));
         break;
 
@@ -916,7 +917,7 @@ EnumExistingDevices(
             goto Error;
         }
 
-        DBG_PRINT((TEXT("Found device %ws"), deviceInfo->DeviceName));
+        DBG_PRINT_W((TEXT("Found device %ws"), deviceInfo->DeviceName));
 
         hr = StringCchCopy(deviceInfo->DevicePath, MAX_PATH, deviceInterfaceDetailData->DevicePath);
         if(FAILED(hr)){
@@ -935,13 +936,13 @@ EnumExistingDevices(
                 NULL);
 
         if (INVALID_HANDLE_VALUE == deviceInfo->hDevice) {
-            DBG_PRINT((
+            DBG_PRINT_W((
                 TEXT("Failed to open the device: %ws"),
                 deviceInfo->DeviceName));
             continue;
         }
 
-        DBG_PRINT((
+        DBG_PRINT_W((
             TEXT("Opened handled to the device: %ws"),
             deviceInfo->DeviceName));
         //
@@ -997,7 +998,7 @@ BOOLEAN Cleanup(HWND hWnd)
         {
             CloseHandle(deviceInfo->hDevice);
             deviceInfo->hDevice = INVALID_HANDLE_VALUE;
-            DBG_PRINT((TEXT("Closed handle to device %ws"),
+            DBG_PRINT_W((TEXT("Closed handle to device %ws"),
                 deviceInfo->DeviceName));
         }
         HeapFree(GetProcessHeap(), 0, deviceInfo);
@@ -1079,7 +1080,7 @@ GetDeviceDescription(
                  sizeof(PULONG),
                  NULL))
     {
-        DBG_PRINT((TEXT("SerialNum is not available for device: %ws"),
+        DBG_PRINT_W((TEXT("SerialNum is not available for device: %ws"),
             OutBuffer));
     }
 
@@ -1289,46 +1290,46 @@ HandlePowerBroadcast(
     switch (wParam)
     {
         case PBT_APMQUERYSTANDBY:
-            DBG_PRINT((TEXT("PBT_APMQUERYSTANDBY")));
+            DBG_PRINT_W((TEXT("PBT_APMQUERYSTANDBY")));
             break;
         case PBT_APMQUERYSUSPEND:
-            DBG_PRINT((TEXT("PBT_APMQUERYSUSPEND")));
+            DBG_PRINT_W((TEXT("PBT_APMQUERYSUSPEND")));
             break;
         case PBT_APMSTANDBY :
-            DBG_PRINT((TEXT("PBT_APMSTANDBY")));
+            DBG_PRINT_W((TEXT("PBT_APMSTANDBY")));
             break;
         case PBT_APMSUSPEND :
-            DBG_PRINT((TEXT("PBT_APMSUSPEND")));
+            DBG_PRINT_W((TEXT("PBT_APMSUSPEND")));
             break;
         case PBT_APMQUERYSTANDBYFAILED:
-            DBG_PRINT((TEXT("PBT_APMQUERYSTANDBYFAILED")));
+            DBG_PRINT_W((TEXT("PBT_APMQUERYSTANDBYFAILED")));
             break;
         case PBT_APMRESUMESTANDBY:
-            DBG_PRINT((TEXT("PBT_APMRESUMESTANDBY")));
+            DBG_PRINT_W((TEXT("PBT_APMRESUMESTANDBY")));
             break;
         case PBT_APMQUERYSUSPENDFAILED:
-            DBG_PRINT((TEXT("PBT_APMQUERYSUSPENDFAILED")));
+            DBG_PRINT_W((TEXT("PBT_APMQUERYSUSPENDFAILED")));
             break;
         case PBT_APMRESUMESUSPEND:
-            DBG_PRINT((TEXT("PBT_APMRESUMESUSPEND")));
+            DBG_PRINT_W((TEXT("PBT_APMRESUMESUSPEND")));
             break;
         case PBT_APMBATTERYLOW:
-            DBG_PRINT((TEXT("PBT_APMBATTERYLOW")));
+            DBG_PRINT_W((TEXT("PBT_APMBATTERYLOW")));
             break;
         case PBT_APMOEMEVENT:
-            DBG_PRINT((TEXT("PBT_APMOEMEVENT")));
+            DBG_PRINT_W((TEXT("PBT_APMOEMEVENT")));
             break;
         case PBT_APMRESUMEAUTOMATIC:
-            DBG_PRINT((TEXT("PBT_APMRESUMEAUTOMATIC")));
+            DBG_PRINT_W((TEXT("PBT_APMRESUMEAUTOMATIC")));
             break;
         case PBT_APMRESUMECRITICAL:
-            DBG_PRINT((TEXT("PBT_APMRESUMECRITICAL")));
+            DBG_PRINT_W((TEXT("PBT_APMRESUMECRITICAL")));
             break;
         case PBT_APMPOWERSTATUSCHANGE:
-            DBG_PRINT((TEXT("PBT_APMPOWERSTATUSCHANGE")));
+            DBG_PRINT_W((TEXT("PBT_APMPOWERSTATUSCHANGE")));
             break;
         default:
-            DBG_PRINT((TEXT("Default")));
+            DBG_PRINT_W((TEXT("Default")));
             break;
     }
     return fRet;
@@ -1363,7 +1364,7 @@ SendIoctlToFilterDevice()
 
     if (INVALID_HANDLE_VALUE == hControlDevice)
     {
-        DBG_PRINT((TEXT("Failed to open ToasterFilter device")));
+        DBG_PRINT_W((TEXT("Failed to open ToasterFilter device")));
     }
     else
     {
@@ -1372,9 +1373,9 @@ SendIoctlToFilterDevice()
                               NULL, 0,
                               NULL, 0,
                               &bytes, NULL)) {
-            DBG_PRINT((TEXT("Ioctl to ToasterFilter device failed\n")));
+            DBG_PRINT_W((TEXT("Ioctl to ToasterFilter device failed\n")));
         } else {
-            DBG_PRINT((TEXT("Ioctl to ToasterFilter device succeeded\n")));
+            DBG_PRINT_W((TEXT("Ioctl to ToasterFilter device succeeded\n")));
         }
         CloseHandle(hControlDevice);
     }

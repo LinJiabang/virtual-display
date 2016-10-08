@@ -24,79 +24,6 @@ Revision History:
 #define __NOTIFY_H
 
 
-//
-// Copied Macros from ntddk.h
-//
-
-#define CONTAINING_RECORD(address, type, field) ((type *)( \
-                          (PCHAR)(address) - \
-                          (ULONG_PTR)(&((type *)0)->field)))
-
-
-#define InitializeListHead(ListHead) (\
-    (ListHead)->Flink = (ListHead)->Blink = (ListHead))
-
-#define RemoveHeadList(ListHead) \
-    (ListHead)->Flink;\
-    {RemoveEntryList((ListHead)->Flink)}
-
-#define IsListEmpty(ListHead) \
-    ((ListHead)->Flink == (ListHead))
-
-
-#define RemoveEntryList(Entry) {\
-    PLIST_ENTRY _EX_Blink;\
-    PLIST_ENTRY _EX_Flink;\
-    _EX_Flink = (Entry)->Flink;\
-    _EX_Blink = (Entry)->Blink;\
-    _EX_Blink->Flink = _EX_Flink;\
-    _EX_Flink->Blink = _EX_Blink;\
-    }
-
-#define InsertTailList(ListHead,Entry) {\
-    PLIST_ENTRY _EX_Blink;\
-    PLIST_ENTRY _EX_ListHead;\
-    _EX_ListHead = (ListHead);\
-    _EX_Blink = _EX_ListHead->Blink;\
-    (Entry)->Flink = _EX_ListHead;\
-    (Entry)->Blink = _EX_Blink;\
-    _EX_Blink->Flink = (Entry);\
-    _EX_ListHead->Blink = (Entry);\
-    }
-
-// Copy VMON stuff header.	
-typedef struct _LJB_VMON_DEV_CTX      	LJB_VMON_DEV_CTX;
-#define LPARAM_NOTIFY_FRAME_UPDATE      0x12345678
-
-typedef struct _DEVICE_INFO
-{
-   HANDLE                       hDevice; // file handle
-   HDEVNOTIFY                   hHandleNotification; // notification handle
-   WCHAR                        DeviceName[MAX_PATH];// friendly name of device description
-   WCHAR                        DevicePath[MAX_PATH];//
-   ULONG                        SerialNum; // Serial number of the device.
-   LIST_ENTRY                   ListEntry;
-   HANDLE                       VMONThread;
-   ULONG                        VMONThreadId;
-   PVOID                        BitmapBuffer;
-   ULONG                        Width;
-   ULONG                        Height;
-   HWND                         hWndList;
-   HWND                         hParentWnd;
-   LJB_VMON_DEV_CTX *           dev_ctx;
-} DEVICE_INFO, *PDEVICE_INFO;
-
-typedef struct _LJB_VMON_DEV_CTX
-    {
-    HANDLE                              hDevice;
-    HDEVINFO                            HardwareDeviceInfo;
-    PSP_DEVICE_INTERFACE_DETAIL_DATA    pDevIfcDetailData;
-
-    PDEVICE_INFO                        pDeviceInfo;
-    BOOL                                exit_vmon_thread;
-
-    } LJB_VMON_DEV_CTX;
-
 typedef enum {
 
     PLUGIN = 1,
@@ -204,12 +131,6 @@ DWORD
 LJB_VMON_Main(
     __in LPVOID     lpThreadParameter
     );
-
-VOID
-DBG_PRINT(
-    __in_z __drv_formatString(printf) LPWSTR format,
-    ...
-    );	
 
 #endif
 

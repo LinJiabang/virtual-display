@@ -4,7 +4,7 @@ DWORD
 LJB_VMON_Main(
     __in LPVOID         lpThreadParameter
     )
-    {
+{
     HANDLE CONST        hDefaultHeap = GetProcessHeap();
     PDEVICE_INFO        pDeviceInfo;
     LJB_VMON_DEV_CTX *  dev_ctx;
@@ -24,7 +24,7 @@ LJB_VMON_Main(
      */
     bRet = LJB_VMON_GetDeviceHandle(dev_ctx);
     if (bRet)
-        {
+    {
         dev_ctx->pDeviceInfo = pDeviceInfo;
         pDeviceInfo->dev_ctx = dev_ctx;
         dev_ctx->exit_vmon_thread = FALSE;
@@ -32,8 +32,8 @@ LJB_VMON_Main(
 
         // stop
         LJB_VMON_CloseDeviceHandle(dev_ctx);
-        }
+    }
     HeapFree(hDefaultHeap, 0, dev_ctx);
 
     return 1;
-    }
+}
