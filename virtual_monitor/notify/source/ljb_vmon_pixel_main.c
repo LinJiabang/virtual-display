@@ -329,7 +329,7 @@ VOID
 LJB_VMON_PixelMain(
     __in LJB_VMON_DEV_CTX *    dev_ctx
     )
-    {
+{
     HANDLE CONST                    hDefaultHeap = GetProcessHeap();
     HMODULE CONST                   hNtDll = LoadLibrary("ntdll.dll");
     LJB_VMON_WAIT_FOR_UPDATE_DATA   wait_for_update_data;
@@ -374,8 +374,7 @@ LJB_VMON_PixelMain(
     bypass_wait_for_update = FALSE;
     while (!exit_loop)
     {
-        OVERLAPPED              Overlapped;
-        LJB_VMON_FRAME_INFO *   frame_info;
+        LJB_VMON_FRAME_INFO     frame_info;
         ULONG                   bytes_returned;
 
         if (dev_ctx->exit_vmon_thread)
@@ -386,8 +385,6 @@ LJB_VMON_PixelMain(
             wait_for_update_data.FrameId = LastOutputFrameId;
             wait_for_update_data.Flags.Frame = 1;
             wait_for_update_data.Flags.Cursor = 1;
-            ZeroMemory(&Overlapped, sizeof(Overlapped));
-            Overlapped.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
             io_ret = DeviceIoControl(
                 dev_ctx->hDevice,
                 IOCTL_LJB_VMON_WAIT_FOR_UPDATE,
@@ -396,11 +393,11 @@ LJB_VMON_PixelMain(
                 &wait_for_update_data,
                 sizeof(wait_for_update_data),
                 &bytes_returned,
-                &Overlapped
+                NULL
                 );
 
             /*
-             * ioctl returns failure. could be io pending, or device removed
+             * ioctl returns failure. it could be device removed
              */
             if (!io_ret)
             {
@@ -413,61 +410,28 @@ LJB_VMON_PixelMain(
                         "IOCTL_LJB_VMON_WAIT_FOR_UPDATE failed. "
                         "Device unplugged, LastError(0x%x)\n",
                         LastError));
-                    CloseHandle(Overlapped.hEvent);
                     break;
                 }
-
-                if (LastError != ERROR_IO_PENDING)
-                {
-                    DBG_PRINT(("?" __FUNCTION__ ": "
-                        "IOCTL_LJB_VMON_WAIT_FOR_UPDATE failed? LastError(0x%x)\n",
-                        LastError));
-                    CloseHandle(Overlapped.hEvent);
-                    continue;
-                    }
-
-                /*
-                 * wait for io complete
-                 */
-                io_ret = GetOverlappedResult(
-                    dev_ctx->hDevice,
-                    &Overlapped,
-                    &bytes_returned,
-                    TRUE
-                    );
-                }
-            CloseHandle(Overlapped.hEvent);
+            }
         }
 
         bypass_wait_for_update = FALSE;
-        frame_info = HeapAlloc(
-            hDefaultHeap,
-            HEAP_ZERO_MEMORY,
-            sizeof(*frame_info)
-            );
-        if (frame_info == NULL)
-        {
-            DBG_PRINT(("?" __FUNCTION__
-                ": unable to allocate frame_info?\n"));
-            continue;
-        }
+        RtlZeroMemory(&frame_info, sizeof(frame_info));
 
         /*
          * acquire uncompressed frame buffer
          */
-        ZeroMemory(&Overlapped, sizeof(Overlapped));
-        Overlapped.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
         io_ret = DeviceIoControl(
             dev_ctx->hDevice,
             IOCTL_LJB_VMON_ACQUIRE_FRAME,
             NULL,
             0,
-            frame_info,
-            sizeof(*frame_info),
+            &frame_info,
+            sizeof(frame_info),
             &bytes_returned,
-            &Overlapped
+            NULL
             );
-            
+
         if (!io_ret)
         {
             DWORD CONST LastError = GetLastError();
@@ -479,42 +443,18 @@ LJB_VMON_PixelMain(
                     "IOCTL_LJB_VMON_ACQUIRE_FRAME failed, "
                     "Device unplugged, LastError(0x%x)\n",
                     LastError));
-                HeapFree(hDefaultHeap, 0, frame_info);
-                CloseHandle(Overlapped.hEvent);
                 break;
             }
-            
-            if (LastError != ERROR_IO_PENDING)
-            {
-                DBG_PRINT(("?" __FUNCTION__
-                    ": IOCTL_LJB_VMON_ACQUIRE_FRAME failed, LastError(0x%x)?\n",
-                    GetLastError()
-                    ));
-                HeapFree(hDefaultHeap, 0, frame_info);
-                CloseHandle(Overlapped.hEvent);
-                bypass_wait_for_update = TRUE;
-                continue;
-            }
-            
-            io_ret = GetOverlappedResult(
-                dev_ctx->hDevice,
-                &Overlapped,
-                &bytes_returned,
-                TRUE
-                );
         }
-        CloseHandle(Overlapped.hEvent);
 
         /*
          * now the frame is acquired, send it out
          */
-        frame_buffer = (PVOID) ((ULONG_PTR) frame_info->UserFrameAddress);
+        frame_buffer = (PVOID) ((ULONG_PTR) frame_info.UserFrameAddress);
         if (frame_buffer == NULL)
         {
             DBG_PRINT(("?" __FUNCTION__
                 ": unable to acquire BitmapBuffer?\n"));
-
-            HeapFree(hDefaultHeap, 0, frame_info);
             Sleep(5);
             continue;
         }
@@ -522,18 +462,48 @@ LJB_VMON_PixelMain(
             frame_buffer));
 
         /*
-         * Save mark returned frameId from Acquire Ioctl.
+         * Save returned frameId from Acquire Ioctl.
          */
-        LastOutputFrameId = frame_info->FrameIdAcquired;
+        LastOutputFrameId = frame_info.FrameIdAcquired;
         DBG_PRINT((" " __FUNCTION__ ": LastOutputFrameId(0x%x) updated\n", LastOutputFrameId));
 
 		pDeviceInfo->BitmapBuffer   = frame_buffer;
-		pDeviceInfo->Width          = frame_info->Width;
-		pDeviceInfo->Height         = frame_info->Height;
+		pDeviceInfo->Width          = frame_info.Width;
+		pDeviceInfo->Height         = frame_info.Height;
 		pDeviceInfo->dev_ctx        = dev_ctx;
 
 		//output now.
 		SendMessage(pDeviceInfo->hParentWnd, WM_PAINT, LPARAM_NOTIFY_FRAME_UPDATE, 0);
+
+        /*
+         * acquire uncompressed frame buffer
+         */
+        io_ret = DeviceIoControl(
+            dev_ctx->hDevice,
+            IOCTL_LJB_VMON_RELEASE_FRAME,
+            &frame_info,
+            sizeof(frame_info),
+            NULL,
+            0,
+            &bytes_returned,
+            NULL
+            );
+
+        if (!io_ret)
+        {
+            DWORD CONST LastError = GetLastError();
+
+            if (LastError == (*RtlNtStatusToDosErrorFn)(STATUS_NO_SUCH_DEVICE) ||
+                LastError == (*RtlNtStatusToDosErrorFn)(STATUS_DEVICE_REMOVED))
+            {
+                DBG_PRINT(("?" __FUNCTION__ ": "
+                    "IOCTL_LJB_VMON_ACQUIRE_FRAME failed, "
+                    "Device unplugged, LastError(0x%x)\n",
+                    LastError));
+                break;
+            }
+        }
+
     } /* end of while */
 
     (VOID) FreeLibrary(hNtDll);
