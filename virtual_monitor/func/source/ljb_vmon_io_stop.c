@@ -51,14 +51,14 @@ LJB_VMON_EvtIoStop(
     )
 {
     WDFDEVICE CONST         WdfDevice = WdfIoQueueGetDevice(Queue);
-    LJB_VMON_CTX * CONST    pDevCtx = LJB_VMON_GetVMonCtx(WdfDevice);
+    LJB_VMON_CTX * CONST    dev_ctx = LJB_VMON_GetVMonCtx(WdfDevice);
     WDF_REQUEST_PARAMETERS  params;
 
     UNREFERENCED_PARAMETER(Queue);
     UNREFERENCED_PARAMETER(ActionFlags);
-    DBG_UNREFERENCED_LOCAL_VARIABLE(pDevCtx);
+    DBG_UNREFERENCED_LOCAL_VARIABLE(dev_ctx);
 
-    LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+    LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
         (__FUNCTION__ ": Request(%p)/Flags(0x%x)\n",
         Request,
         ActionFlags
@@ -71,7 +71,7 @@ LJB_VMON_EvtIoStop(
      */
     if (params.Type != WdfRequestTypeDeviceControl)
     {
-        LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
+        LJB_VMON_Printf(dev_ctx, DBGLVL_ERROR,
             ("?" __FUNCTION__
             ": Reqeust(%p) is not WdfRequestTypeDeviceControl?\n",
             Request
@@ -81,13 +81,13 @@ LJB_VMON_EvtIoStop(
 
     switch (params.Parameters.DeviceIoControl.IoControlCode)
     {
-    case IOCTL_LJB_VMON_WAIT_FOR_UPDATE:
+    case IOCTL_LJB_VMON_WAIT_FOR_MONITOR_EVENT:
         /*
-         * The WaitForUpdate request is not accessing hardware. We still keep
+         * The WaitForMonitorEvent request is not accessing hardware. We still keep
          * the pending reqeust at driver side instead of framedwork side
          * by calling WdfRequestStopAcknowledge with Requeue set to FALSE
          */
-        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+        LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
             (__FUNCTION__
             ": WAIT_FOR_UPDATE request (%p) is acknowledged\n",
             Request
@@ -99,7 +99,7 @@ LJB_VMON_EvtIoStop(
         break;
 
     default:
-        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+        LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
             (__FUNCTION__
             ": IOCTL(0x)%x Request(%p) is not process. "
             "We expect framework to wait for all requests completed.\n",

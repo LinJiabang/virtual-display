@@ -20,6 +20,7 @@ Environment:
 #define __PUBLIC_H
 
 #include "ljb_vmon_guid.h"
+#include "lci_usbav_guid.h"
 
 #define BUS_HARDWARE_IDS L"vmonbus\\{B85B7C50-6A01-11d2-B841-00C04FAD5171}\0"
 #define BUS_HARDWARE_IDS_LENGTH sizeof (BUS_HARDWARE_IDS)

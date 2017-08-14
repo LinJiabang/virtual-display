@@ -9,7 +9,16 @@
     <NTTARGETFILE1 Condition="'$(OVERRIDE_NTTARGETFILE1)'!='true'">$(OBJ_PATH)\$(O)\$(INF_NAME).inf</NTTARGETFILE1>
     <PASS1_BINPLACE Condition="'$(OVERRIDE_PASS1_BINPLACE)'!='true'">$(NTTARGETFILE1)</PASS1_BINPLACE>
     <NTTARGETFILE0 Condition="'$(OVERRIDE_NTTARGETFILE0)'!='true'">$(OBJ_PATH)\$(O)\vmon_func.bmf</NTTARGETFILE0>
-    <SOURCES Condition="'$(OVERRIDE_SOURCES)'!='true'">ljb_vmon.rc                                  ljb_vmon_generic_ioctl.c                     ljb_vmon_guid.c                              ljb_vmon_io_in_caller_ctx.c                  ljb_vmon_io_stop.c                           ljb_vmon_internal_ioctl.c                    ljb_vmon_driver_entry.c                              ljb_vmon_power.c                             ljb_vmon_wmi.c</SOURCES>
+    <SOURCES Condition="'$(OVERRIDE_SOURCES)'!='true'">ljb_vmon.rc
+    ljb_vmon_driver_entry.c
+    ljb_vmon_generic_ioctl.c
+    ljb_vmon_guid.c
+    ljb_vmon_ioctl.c
+    ljb_vmon_io_in_caller_ctx.c
+    ljb_vmon_io_stop.c
+    ljb_vmon_internal_ioctl.c
+    ljb_vmon_power.c
+    ljb_vmon_wmi.c</SOURCES>
     <C_DEFINES Condition="'$(OVERRIDE_C_DEFINES)'!='true'" />
     <TARGET_DESTINATION Condition="'$(OVERRIDE_TARGET_DESTINATION)'!='true'">wdf</TARGET_DESTINATION>
   </PropertyGroup>

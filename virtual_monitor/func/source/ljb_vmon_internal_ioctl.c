@@ -1,6 +1,5 @@
 #include "ljb_vmon_private.h"
 
-
 /*
  * Function:
  *    LJB_VMON_InternalDeviceIoControl
@@ -70,7 +69,7 @@ LJB_VMON_InternalDeviceIoControl(
     )
 {
     WDFDEVICE CONST             WdfDevice = WdfIoQueueGetDevice(Queue);
-    LJB_VMON_CTX * CONST        pDevCtx = LJB_VMON_GetVMonCtx(WdfDevice);
+    LJB_VMON_CTX * CONST        dev_ctx = LJB_VMON_GetVMonCtx(WdfDevice);
     LCI_GENERIC_INTERFACE       MyGenericInterface;
     PVOID                       pIoBuffer;
     SIZE_T                      BytesReturned;
@@ -78,7 +77,7 @@ LJB_VMON_InternalDeviceIoControl(
     LONG                        InterfaceReferenceCount;
 
     BytesReturned = 0;
-    LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+    LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
         (" " __FUNCTION__
         ": IoctlCode(0x%x), OutputBufferLength(%u), InputBufferLength(%u)",
         IoControlCode,
@@ -91,7 +90,7 @@ LJB_VMON_InternalDeviceIoControl(
     case INTERNAL_IOCTL_QUERY_USB_MONITOR_INTERFACE:
         if (InputBufferLength < sizeof(LCI_GENERIC_INTERFACE))
         {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
+            LJB_VMON_Printf(dev_ctx, DBGLVL_ERROR,
                 ("?" __FUNCTION__
                 ": InputBufferLength(0x%x) too small, required %u bytes)\n",
                 InputBufferLength,
@@ -102,7 +101,7 @@ LJB_VMON_InternalDeviceIoControl(
         }
         if (OutputBufferLength < sizeof(LCI_GENERIC_INTERFACE))
         {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
+            LJB_VMON_Printf(dev_ctx, DBGLVL_ERROR,
                 ("?" __FUNCTION__
                 ": OutputBufferLength(0x%x) too small, required %u bytes)\n",
                 OutputBufferLength,
@@ -120,7 +119,7 @@ LJB_VMON_InternalDeviceIoControl(
             );
         if (!NT_SUCCESS(ntStatus))
         {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
+            LJB_VMON_Printf(dev_ctx, DBGLVL_ERROR,
                 ("?" __FUNCTION__
                 ": unable to get InputBuffer, "
                 "return ntStatus(0x%08x)\n",
@@ -130,29 +129,29 @@ LJB_VMON_InternalDeviceIoControl(
         }
 
         InterfaceReferenceCount = InterlockedIncrement(
-            &pDevCtx->InterfaceReferenceCount
+            &dev_ctx->InterfaceReferenceCount
             );
         if (InterfaceReferenceCount != 1)
         {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
+            LJB_VMON_Printf(dev_ctx, DBGLVL_ERROR,
                 ("?" __FUNCTION__
                 ": InterfaceReferenceCount(%u) too large!\n",
                 InterfaceReferenceCount
                 ));
-            InterlockedDecrement(&pDevCtx->InterfaceReferenceCount);
+            InterlockedDecrement(&dev_ctx->InterfaceReferenceCount);
             ntStatus = STATUS_UNSUCCESSFUL;
             break;
         }
 
         RtlCopyMemory(
-            &pDevCtx->TargetGenericInterface,
+            &dev_ctx->TargetGenericInterface,
             pIoBuffer,
             sizeof(MyGenericInterface)
             );
         RtlZeroMemory(&MyGenericInterface, sizeof(MyGenericInterface));
         MyGenericInterface.Version          = LCI_GENERIC_INTERFACE_V1;
         MyGenericInterface.Size             = sizeof(MyGenericInterface);
-        MyGenericInterface.ProviderContext  = pDevCtx;
+        MyGenericInterface.ProviderContext  = dev_ctx;
         MyGenericInterface.pfnGenericIoctl  = &LJB_VMON_GenericIoctl;
         ntStatus = WdfRequestRetrieveOutputBuffer(
             Request,
@@ -162,7 +161,7 @@ LJB_VMON_InternalDeviceIoControl(
             );
         if (!NT_SUCCESS(ntStatus))
         {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
+            LJB_VMON_Printf(dev_ctx, DBGLVL_ERROR,
                 ("?" __FUNCTION__
                 ": unable to get OutputBuffer, "
                 "return ntStatus(0x%08x)\n",
@@ -185,7 +184,7 @@ LJB_VMON_InternalDeviceIoControl(
     /*
      * complete the user request now.
      */
-    LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+    LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
         (" " __FUNCTION__
         ": complete IoctlCode(0x%x) with ntStatus(0x%x), "
         "BytesReturned(%u)\n",

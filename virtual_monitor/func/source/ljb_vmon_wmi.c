@@ -107,7 +107,7 @@ Return Value:
 
 {
     NTSTATUS status;
-    PLJB_VMON_CTX pVMonCtx;
+    LJB_VMON_CTX * dev_ctx;
     PToasterDeviceInformation pData;
     PToasterControl controlData;
 
@@ -119,7 +119,7 @@ Return Value:
 
     PAGED_CODE();
 
-    pVMonCtx = LJB_VMON_GetVMonCtx(Device);
+    dev_ctx = LJB_VMON_GetVMonCtx(Device);
 
     //
     // Register the MOF resource names of any customized WMI data providers
@@ -209,7 +209,7 @@ Return Value:
     status = WdfWmiInstanceCreate(Device,
                                   &instanceConfig,
                                   WDF_NO_OBJECT_ATTRIBUTES,
-                                  &pVMonCtx->WmiDeviceArrivalEvent);
+                                  &dev_ctx->WmiDeviceArrivalEvent);
 
     if (!NT_SUCCESS(status)) {
 

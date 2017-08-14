@@ -37,11 +37,8 @@ Environment:
 #pragma alloc_text (PAGE, LJB_VMON_EvtDevicePrepareHardware)
 
 #pragma alloc_text (PAGE, LJB_VMON_EvtIoDeviceControl)
-#pragma alloc_text (PAGE, LJB_VMON_EvtIoRead)
-#pragma alloc_text (PAGE, LJB_VMON_EvtIoWrite)
-#endif
 
-#define MAX_NUM_FRAME_UPDATE    (0x10000)
+#endif
 
 ULONG DebugLevel = 3; //unused
 
@@ -107,18 +104,12 @@ Return Value:
         );
 
     if (!NT_SUCCESS(ntStatus))
-        {
+    {
         KdPrint( ("WdfDriverCreate failed with ntStatus 0x%x\n", ntStatus));
-        }
-    return ntStatus;
     }
+    return ntStatus;
+}
 
-
-NTSTATUS
-LJB_VMON_EvtDeviceAdd(
-    IN WDFDRIVER       Driver,
-    IN PWDFDEVICE_INIT DeviceInit
-    )
 /*++
 Routine Description:
 
@@ -137,6 +128,11 @@ Return Value:
     NTSTATUS
 
 --*/
+NTSTATUS
+LJB_VMON_EvtDeviceAdd(
+    IN WDFDRIVER       Driver,
+    IN PWDFDEVICE_INIT DeviceInit
+    )
 {
     NTSTATUS                              ntStatus = STATUS_SUCCESS;
     WDF_PNPPOWER_EVENT_CALLBACKS          pnpPowerCallbacks;
@@ -147,14 +143,14 @@ Return Value:
     WDF_DEVICE_POWER_POLICY_WAKE_SETTINGS wakeSettings;
     WDF_POWER_POLICY_EVENT_CALLBACKS      powerPolicyCallbacks;
     WDF_IO_QUEUE_CONFIG                   queueConfig;
-    PLJB_VMON_CTX                         pVMonCtx;
+    LJB_VMON_CTX *                        dev_ctx;
     WDFQUEUE                              queue;
 
     UNREFERENCED_PARAMETER(Driver);
 
     PAGED_CODE();
 
-    KdPrint(("LJB_VMON_EvtDeviceAdd called\n"));
+    KdPrint((__FUNCTION__ ": entered\n"));
 
     //
     // Initialize the pnpPowerCallbacks structure.  Callback events for PNP
@@ -163,7 +159,6 @@ Return Value:
     // DeviceInit is initialized to be an FDO, a PDO or a filter device
     // object.
     //
-
     WDF_PNPPOWER_EVENT_CALLBACKS_INIT(&pnpPowerCallbacks);
 
     //
@@ -265,13 +260,12 @@ Return Value:
     // Get the device context by using accessor function specified in
     // the WDF_DECLARE_CONTEXT_TYPE_WITH_NAME macro for LJB_VMON_CTX.
     //
-    pVMonCtx = LJB_VMON_GetVMonCtx(device);
-    pVMonCtx->DebugLevel = 0xFFFFFFFF;
+    dev_ctx = LJB_VMON_GetVMonCtx(device);
+    dev_ctx->DebugLevel = 0xFFFFFFFF;
 
     // Initial some parameters.
-    pVMonCtx->FrameIdSent  = 0;
-    pVMonCtx->AcquirelistCount = 0;
-    pVMonCtx->LatestFrameId = 0;
+    dev_ctx->LastSentFrameId  = 0;
+    dev_ctx->LatestFrameId = 0;
 
     //
     // Tell the Framework that this device will need an interface so that
@@ -280,14 +274,40 @@ Return Value:
     ntStatus = WdfDeviceCreateDeviceInterface(
         device,
         (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
-        NULL
-        );
-
+        NULL);
     if (!NT_SUCCESS (ntStatus))
-        {
-        KdPrint( ("WdfDeviceCreateDeviceInterface failed 0x%x\n", ntStatus));
+    {
+        KdPrint((__FUNCTION__
+            ": WdfDeviceCreateDeviceInterface failed 0x%x\n", ntStatus));
         return ntStatus;
-        }
+    }
+
+    ntStatus = WdfDeviceCreateDeviceInterface(
+        device,
+        (LPGUID) &GUID_LCI_USBAV,
+        NULL);
+    if (!NT_SUCCESS (ntStatus))
+    {
+        KdPrint((__FUNCTION__
+            ": WdfDeviceCreateDeviceInterface failed 0x%x\n", ntStatus));
+        return ntStatus;
+    }
+
+    /*
+     * we will enable device interface in IRP_MN_START_DEVICE processing.
+     */
+    WdfDeviceSetDeviceInterfaceState(
+        device,
+        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
+        NULL,
+        FALSE
+        );
+    WdfDeviceSetDeviceInterfaceState(
+        device,
+        (LPGUID) &GUID_LCI_USBAV,
+        NULL,
+        FALSE
+        );
 
     //
     // Register I/O callbacks to tell the framework that you are interested
@@ -307,8 +327,6 @@ Return Value:
         WdfIoQueueDispatchParallel
         );
 
-    queueConfig.EvtIoRead = LJB_VMON_EvtIoRead;
-    queueConfig.EvtIoWrite = LJB_VMON_EvtIoWrite;
     queueConfig.EvtIoDeviceControl = LJB_VMON_EvtIoDeviceControl;
     queueConfig.EvtIoInternalDeviceControl = LJB_VMON_InternalDeviceIoControl;
     queueConfig.EvtIoStop = &LJB_VMON_EvtIoStop;
@@ -320,10 +338,11 @@ Return Value:
         &queue
         );
     if (!NT_SUCCESS (ntStatus))
-        {
-        KdPrint( ("WdfIoQueueCreate failed 0x%x\n", ntStatus));
+    {
+        KdPrint((__FUNCTION__
+            ": WdfIoQueueCreate failed 0x%x\n", ntStatus));
         return ntStatus;
-        }
+    }
 
     //
     // Set the idle power policy to put the device to Dx if the device is not used
@@ -336,19 +355,19 @@ Return Value:
     idleSettings.IdleTimeout = 60000; // 60 secs idle timeout
     ntStatus = WdfDeviceAssignS0IdleSettings(device, &idleSettings);
     if (!NT_SUCCESS(ntStatus))
-        {
-        KdPrint( ("WdfDeviceAssignS0IdleSettings failed 0x%x\n", ntStatus));
+    {
+        KdPrint((__FUNCTION__
+            ":WdfDeviceAssignS0IdleSettings failed 0x%x\n", ntStatus));
         return ntStatus;
-        }
+    }
 
     //
     // Set the wait-wake policy.
     //
-
     WDF_DEVICE_POWER_POLICY_WAKE_SETTINGS_INIT(&wakeSettings);
     ntStatus = WdfDeviceAssignSxWakeSettings(device, &wakeSettings);
     if (!NT_SUCCESS(ntStatus))
-        {
+    {
         //
         // We are probably enumerated on a bus that doesn't support Sx-wake.
         // Let us not fail the device add just because we aren't able to support
@@ -357,7 +376,7 @@ Return Value:
         //
         KdPrint( ("WdfDeviceAssignSxWakeSettings failed 0x%x\n", ntStatus));
         ntStatus = STATUS_SUCCESS;
-        }
+    }
 
     //
     // Finally register all our WMI datablocks with WMI subsystem.
@@ -374,12 +393,6 @@ Return Value:
     return ntStatus;
     }
 
-NTSTATUS
-LJB_VMON_EvtDevicePrepareHardware(
-    WDFDEVICE      Device,
-    WDFCMRESLIST   ResourcesRaw,
-    WDFCMRESLIST   ResourcesTranslated
-    )
 /*++
 
 Routine Description:
@@ -418,153 +431,138 @@ Return Value:
     WDF ntStatus code
 
 --*/
+NTSTATUS
+LJB_VMON_EvtDevicePrepareHardware(
+    WDFDEVICE      Device,
+    WDFCMRESLIST   ResourcesRaw,
+    WDFCMRESLIST   ResourcesTranslated
+    )
 {
-    LJB_VMON_CTX *  pDevCtx = LJB_VMON_GetVMonCtx(Device);
-    NTSTATUS ntStatus = STATUS_SUCCESS;
-    ULONG i;
-    PCM_PARTIAL_RESOURCE_DESCRIPTOR descriptor;
+    LJB_VMON_CTX *  dev_ctx = LJB_VMON_GetVMonCtx(Device);
+    NTSTATUS        ntStatus = STATUS_SUCCESS;
 
-    UNREFERENCED_PARAMETER(Device);
     UNREFERENCED_PARAMETER(ResourcesRaw);
-
-    KeInitializeSpinLock(&pDevCtx->PrimarySurfaceListLock);
-    InitializeListHead(&pDevCtx->PrimarySurfaceListHead);
-
-    KeInitializeSpinLock(&pDevCtx->WaitRequestListLock);
-    InitializeListHead(&pDevCtx->WaitRequestListHead);
-    KeInitializeSpinLock(&pDevCtx->PendingIoctlListLock);
-
-    KdPrint(("LJB_VMON_EvtDevicePrepareHardware called\n"));
+    UNREFERENCED_PARAMETER(ResourcesTranslated);
 
     PAGED_CODE();
-    //
-    // Get the number item that are currently in Resources collection and
-    // iterate thru as many times to get more information about the each items
-    //
-    for (i=0; i < WdfCmResourceListGetCount(ResourcesTranslated); i++)
-        {
-        descriptor = WdfCmResourceListGetDescriptor(ResourcesTranslated, i);
-        switch(descriptor->Type)
-            {
-        case CmResourceTypePort:
-            KdPrint(("I/O Port: (%x) Length: (%d)\n",
-                    descriptor->u.Port.Start.LowPart,
-                    descriptor->u.Port.Length));
-            break;
 
-        case CmResourceTypeMemory:
-            KdPrint(("Memory: (%x) Length: (%d)\n",
-                    descriptor->u.Memory.Start.LowPart,
-                    descriptor->u.Memory.Length));
-            break;
+    KeInitializeSpinLock(&dev_ctx->surface_lock);
+    InitializeListHead(&dev_ctx->surface_list);
 
-        case CmResourceTypeInterrupt:
-            KdPrint(("Interrupt level: 0x%0x, Vector: 0x%0x, Affinity: 0x%0x\n",
-                descriptor->u.Interrupt.Level,
-                descriptor->u.Interrupt.Vector,
-                descriptor->u.Interrupt.Affinity));
-            break;
+    KeInitializeSpinLock(&dev_ctx->event_req_lock);
+    InitializeListHead(&dev_ctx->event_req_list);
+    KeInitializeSpinLock(&dev_ctx->ioctl_lock);
 
-        default:
-            break;
-            }
-        }
+    KdPrint((__FUNCTION__": entered\n"));
+
+    WdfDeviceSetDeviceInterfaceState(
+        Device,
+        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
+        NULL,
+        TRUE);
+
     //
     // Fire device arrival event.
     //
     LJB_VMON_FireArrivalEvent(Device);
     return ntStatus;
-    }
+}
 
 NTSTATUS
 LJB_VMON_EvtDeviceReleaseHardware(
     IN  WDFDEVICE    Device,
     IN  WDFCMRESLIST ResourcesTranslated
     )
-    {
-    PLJB_VMON_CTX                   pDevCtx = LJB_VMON_GetVMonCtx(Device);
-    LIST_ENTRY * CONST              pListHead = &pDevCtx->WaitRequestListHead;
-    LJB_VMON_WAIT_FOR_UPDATE_REQ *  pWaitRequest;
-    LIST_ENTRY *                    pListEntry;
-    KIRQL                           OldIrql;
+{
+    LJB_VMON_CTX *                  dev_ctx = LJB_VMON_GetVMonCtx(Device);
+    LIST_ENTRY * CONST              list_head = &dev_ctx->event_req_list;
+    LJB_VMON_WAIT_FOR_EVENT_REQ *  wait_event_req;
+    LIST_ENTRY *                    list_entry;
+    KIRQL                           old_irql;
 
     UNREFERENCED_PARAMETER(ResourcesTranslated);
 
-    KdPrint(("LJB_VMON_EvtDeviceReleaseHardware called\n"));
+    KdPrint((__FUNCTION__": entered\n"));
+    WdfDeviceSetDeviceInterfaceState(
+        Device,
+        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
+        NULL,
+        FALSE);
 
+    WdfDeviceSetDeviceInterfaceState(
+        Device,
+        (LPGUID) &GUID_LCI_USBAV,
+        NULL,
+        FALSE);
     /*
-     Release any pending Wait request
+     * Release any pending Wait request
      */
-    KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
-    while (!IsListEmpty(pListHead))
-        {
-        pListEntry = RemoveHeadList(pListHead);
-        pWaitRequest = CONTAINING_RECORD(
-                pListEntry,
-                LJB_VMON_WAIT_FOR_UPDATE_REQ,
-                ListEntry
+    KeAcquireSpinLock(&dev_ctx->event_req_lock, &old_irql);
+    while (!IsListEmpty(list_head))
+    {
+        list_entry = RemoveHeadList(list_head);
+        wait_event_req = CONTAINING_RECORD(
+                list_entry,
+                LJB_VMON_WAIT_FOR_EVENT_REQ,
+                list_entry
                 );
         WdfRequestCompleteWithInformation(
-            pWaitRequest->Request,
+            wait_event_req->Request,
             STATUS_CANCELLED,
             0
             );
-        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
+        LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
             (" " __FUNCTION__ ": "
-            "Complete pWaitRequest(%p) immediately with STATUS_CANCELLED\n",
-            pWaitRequest
+            "Complete wait_event_req(%p) immediately with STATUS_CANCELLED\n",
+            wait_event_req
             ));
-        LJB_VMON_FreePool(pWaitRequest);
-        }
-    KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
+        LJB_VMON_FreePool(wait_event_req);
+    }
+    KeReleaseSpinLock(&dev_ctx->event_req_lock, old_irql);
 
     return STATUS_SUCCESS;
-    }
+}
 
 VOID
 LJB_VMON_EvtDeviceSurpriseRemoval(
     IN  WDFDEVICE    Device
     )
-    {
-    PLJB_VMON_CTX                   pDevCtx = LJB_VMON_GetVMonCtx(Device);
-    LIST_ENTRY * CONST              pListHead = &pDevCtx->WaitRequestListHead;
-    LJB_VMON_WAIT_FOR_UPDATE_REQ *  pWaitRequest;
-    LIST_ENTRY *                    pListEntry;
-    KIRQL                           OldIrql;
+{
+    LJB_VMON_CTX *                  dev_ctx = LJB_VMON_GetVMonCtx(Device);
+    LIST_ENTRY * CONST              list_head = &dev_ctx->event_req_list;
+    LJB_VMON_WAIT_FOR_EVENT_REQ *  wait_event_req;
+    LIST_ENTRY *                    list_entry;
+    KIRQL                           old_irql;
 
-    KdPrint((" " __FUNCTION__ "\n"));
+    KdPrint((__FUNCTION__ ": entered\n"));
 
     /*
-     Release any pending Wait request
+     * Release any pending Wait request
      */
-    KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
-    while (!IsListEmpty(pListHead))
-        {
-        pListEntry = RemoveHeadList(pListHead);
-        pWaitRequest = CONTAINING_RECORD(
-                pListEntry,
-                LJB_VMON_WAIT_FOR_UPDATE_REQ,
-                ListEntry
+    KeAcquireSpinLock(&dev_ctx->event_req_lock, &old_irql);
+    while (!IsListEmpty(list_head))
+    {
+        list_entry = RemoveHeadList(list_head);
+        wait_event_req = CONTAINING_RECORD(
+                list_entry,
+                LJB_VMON_WAIT_FOR_EVENT_REQ,
+                list_entry
                 );
         WdfRequestCompleteWithInformation(
-            pWaitRequest->Request,
+            wait_event_req->Request,
             STATUS_CANCELLED,
             0
             );
-        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-            (" " __FUNCTION__ ": "
-            "Complete pWaitRequest(%p) immediately with STATUS_CANCELLED\n",
-            pWaitRequest
+        LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
+            (__FUNCTION__
+            ": Complete wait_event_req(%p) with STATUS_CANCELLED\n",
+            wait_event_req
             ));
-        LJB_VMON_FreePool(pWaitRequest);
-        }
-    KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
+        LJB_VMON_FreePool(wait_event_req);
     }
+    KeReleaseSpinLock(&dev_ctx->event_req_lock, old_irql);
+}
 
-NTSTATUS
-LJB_VMON_EvtDeviceSelfManagedIoInit(
-    IN  WDFDEVICE Device
-    )
 /*++
 
 Routine Description:
@@ -595,13 +593,15 @@ Return Value:
     NTSTATUS - Failures will result in the device stack being torn down.
 
 --*/
-    {
-    NTSTATUS        ntStatus;
-    PLJB_VMON_CTX   pVMonCtx;
+NTSTATUS
+LJB_VMON_EvtDeviceSelfManagedIoInit(
+    IN  WDFDEVICE Device
+    )
+{
+    LJB_VMON_CTX * CONST    dev_ctx = LJB_VMON_GetVMonCtx(Device);
+    NTSTATUS                ntStatus;
 
-    KdPrint(("LJB_VMON_EvtDeviceSelfManagedIoInit called\n"));
-
-    pVMonCtx = LJB_VMON_GetVMonCtx(Device);
+    KdPrint((__FUNCTION__": entered\n"));
 
     //
     // We will provide an example on how to get a bus-specific direct
@@ -610,41 +610,41 @@ Return Value:
     ntStatus = WdfFdoQueryForInterface(
         Device,
         &GUID_TOASTER_INTERFACE_STANDARD,
-        (PINTERFACE) &pVMonCtx->BusInterface,
+        (PINTERFACE) &dev_ctx->BusInterface,
         sizeof(TOASTER_INTERFACE_STANDARD),
         1,
         NULL
         );
     if(NT_SUCCESS(ntStatus))
-        {
+    {
         UCHAR powerlevel;
 
         //
         // Call the direct callback functions to get the property or
         // configuration information of the device.
         //
-        (*pVMonCtx->BusInterface.GetCrispinessLevel)(
-            pVMonCtx->BusInterface.InterfaceHeader.Context,
+        (*dev_ctx->BusInterface.GetCrispinessLevel)(
+            dev_ctx->BusInterface.InterfaceHeader.Context,
             &powerlevel
             );
-        (*pVMonCtx->BusInterface.SetCrispinessLevel)(
-            pVMonCtx->BusInterface.InterfaceHeader.Context,
+        (*dev_ctx->BusInterface.SetCrispinessLevel)(
+            dev_ctx->BusInterface.InterfaceHeader.Context,
             8
             );
-        (*pVMonCtx->BusInterface.IsSafetyLockEnabled)(
-            pVMonCtx->BusInterface.InterfaceHeader.Context
+        (*dev_ctx->BusInterface.IsSafetyLockEnabled)(
+            dev_ctx->BusInterface.InterfaceHeader.Context
             );
 
         //
         // Provider of this interface may have taken a reference on it.
         // So we must release the interface as soon as we are done using it.
         //
-        (*pVMonCtx->BusInterface.InterfaceHeader.InterfaceDereference)(
-            (PVOID)pVMonCtx->BusInterface.InterfaceHeader.Context
+        (*dev_ctx->BusInterface.InterfaceHeader.InterfaceDereference)(
+            (PVOID)dev_ctx->BusInterface.InterfaceHeader.Context
             );
-        }
+    }
     else
-        {
+    {
         //
         // In this sample, we don't want to fail start just because we weren't
         // able to get the direct-call interface. If this driver is loaded on top
@@ -652,15 +652,10 @@ Return Value:
         // an error.
         //
         ntStatus = STATUS_SUCCESS;
-        }
-    return ntStatus;
     }
+    return ntStatus;
+}
 
-
-VOID
-LJB_VMON_EvtDeviceContextCleanup(
-    IN WDFDEVICE Device
-    )
 /*++
 
 Routine Description:
@@ -679,43 +674,14 @@ Return Value:
     WDF ntStatus code
 
 --*/
-    {
-    PLJB_VMON_CTX CONST pVMonCtx = LJB_VMON_GetVMonCtx(Device);
-    LIST_ENTRY * CONST  pListHead = &pVMonCtx->PrimarySurfaceListHead;
-    LIST_ENTRY * pListEntry;
-    KIRQL OldIrql;
-
-    KdPrint( ("LJB_VMON_EvtDeviceContextCleanup called\n"));
-
-    KeAcquireSpinLock(&pVMonCtx->PrimarySurfaceListLock, &OldIrql);
-    while (!IsListEmpty(pListHead))
-        {
-        LJB_VMON_PRIMARY_SURFACE *     pThisSurface;
-
-        pListEntry = RemoveHeadList(pListHead);
-        pThisSurface = CONTAINING_RECORD(
-            pListEntry,
-            LJB_VMON_PRIMARY_SURFACE,
-            ListEntry
-            );
-        LJB_VMON_Printf(pVMonCtx, DBGLVL_FLOW,
-            (" " __FUNCTION__ ":"
-            " Releasing pPrimarySurface(%p)\n",
-            pThisSurface
-            ));
-        IoFreeMdl(pThisSurface->pMdl);
-        LJB_VMON_FreePool(pThisSurface->pBuffer);
-        LJB_VMON_FreePool(pThisSurface);
-        }
-    KeReleaseSpinLock(&pVMonCtx->PrimarySurfaceListLock, OldIrql);
-    }
-
 VOID
-LJB_VMON_EvtDeviceFileCreate (
-    IN WDFDEVICE Device,
-    IN WDFREQUEST Request,
-    IN WDFFILEOBJECT FileObject
+LJB_VMON_EvtDeviceContextCleanup(
+    IN WDFDEVICE Device
     )
+{
+    UNREFERENCED_PARAMETER(Device);
+}
+
 /*++
 
 Routine Description:
@@ -738,424 +704,35 @@ Return Value:
    NT ntStatus code
 
 --*/
-    {
-    PLJB_VMON_CTX   pVMonCtx;
+VOID
+LJB_VMON_EvtDeviceFileCreate (
+    IN WDFDEVICE Device,
+    IN WDFREQUEST Request,
+    IN WDFFILEOBJECT FileObject
+    )
+{
+    LJB_VMON_CTX * CONST    dev_ctx = LJB_VMON_GetVMonCtx(Device);
 
     UNREFERENCED_PARAMETER(FileObject);
 
-    KdPrint( ("LJB_VMON_EvtDeviceFileCreate %p\n", Device));
-
     PAGED_CODE ();
 
-    //
-    // Get the device context given the device handle.
-    //
-    pVMonCtx = LJB_VMON_GetVMonCtx(Device);
-
+    KdPrint((__FUNCTION__": entered\n"));
     WdfRequestComplete(Request, STATUS_SUCCESS);
 
     return;
-    }
+}
 
 
 VOID
 LJB_VMON_EvtFileClose (
     IN WDFFILEOBJECT    FileObject
     )
-    {
-    PLJB_VMON_CTX CONST pVMonCtx =
-        LJB_VMON_GetVMonCtx(WdfFileObjectGetDevice(FileObject));
-    LIST_ENTRY * CONST  pListHead = &pVMonCtx->PrimarySurfaceListHead;
-    LIST_ENTRY * pListEntry;
-    LIST_ENTRY * pListNext;
-    KIRQL OldIrql;
+{
+    WDFDEVICE CONST         Device =  WdfFileObjectGetDevice(FileObject);
+    LJB_VMON_CTX * CONST    dev_ctx = LJB_VMON_GetVMonCtx(Device);
 
-    KdPrint( ("LJB_VMON_EvtFileClose\n"));
-    /*
-     the user mode might previously acquired frame buffer, and for some reason
-     crashed without releasing the frame. Here we do the last minute resource
-     release job
-     */
-    pListNext = pListHead->Flink;
-    KeAcquireSpinLock(&pVMonCtx->PrimarySurfaceListLock, &OldIrql);
-    for (pListEntry = pListHead->Flink;
-         pListEntry != pListHead;
-         pListEntry = pListNext)
-        {
-        LJB_VMON_PRIMARY_SURFACE *     pThisSurface;
+    DBG_UNREFERENCED_LOCAL_VARIABLE(dev_ctx);
+    KdPrint((__FUNCTION__": entered\n"));
 
-        pListNext = pListEntry->Flink;
-        pThisSurface = CONTAINING_RECORD(
-            pListEntry,
-            LJB_VMON_PRIMARY_SURFACE,
-            ListEntry
-            );
-        if (pThisSurface->bIsAcquiredByUserMode &&
-            pThisSurface->UserFileObject == FileObject)
-            {
-            LONG    ReferenceCount;
-
-            LJB_VMON_Printf(pVMonCtx, DBGLVL_FLOW,
-                (" " __FUNCTION__ ":"
-                " Releasing pPrimarySurface(%p)\n",
-                pThisSurface
-                ));
-
-            /*
-             The event handling occurs in ARBITRARY thread. We are not able
-             to call MmUnmapLockedPages, because we are not in the correct
-             thread context
-             */
-            ReferenceCount = InterlockedDecrement(&pThisSurface->ReferenceCount);
-            if (ReferenceCount == 0)
-                {
-                LJB_VMON_Printf(pVMonCtx, DBGLVL_FLOW,
-                    (" " __FUNCTION__ ": "
-                    "Deferred destruction of pPrimarySurface(%p)/pMdl(%p)\n",
-                    pThisSurface,
-                    pThisSurface->pMdl
-                    ));
-                RemoveEntryList(&pThisSurface->ListEntry);
-                IoFreeMdl(pThisSurface->pMdl);
-                LJB_VMON_FreePool(pThisSurface->pBuffer);
-                LJB_VMON_FreePool(pThisSurface);
-                }
-            }
-        }
-    KeReleaseSpinLock(&pVMonCtx->PrimarySurfaceListLock, OldIrql);
-
-    return;
-    }
-
-VOID
-LJB_VMON_EvtIoRead (
-    WDFQUEUE      Queue,
-    WDFREQUEST    Request,
-    size_t        Length
-    )
-/*++
-
-Routine Description:
-
-    Performs read to the toaster device. This event is called when the
-    framework receives IRP_MJ_READ requests.
-
-Arguments:
-
-    Queue -  Handle to the framework queue object that is associated with the
-            I/O request.
-    Request - Handle to a framework request object.
-
-    Lenght - Length of the data buffer associated with the request.
-             The default property of the queue is to not dispatch
-             zero lenght read & write requests to the driver and
-             complete is with ntStatus success. So we will never get
-             a zero length request.
-
-Return Value:
-
-  None.
-
---*/
-    {
-    NTSTATUS    ntStatus;
-    ULONG_PTR bytesCopied =0;
-    WDFMEMORY memory;
-
-    UNREFERENCED_PARAMETER(Length);
-    UNREFERENCED_PARAMETER(Queue);
-
-    PAGED_CODE();
-
-    KdPrint(("LJB_VMON_EvtIoRead: Request: 0x%p, Queue: 0x%p\n",
-             Request, Queue));
-
-    //
-    // Get the request memory and perform read operation here
-    //
-    ntStatus = WdfRequestRetrieveOutputMemory(Request, &memory);
-    if(NT_SUCCESS(ntStatus) ) {
-        //
-        // Copy data into the memory buffer using WdfMemoryCopyFromBuffer
-        //
-    }
-    WdfRequestCompleteWithInformation(Request, ntStatus, bytesCopied);
-    }
-
-VOID
-LJB_VMON_EvtIoWrite (
-    WDFQUEUE      Queue,
-    WDFREQUEST    Request,
-    size_t        Length
-    )
-/*++
-
-Routine Description:
-
-    Performs write to the toaster device. This event is called when the
-    framework receives IRP_MJ_WRITE requests.
-
-Arguments:
-
-    Queue -  Handle to the framework queue object that is associated with the
-            I/O request.
-    Request - Handle to a framework request object.
-
-    Lenght - Length of the data buffer associated with the request.
-                 The default property of the queue is to not dispatch
-                 zero lenght read & write requests to the driver and
-                 complete is with ntStatus success. So we will never get
-                 a zero length request.
-
-Return Value:
-
-   None
---*/
-    {
-    NTSTATUS    ntStatus;
-    ULONG_PTR   bytesWritten =0;
-    WDFMEMORY   memory;
-
-    UNREFERENCED_PARAMETER(Queue);
-
-    KdPrint(("LJB_VMON_EvtIoWrite. Request: 0x%p, Queue: 0x%p\n",
-                                Request, Queue));
-    PAGED_CODE();
-
-    //
-    // Get the request buffer and perform write operation here
-    //
-    ntStatus = WdfRequestRetrieveInputMemory(Request, &memory);
-    if(NT_SUCCESS(ntStatus) ) {
-        //
-        // 1) Use WdfMemoryCopyToBuffer to copy data from the request
-        // to driver buffer.
-        // 2) Or get the buffer pointer from the request by calling
-        // WdfRequestRetrieveInputBuffer to  transfer data to the hw
-        // 3) Or you can get the buffer pointer from the memory handle
-        // by calling WdfMemoryGetBuffer to  transfer data to the hw.
-        //
-        bytesWritten = Length;
-        }
-    WdfRequestCompleteWithInformation(Request, ntStatus, Length);
-    }
-
-static VOID
-LJB_VMON_WaitForUpdate(
-    __in LJB_VMON_CTX *         pDevCtx,
-    __in WDFREQUEST             Request
-    )
-    {
-    LJB_VMON_WAIT_FOR_UPDATE_DATA   InputWaitUpdateData;
-    LJB_VMON_WAIT_FOR_UPDATE_DATA * pInputWaitUpdateData;
-    LJB_VMON_WAIT_FOR_UPDATE_DATA * pOutputWaitUpdateData;
-    LJB_VMON_WAIT_FOR_UPDATE_REQ *  pWaitRequest;
-    KIRQL                           OldIrql;
-    KIRQL                           PendingIoctlIrql;
-    NTSTATUS                        ntStatus;
-    BOOLEAN                         bCompleteNow;
-
-    bCompleteNow = FALSE;
-    ntStatus = WdfRequestRetrieveInputBuffer(
-        Request,
-        sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA),
-        &pInputWaitUpdateData,
-        NULL
-        );
-    if (!NT_SUCCESS(ntStatus))
-        {
-        LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
-            ("?" __FUNCTION__
-            ": unable to get pInputWaitUpdateData, "
-            "return ntStatus(0x%08x)\n",
-            ntStatus
-            ));
-        WdfRequestCompleteWithInformation(Request, ntStatus, 0);
-        return;
-        }
-    ntStatus = WdfRequestRetrieveOutputBuffer(
-        Request,
-        sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA),
-        &pOutputWaitUpdateData,
-        NULL
-        );
-    if (!NT_SUCCESS(ntStatus))
-        {
-        LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
-            ("?" __FUNCTION__
-            ": unable to get pOutputWaitUpdateData, "
-            "return ntStatus(0x%08x)\n",
-            ntStatus
-            ));
-        WdfRequestCompleteWithInformation(Request, ntStatus, 0);
-        return;
-        }
-
-    /*
-     * Check if we could complete it now.
-     */
-    KeAcquireSpinLock(&pDevCtx->PendingIoctlListLock, &PendingIoctlIrql);
-    InputWaitUpdateData = *pInputWaitUpdateData;
-    if (InputWaitUpdateData.Flags.Frame &&
-        (pDevCtx->LatestFrameId != InputWaitUpdateData.FrameId) &&
-        ((pDevCtx->LatestFrameId - InputWaitUpdateData.FrameId) <
-        MAX_NUM_FRAME_UPDATE))
-        {
-        *pOutputWaitUpdateData = *pInputWaitUpdateData;
-        pOutputWaitUpdateData->FrameId = pDevCtx->LatestFrameId;
-        ntStatus = STATUS_SUCCESS;
-        bCompleteNow = TRUE;
-        LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-            (" " __FUNCTION__ ": "
-            "Complete WaitForFrame immediately, FrameId = 0x%x\n",
-            pDevCtx->LatestFrameId
-            ));
-        }
-
-    if (bCompleteNow)
-        {
-        ntStatus = STATUS_SUCCESS;
-        KeReleaseSpinLock(&pDevCtx->PendingIoctlListLock, PendingIoctlIrql);
-        WdfRequestCompleteWithInformation(
-            Request,
-            ntStatus,
-            sizeof(*pOutputWaitUpdateData)
-            );
-        return;
-        }
-
-    /*
-     * Not able to complete it. Queue the request for later completion!
-     */
-    pWaitRequest = LJB_VMON_GetPoolZero(sizeof(*pWaitRequest));
-    if (pWaitRequest == NULL)
-        {
-        LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
-            ("?" __FUNCTION__ ": unable to allocate pWaitRequest?\n"));
-        KeReleaseSpinLock(&pDevCtx->PendingIoctlListLock, PendingIoctlIrql);
-        ntStatus = STATUS_INSUFFICIENT_RESOURCES;
-        WdfRequestCompleteWithInformation(Request, ntStatus, 0);
-        return;
-        }
-    pWaitRequest->IoctlCode = IOCTL_LJB_VMON_WAIT_FOR_UPDATE;
-    pWaitRequest->Request = Request;
-    pWaitRequest->pInputWaitUpdateData = pInputWaitUpdateData;
-    pWaitRequest->pOutputWaitUpdateData = pOutputWaitUpdateData;
-
-    /*
-     Once it the request is queued, the request might be free immediately.
-     Do not reference pWaitRequest/pInputWaitData
-     */
-    KeAcquireSpinLock(&pDevCtx->WaitRequestListLock, &OldIrql);
-    InsertTailList(&pDevCtx->WaitRequestListHead, &pWaitRequest->ListEntry);
-    KeReleaseSpinLock(&pDevCtx->WaitRequestListLock, OldIrql);
-
-    KeReleaseSpinLock(&pDevCtx->PendingIoctlListLock, PendingIoctlIrql);
-    LJB_VMON_Printf(pDevCtx, DBGLVL_FLOW,
-        (" " __FUNCTION__ ": "
-        "Queue pWaitRequest(%p), LatestFrameId(0x%x)/UserFrameId(0x%x)\n",
-        pWaitRequest,
-        pDevCtx->LatestFrameId,
-        InputWaitUpdateData.FrameId
-        ));
-    }
-
-VOID
-LJB_VMON_EvtIoDeviceControl(
-    IN WDFQUEUE     Queue,
-    IN WDFREQUEST   Request,
-    IN size_t       OutputBufferLength,
-    IN size_t       InputBufferLength,
-    IN ULONG        IoControlCode
-    )
-/*++
-Routine Description:
-
-    This event is called when the framework receives IRP_MJ_DEVICE_CONTROL
-    requests from the system.
-
-Arguments:
-
-    Queue - Handle to the framework queue object that is associated
-            with the I/O request.
-    Request - Handle to a framework request object.
-
-    OutputBufferLength - length of the request's output buffer,
-                        if an output buffer is available.
-    InputBufferLength - length of the request's input buffer,
-                        if an input buffer is available.
-
-    IoControlCode - the driver-defined or system-defined I/O control code
-                    (IOCTL) that is associated with the request.
-
-Return Value:
-
-   VOID
-
---*/
-    {
-    NTSTATUS             ntStatus= STATUS_SUCCESS;
-    WDF_DEVICE_STATE     deviceState;
-    WDFDEVICE            hDevice = WdfIoQueueGetDevice(Queue);
-    LJB_VMON_CTX * CONST    pDevCtx = LJB_VMON_GetVMonCtx(hDevice);
-
-    UNREFERENCED_PARAMETER(OutputBufferLength);
-    UNREFERENCED_PARAMETER(InputBufferLength);
-
-    KdPrint(("LJB_VMON_EvtIoDeviceControl called\n"));
-
-    PAGED_CODE();
-
-    switch (IoControlCode)
-        {
-    case IOCTL_LJB_VMON_WAIT_FOR_UPDATE:
-        if (OutputBufferLength < sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA))
-            {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
-                ("?" __FUNCTION__
-                ": OutputBufferLength(%u) too small?\n",
-                OutputBufferLength
-                ));
-            ntStatus = STATUS_BUFFER_TOO_SMALL;
-            break;
-            }
-
-        if (InputBufferLength < sizeof(LJB_VMON_WAIT_FOR_UPDATE_DATA))
-            {
-            LJB_VMON_Printf(pDevCtx, DBGLVL_ERROR,
-                ("?" __FUNCTION__
-                ": InputBufferLength(%u) too small?\n",
-                InputBufferLength
-                ));
-            ntStatus = STATUS_BUFFER_TOO_SMALL;
-            break;
-            }
-        LJB_VMON_WaitForUpdate(
-            pDevCtx,
-            Request
-            );
-        return;
-
-    case IOCTL_TOASTER_DONT_DISPLAY_IN_UI_DEVICE:
-        //
-        // This is just an example on how to hide your device in the
-        // device manager. Please remove this code when you adapt
-        // this sample for your hardware.
-        //
-        WDF_DEVICE_STATE_INIT(&deviceState);
-        deviceState.DontDisplayInUI = WdfTrue;
-        WdfDeviceSetDeviceState(
-            hDevice,
-            &deviceState
-            );
-        break;
-
-    default:
-        ntStatus = STATUS_INVALID_DEVICE_REQUEST;
-        }
-
-    //
-    // Complete the Request.
-    //
-    WdfRequestCompleteWithInformation(Request, ntStatus, (ULONG_PTR) 0);
-    }
+}

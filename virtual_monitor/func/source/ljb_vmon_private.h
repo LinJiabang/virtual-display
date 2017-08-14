@@ -1,27 +1,9 @@
-/*++
-
-Copyright (c) 1990-2000 Microsoft Corporation All Rights Reserved
-
-Module Name:
-
-    Toaster.h
-
-Abstract:
-
-    Header file for the toaster driver modules.
-
-Environment:
-
-    Kernel mode
-
---*/
-
-
 #if !defined(_LJB_VMON_PRIVATE_H_)
 #define _LJB_VMON_PRIVATE_H_
 
 #include <ntddk.h>
 #include <wdf.h>
+#include <dispmprt.h>
 
 #include "wmilib.h"
 #include "driver.h"
@@ -29,7 +11,7 @@ Environment:
 #include "ljb_vmon_ioctl.h"
 #include "lci_display_internal_ioctl.h"
 
-#define LJB_VMON_POOL_TAG (ULONG) 'nomV'
+#define LJB_VMON_POOL_TAG (ULONG) 'VMON'
 
 #define MOFRESOURCENAME L"VMON_FUNC_Wmi"
 
@@ -39,18 +21,18 @@ FORCEINLINE
 LJB_VMON_GetPoolZero(
     __in SIZE_T NumberOfBytes
     )
-    {
-    PVOID   pBuf;
+{
+    PVOID   buffer;
 
-    pBuf = ExAllocatePoolWithTag(
+    buffer = ExAllocatePoolWithTag(
         NonPagedPool,
         NumberOfBytes,
         LJB_VMON_POOL_TAG
         );
-    if (pBuf != NULL)
-        RtlZeroMemory(pBuf, NumberOfBytes);
-    return pBuf;
-    }
+    if (buffer != NULL)
+        RtlZeroMemory(buffer, NumberOfBytes);
+    return buffer;
+}
 
 #define LJB_VMON_FreePool(p) ExFreePoolWithTag(p, LJB_VMON_POOL_TAG)
 
@@ -70,30 +52,31 @@ LJB_VMON_GetPoolZero(
 #define DBGLVL_DEFAULT      (DBGLVL_ERROR | DBGLVL_PNP | DBGLVL_POWER)
 
 #if DBG
-#define LJB_VMON_Printf(pDevCtx, Mask, _x_)         \
-    if (pDevCtx->DebugLevel & Mask)                 \
+#define LJB_VMON_Printf(dev_ctx, Mask, _x_)         \
+    if (dev_ctx->DebugLevel & Mask)                 \
         {                                           \
         DbgPrint(" LJB_VMON:");                     \
         DbgPrint _x_;                               \
         }
 #else
-#define LJB_VMON_Printf(pDevCtx, Mask, _x_)
+#define LJB_VMON_Printf(dev_ctx, Mask, _x_)
 #endif
 
-#define LJB_VMON_PrintfAlways(pDevCtx, Mask, _x_)   \
+#define LJB_VMON_PrintfAlways(dev_ctx, Mask, _x_)   \
         DbgPrint(" LJB_VMON:");                     \
         DbgPrint _x_;
 
 
 
-#define MAX_POINTER_SIZE        (256*256*4)   /* width(256)/height(256)/4Byte */
+#define MAX_POINTER_SIZE            (256*256*4)   /* width(256)/height(256)/4Byte */
+#define FRAME_UPDATE_WINDOW         (0x10000)
+
 typedef struct _LJB_VMON_PRIMARY_SURFACE
     {
-    LIST_ENTRY                  ListEntry;
+    LIST_ENTRY                  list_entry;
     HANDLE                      hPrimarySurface;
-    PVOID                       pRemoteBuffer;
+    PVOID                       remote_buffer;
 
-    PVOID                       pBuffer;
     SIZE_T                      BufferSize;
 
     UINT                        Width;
@@ -101,21 +84,7 @@ typedef struct _LJB_VMON_PRIMARY_SURFACE
     UINT                        Pitch;
     UINT                        BytesPerPixel;
 
-    MDL *                       pMdl;
-    PVOID                       pUserBuffer;
-    LONG                        ReferenceCount;
-    BOOLEAN                     bIsAcquiredByUserMode;
-    WDFFILEOBJECT               UserFileObject;
-
-	UCHAR * 					pOrigSurfPosStart;
-	UINT 						EffCurWidth;
-	UINT 						EffCurHeight;
-	BOOLEAN						bIsCursorDrew;
-	UCHAR                       SurfBitmap[MAX_POINTER_SIZE];
-
-	ULONG						FrameId;
-	BOOLEAN						bTransferDone;
-	BOOLEAN						bBusyBltting;
+    LONG                        reference_count;
     } LJB_VMON_PRIMARY_SURFACE;
 
 typedef struct _LJB_POINTER_INFO
@@ -139,14 +108,13 @@ typedef struct _LJB_POINTER_INFO
     UINT                            YHot;
     } LJB_POINTER_INFO;
 
-typedef struct _LJB_VMON_WAIT_FOR_UPDATE_REQ
+typedef struct _LJB_VMON_WAIT_FOR_EVENT_REQ
     {
-    LIST_ENTRY                      ListEntry;
+    LIST_ENTRY                      list_entry;
     WDFREQUEST                      Request;
-    LJB_VMON_WAIT_FOR_UPDATE_DATA * pInputWaitUpdateData;
-    LJB_VMON_WAIT_FOR_UPDATE_DATA * pOutputWaitUpdateData;
-    ULONG                           IoctlCode;
-    } LJB_VMON_WAIT_FOR_UPDATE_REQ;
+    LJB_VMON_MONITOR_EVENT *        in_event_data;
+    LJB_VMON_MONITOR_EVENT *        out_event_data;
+    } LJB_VMON_WAIT_FOR_EVENT_REQ;
 
 typedef struct _LJB_VMON_CTX
     {
@@ -155,31 +123,49 @@ typedef struct _LJB_VMON_CTX
     TOASTER_INTERFACE_STANDARD      BusInterface;
     ULONG                           DebugLevel;
 
+    /*
+     * EDID
+     */
+    UCHAR                           EdidBlock[128];
+
     LCI_GENERIC_INTERFACE           TargetGenericInterface;
     LONG                            InterfaceReferenceCount;
 
-    KSPIN_LOCK                      PrimarySurfaceListLock;
-    LIST_ENTRY                      PrimarySurfaceListHead;
+    KSPIN_LOCK                      surface_lock;
+    LIST_ENTRY                      surface_list;
+    LONG                            PrimarySurfaceListCount;
 
-    KSPIN_LOCK                      WaitRequestListLock;
-    LIST_ENTRY                      WaitRequestListHead;
+    KSPIN_LOCK                      event_req_lock;
+    LIST_ENTRY                      event_req_list;
+    LONG                            event_req_count;
 
-    KSPIN_LOCK                      PendingIoctlListLock;
+    KSPIN_LOCK                      ioctl_lock;
 
     ULONG                           LatestFrameId;
+    ULONG			                LastSentFrameId;
     PVOID                           hLatestPrimarySurface;
 
 	/*
 	 * Store pointer shape and position
 	 */
-	LJB_POINTER_INFO				PointerInfo;
-    BOOLEAN                         DeviceDead;
+	LJB_POINTER_INFO				            PointerInfo;
+    LJB_POINTER_INFO                            TempPointerInfo;
+    BOOLEAN                                     PointerShapeChanged;
+    
+    /*
+     * VidPn related
+     */
+    D3DDDI_VIDEO_PRESENT_SOURCE_ID              VidPnSourceId;
+    BOOLEAN                                     VidPnVisible;
+    UINT                                        Width;
+    UINT                                        Height;
+    UINT                                        Pitch;
+    UINT                                        BytesPerPixel;
 
-    BOOLEAN                         bCursorUpdatePending;
-    ULONG			                FrameIdSent;
-	LONG 		                    AcquirelistCount;
+    D3DKMDT_VIDPN_PRESENT_PATH_TRANSFORMATION   ContentTransformation;
 
-    } LJB_VMON_CTX, *PLJB_VMON_CTX;
+
+    } LJB_VMON_CTX;
 
 WDF_DECLARE_CONTEXT_TYPE_WITH_NAME(LJB_VMON_CTX, LJB_VMON_GetVMonCtx)
 
@@ -266,5 +252,45 @@ LJB_VMON_FireArrivalEvent(
     __in WDFDEVICE  Device
     );
 
-#endif  // _TOASTER_H_
+VOID
+LJB_VMON_WaitForMonitorEvent(
+    __in LJB_VMON_CTX *     dev_ctx,
+    __in WDFREQUEST         wdf_request,
+    __in size_t             InputBufferLength,
+    __in size_t             OutputBufferLength
+    );
+
+VOID
+LJB_VMON_GetPointerShape(
+    __in LJB_VMON_CTX *     dev_ctx,
+    __in WDFREQUEST         wdf_request,
+    __in size_t             InputBufferLength,
+    __in size_t             OutputBufferLength
+    );
+
+VOID
+LJB_VMON_BltBitmap(
+    __in LJB_VMON_CTX *     dev_ctx,
+    __in WDFREQUEST         wdf_request,
+    __in size_t             InputBufferLength,
+    __in size_t             OutputBufferLength
+    );
+
+VOID
+LJB_VMON_LockBuffer(
+    __in LJB_VMON_CTX *     dev_ctx,
+    __in WDFREQUEST         wdf_request,
+    __in size_t             InputBufferLength,
+    __in size_t             OutputBufferLength
+    );
+
+VOID
+LJB_VMON_UnlockBuffer(
+    __in LJB_VMON_CTX *     dev_ctx,
+    __in WDFREQUEST         wdf_request,
+    __in size_t             InputBufferLength,
+    __in size_t             OutputBufferLength
+    );
+
+#endif  // _LJB_VMON_PRIVATE_H_
 
