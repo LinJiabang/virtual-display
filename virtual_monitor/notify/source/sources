@@ -3,11 +3,10 @@ TARGETTYPE=PROGRAM
 
 INCLUDES=..\..\include;$(DDK_INC_PATH);
 
-
 SOURCES=                                \
-    lci_vmon_guid.c                     \
-    lci_vmon_dump_buffer.c              \
-    lci_vmon_dbgprint.c                 \
+    ljb_vmon_guid.c                     \
+    ljb_vmon_dump_buffer.c              \
+    ljb_vmon_dbgprint.c                 \
     ljb_vmon_pixel_main.c               \
     main.c                              \
     notify.c                            \

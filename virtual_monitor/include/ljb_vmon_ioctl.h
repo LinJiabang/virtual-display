@@ -441,9 +441,9 @@ typedef struct _LOCK_BUFFER_DATA
  *    OutputBuffer:       NULL
  *    OutputBufferSize:   0
  */
-#define IOCTL_LJB_VMON_UNLOCK_BUFFER            \
+#define IOCTL_LJB_VMON_UNLOCK_BUFFER                \
     CTL_CODE(FILE_DEVICE_UNKNOWN,                   \
-    LJB_VMON_IOCTL_BASE + 6,                    \
+    LJB_VMON_IOCTL_BASE + 6,                        \
     METHOD_BUFFERED,                                \
     FILE_ANY_ACCESS)
 

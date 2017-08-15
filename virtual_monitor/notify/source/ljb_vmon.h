@@ -10,6 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ljb_vmon_ioctl.h"
+#include "ljb_vmon_guid.h"
+
 /*
  Forward declaration
  */
@@ -45,6 +48,15 @@ typedef struct _LJB_VMON_DEV_CTX
     PDEVICE_INFO                        pDeviceInfo;
     BOOL                                exit_vmon_thread;
 
+    TARGET_MODE_DATA                    TargetModeData;
+    VIDPN_SOURCE_VISIBILITY_DATA        VisibilityData;
+    POINTER_POSITION_DATA               PointerPositionData;
+    POINTER_SHAPE_DATA                  PointerShapeData;
+    UCHAR                               ShadowBitmapBuffer[256*256*4];
+    UCHAR *                             ShadowBitmapPosition;
+    UINT                                ShadowCursorWidth;
+    UINT                                ShadowCursorHeight;
+    BOOLEAN                             FrameBufferIsDirty;
     } LJB_VMON_DEV_CTX;
 
 /*

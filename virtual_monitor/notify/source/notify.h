@@ -72,22 +72,6 @@ WndProc (
     LPARAM lParam
     );
 
-BOOLEAN EnumExistingDevices(
-    HWND   hWnd
-    );
-
-BOOL HandleDeviceInterfaceChange(
-    HWND hwnd,
-    DWORD evtype,
-    PDEV_BROADCAST_DEVICEINTERFACE dip
-    );
-
-BOOL HandleDeviceChange(
-    HWND hwnd,
-    DWORD evtype,
-    PDEV_BROADCAST_HANDLE dhp
-    );
-
 LRESULT
 HandleCommands(
     HWND     hWnd,
@@ -99,22 +83,6 @@ HandleCommands(
 BOOLEAN Cleanup(
     HWND hWnd
     );
-
-BOOL
-GetDeviceDescription(
-    __in LPTSTR DevPath,
-    __out_bcount_full(OutBufferLen) LPTSTR OutBuffer,
-    __in ULONG OutBufferLen,
-    __in PULONG SerialNum
-    );
-
-BOOLEAN
-OpenBusInterface (
-    __in ULONG SerialNum,
-    __in_opt LPWSTR DeviceId,
-    __in USER_ACTION_TYPE Action
-    );
-
 
 INT_PTR CALLBACK
 DlgProc(

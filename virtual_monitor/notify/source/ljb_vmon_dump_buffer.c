@@ -2,26 +2,25 @@
 
 #include <stdio.h>
 #include "ljb_vmon.h"
-//#include "lci_usbav_private.h"
 
 #define  LINE_SIZE       512
 
-/*!
- Name:  LJB_VMON_DumpBuffer
-
- Definition:
-	VOID
-	LJB_VMON_DumpBuffer(
-        __in UCHAR CONST *  pBuf,
-        __in ULONG          BufSize
-		);
-
- Description:
-
- Return Value:
-    None
-
-*/
+/*
+ * Name:  LJB_VMON_DumpBuffer
+ *
+ * Definition:
+ * 	VOID
+ * 	LJB_VMON_DumpBuffer(
+ *        __in UCHAR CONST *  pBuf,
+ *        __in ULONG          BufSize
+ * 		);
+ *
+ * Description:
+ *
+ * Return Value:
+ *    None
+ *
+ */
 
 VOID
 LJB_VMON_DumpBuffer(

@@ -12,10 +12,12 @@ msbuild func\source\vmon_func.vcxproj /p:Configuration=Release;Platform=Win32;Ta
 msbuild func\source\vmon_func.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
 msbuild func\source\vmon_func.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
 
-REM msbuild notify\source\notify.vcxproj /p:Configuration=Debug;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
-REM msbuild notify\source\notify.vcxproj /p:Configuration=Release;Platform=Win32;TargetOsVersion=Win7;EnableInf2cat=false
-REM msbuild notify\source\notify.vcxproj /p:Configuration=Debug;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
-REM msbuild notify\source\notify.vcxproj /p:Configuration=Release;Platform=x64;TargetOsVersion=Win7;EnableInf2cat=false
+set CWD=%CD%\notify\source
+cmd /c "call C:\WinDDK\7600.16385.1\bin\setenv.bat C:\WinDDK\7600.16385.1\  chk x86 WIN7 & cd /d %CWD% & build -cgz"
+cmd /c "call C:\WinDDK\7600.16385.1\bin\setenv.bat C:\WinDDK\7600.16385.1\  fre x86 WIN7 & cd /d %CWD% & build -cgz"
+cmd /c "call C:\WinDDK\7600.16385.1\bin\setenv.bat C:\WinDDK\7600.16385.1\  chk x64 WIN7 & cd /d %CWD% & build -cgz"
+cmd /c "call C:\WinDDK\7600.16385.1\bin\setenv.bat C:\WinDDK\7600.16385.1\  fre x64 WIN7 & cd /d %CWD% & build -cgz"
+
 
 if "%OUTPUT%"== "" set OUTPUT=%CD%\output
 
@@ -49,10 +51,10 @@ copy func\source\Debug\x64\vmon_func.sys        %OUTPUT%\package\chk\x64\
 copy func\source\Release\x86\vmon_func.sys      %OUTPUT%\package\fre\x86\
 copy func\source\Release\x64\vmon_func.sys      %OUTPUT%\package\fre\x64\
 
-REM copy notify\source\Debug\x86\notify.exe         %OUTPUT%\package\chk\x86\
-REM copy notify\source\Debug\x64\notify.exe         %OUTPUT%\package\chk\x64\
-REM copy notify\source\Release\x86\notify.exe       %OUTPUT%\package\fre\x86\
-REM copy notify\source\Release\x64\notify.exe       %OUTPUT%\package\fre\x64\
+copy notify\source\objchk_win7_x86\i386\notify.exe         %OUTPUT%\package\chk\x86\
+copy notify\source\objchk_win7_amd64\amd64\notify.exe      %OUTPUT%\package\chk\x64\
+copy notify\source\objfre_win7_x86\i386\notify.exe         %OUTPUT%\package\fre\x86\
+copy notify\source\objfre_win7_amd64\amd64\notify.exe      %OUTPUT%\package\fre\x64\
 
 REM
 REM preparing PDB
@@ -62,10 +64,10 @@ copy func\source\Debug\x64\vmon_func.pdb        %OUTPUT%\pdb\chk\x64\
 copy func\source\Release\x86\vmon_func.pdb      %OUTPUT%\pdb\fre\x86\
 copy func\source\Release\x64\vmon_func.pdb      %OUTPUT%\pdb\fre\x64\
 
-REM copy notify\source\Debug\x86\notify.pdb         %OUTPUT%\pdb\chk\x86\
-REM copy notify\source\Debug\x64\notify.pdb         %OUTPUT%\pdb\chk\x64\
-REM copy notify\source\Release\x86\notify.pdb       %OUTPUT%\pdb\fre\x86\
-REM copy notify\source\Release\x64\notify.pdb       %OUTPUT%\pdb\fre\x64\
+copy notify\source\objchk_win7_x86\i386\notify.pdb         %OUTPUT%\pdb\chk\x86\
+copy notify\source\objchk_win7_amd64\amd64\notify.pdb      %OUTPUT%\pdb\chk\x64\
+copy notify\source\objfre_win7_x86\i386\notify.pdb         %OUTPUT%\pdb\fre\x86\
+copy notify\source\objfre_win7_amd64\amd64\notify.pdb      %OUTPUT%\pdb\fre\x64\
 
 REM
 REM run INF2CAT
@@ -75,18 +77,8 @@ INF2CAT /uselocaltime /drv:%OUTPUT%\package\fre /os:7_X86,7_X64,8_X86,8_X64,10_X
 
 set TIMESTAMP_SERVER=http://timestamp.digicert.com
 
-if "%TEST_SIGN%" == "" set TEST_SIGN=SIGNTOOL sign /tr %TIMESTAMP_SERVER% /td sha256 /fd sha256 /ac "DigiCert High Assurance EV Root CA.crt" /i "digicert" /v
+if "%TEST_SIGN%" == "" set TEST_SIGN=SIGNTOOL sign /tr %TIMESTAMP_SERVER% /td sha256 /fd sha256 /ac "d:\cert\DigiCert High Assurance EV Root CA.crt" /i "digicert" /v
 
-REM %TEST_SIGN% %OUTPUT%\package\chk\vmon_bus.cat
-REM %TEST_SIGN% %OUTPUT%\package\fre\vmon_bus.cat
-REM %TEST_SIGN% %OUTPUT%\package\chk\x86\vmon_bus.sys
-REM %TEST_SIGN% %OUTPUT%\package\chk\x64\vmon_bus.sys
-REM %TEST_SIGN% %OUTPUT%\package\fre\x86\vmon_bus.sys
-REM %TEST_SIGN% %OUTPUT%\package\fre\x64\vmon_bus.sys
-
-%TEST_SIGN% %OUTPUT%\package\chk\vmon_func.cat
-%TEST_SIGN% %OUTPUT%\package\fre\vmon_func.cat
-%TEST_SIGN% %OUTPUT%\package\chk\x86\vmon_func.sys
-%TEST_SIGN% %OUTPUT%\package\chk\x64\vmon_func.sys
-%TEST_SIGN% %OUTPUT%\package\fre\x86\vmon_func.sys
-%TEST_SIGN% %OUTPUT%\package\fre\x64\vmon_func.sys
+REM password : lci53673835
+%TEST_SIGN% %OUTPUT%\package\chk\vmon_func.cat %OUTPUT%\package\chk\x86\*.sys %OUTPUT%\package\chk\x86\*.exe %OUTPUT%\package\chk\x64\*.sys %OUTPUT%\package\chk\x64\*.exe
+%TEST_SIGN% %OUTPUT%\package\fre\vmon_func.cat %OUTPUT%\package\fre\x86\*.sys %OUTPUT%\package\fre\x86\*.exe %OUTPUT%\package\fre\x64\*.sys %OUTPUT%\package\fre\x64\*.exe
