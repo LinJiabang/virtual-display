@@ -1,0 +1,93 @@
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       =System
+ClassGuid   ={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider    = %LJBSoftware%
+DriverVer=08/16/2017,21.31.24.49
+CatalogFile = vmon_func.cat
+
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+; ================= Class section =====================
+
+;*****************************************
+; vmon Device  Install Section
+;*****************************************
+
+[Manufacturer]
+%StdMfg%=vmon_func, NTx86, NTamd64
+
+; For XP and later
+; DisplayName                   Section           DeviceId
+; -----------                   -------           --------
+[vmon_func.NTx86]
+%VMON_FUNC.DeviceDesc%=vmon_func_install, root\ljb_vmon
+
+[vmon_func.NTamd64]
+%VMON_FUNC.DeviceDesc%=vmon_func_install, root\ljb_vmon
+
+[vmon_func_install]
+CopyFiles=vmon_func_install.CopyFiles
+
+[vmon_func_install.CopyFiles]
+vmon_func.sys
+
+;-------------- Service installation
+
+[vmon_func_install.Services]
+AddService = vmon_func, %SPSVCINST_ASSOCSERVICE%, vmon_func.Service.Install
+
+[vmon_func.Service.Install]
+DisplayName     = %vmon.SVCDESC%
+ServiceType     = 1               ; SERVICE_KERNEL_DRIVER
+StartType       = 3               ; SERVICE_DEMAND_START
+ErrorControl    = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary   = %12%\vmon_func.sys
+LoadOrderGroup  = Extended Base
+
+[SourceDisksNames.x86]
+1=%DiskId1%, vmon_func.sys,,\x86
+
+[SourceDisksNames.amd64]
+1=%DiskId1%, vmon_func.sys,,\x64
+
+[SourceDisksFiles]
+vmon_func.sys = 1,,
+
+;
+;--- vmon_func_install Coinstaller installation ------
+;
+[DestinationDirs]
+
+[vmon_func_install.CoInstallers]
+AddReg          = Toaster_Device_CoInstaller_AddReg
+CopyFiles       = Toaster_Device_CoInstaller_CopyFiles
+
+[Toaster_Device_CoInstaller_AddReg]
+;
+
+
+[Toaster_Device_CoInstaller_CopyFiles]
+;
+
+
+[SourceDisksFiles]
+;
+
+
+[vmon_func_install.Wdf]
+KmdfService              = vmon_func, lci_vmon_wdfsect
+
+[lci_vmon_wdfsect]
+KmdfLibraryVersion       = 1.15
+
+[Strings]
+SPSVCINST_ASSOCSERVICE  = 0x00000002
+LJBSoftware             = "LJB Software"
+StdMfg                  = "(Vmon system devices)"
+DiskId1                 = "LJB Virtual Monitor Installation Disk #1"
+VMON_FUNC.DeviceDesc    = "LJB Virtual Monitor "
+vmon.SVCDESC         = "LJB Virtual Monitor Driver"
+
