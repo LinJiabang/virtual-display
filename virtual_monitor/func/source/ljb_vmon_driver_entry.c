@@ -251,10 +251,10 @@ LJB_VMON_EvtDeviceAdd(
     //
     ntStatus = WdfDeviceCreate(&DeviceInit, &fdoAttributes, &device);
     if (!NT_SUCCESS(ntStatus))
-        {
+    {
         KdPrint( ("WdfDeviceCreate failed with Status code 0x%x\n", ntStatus));
         return ntStatus;
-        }
+    }
 
     //
     // Get the device context by using accessor function specified in
@@ -281,33 +281,6 @@ LJB_VMON_EvtDeviceAdd(
             ": WdfDeviceCreateDeviceInterface failed 0x%x\n", ntStatus));
         return ntStatus;
     }
-
-    ntStatus = WdfDeviceCreateDeviceInterface(
-        device,
-        (LPGUID) &GUID_LCI_USBAV,
-        NULL);
-    if (!NT_SUCCESS (ntStatus))
-    {
-        KdPrint((__FUNCTION__
-            ": WdfDeviceCreateDeviceInterface failed 0x%x\n", ntStatus));
-        return ntStatus;
-    }
-
-    /*
-     * we will enable device interface in IRP_MN_START_DEVICE processing.
-     */
-    WdfDeviceSetDeviceInterfaceState(
-        device,
-        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
-        NULL,
-        FALSE
-        );
-    WdfDeviceSetDeviceInterfaceState(
-        device,
-        (LPGUID) &GUID_LCI_USBAV,
-        NULL,
-        FALSE
-        );
 
     //
     // Register I/O callbacks to tell the framework that you are interested
@@ -446,6 +419,7 @@ LJB_VMON_EvtDevicePrepareHardware(
 
     PAGED_CODE();
 
+    dev_ctx->physical_device_object = WdfDeviceWdmGetPhysicalDevice(Device);
     KeInitializeSpinLock(&dev_ctx->surface_lock);
     InitializeListHead(&dev_ctx->surface_list);
 
@@ -455,11 +429,11 @@ LJB_VMON_EvtDevicePrepareHardware(
 
     KdPrint((__FUNCTION__": entered\n"));
 
-    WdfDeviceSetDeviceInterfaceState(
-        Device,
-        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
+    ntStatus = IoRegisterDeviceInterface(
+        dev_ctx->physical_device_object,
+        (LPGUID)& GUID_LCI_USBAV,
         NULL,
-        TRUE);
+        &dev_ctx->lci_interface_path );
 
     //
     // Fire device arrival event.
@@ -476,24 +450,22 @@ LJB_VMON_EvtDeviceReleaseHardware(
 {
     LJB_VMON_CTX *                  dev_ctx = LJB_VMON_GetVMonCtx(Device);
     LIST_ENTRY * CONST              list_head = &dev_ctx->event_req_list;
-    LJB_VMON_WAIT_FOR_EVENT_REQ *  wait_event_req;
+    LJB_VMON_WAIT_FOR_EVENT_REQ *   wait_event_req;
     LIST_ENTRY *                    list_entry;
     KIRQL                           old_irql;
 
     UNREFERENCED_PARAMETER(ResourcesTranslated);
 
     KdPrint((__FUNCTION__": entered\n"));
-    WdfDeviceSetDeviceInterfaceState(
-        Device,
-        (LPGUID) &LJB_MONITOR_INTERFACE_GUID,
-        NULL,
-        FALSE);
 
-    WdfDeviceSetDeviceInterfaceState(
-        Device,
-        (LPGUID) &GUID_LCI_USBAV,
-        NULL,
-        FALSE);
+    if (dev_ctx->lci_interface_path.Length != 0)
+    {
+        KdPrint((__FUNCTION__ ": disable lci_interface_path\n"));
+        IoSetDeviceInterfaceState(&dev_ctx->lci_interface_path, FALSE);
+        RtlFreeUnicodeString(&dev_ctx->lci_interface_path);
+        dev_ctx->lci_interface_path.Length = 0;
+    }
+
     /*
      * Release any pending Wait request
      */

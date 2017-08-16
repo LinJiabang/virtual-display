@@ -43,31 +43,31 @@ copy "%WindowsSdkDir%"Redist\wdf\x64\WdfCoInstaller01011.dll %OUTPUT%\package\ch
 copy "%WindowsSdkDir%"Redist\wdf\x86\WdfCoInstaller01011.dll %OUTPUT%\package\fre\x86\
 copy "%WindowsSdkDir%"Redist\wdf\x64\WdfCoInstaller01011.dll %OUTPUT%\package\fre\x64\
 
-copy func\source\Debug\x86\vmon_func.inf        %OUTPUT%\package\chk\
-copy func\source\Release\x86\vmon_func.inf      %OUTPUT%\package\fre\
+copy func\source\Debug\x86\vmon_func.inf            %OUTPUT%\package\chk\
+copy func\source\Release\x86\vmon_func.inf          %OUTPUT%\package\fre\
 
-copy func\source\Debug\x86\vmon_func.sys        %OUTPUT%\package\chk\x86\
-copy func\source\Debug\x64\vmon_func.sys        %OUTPUT%\package\chk\x64\
-copy func\source\Release\x86\vmon_func.sys      %OUTPUT%\package\fre\x86\
-copy func\source\Release\x64\vmon_func.sys      %OUTPUT%\package\fre\x64\
+copy func\source\Debug\x86\vmon_func.sys            %OUTPUT%\package\chk\x86\
+copy func\source\Debug\x64\vmon_func.sys            %OUTPUT%\package\chk\x64\
+copy func\source\Release\x86\vmon_func.sys          %OUTPUT%\package\fre\x86\
+copy func\source\Release\x64\vmon_func.sys          %OUTPUT%\package\fre\x64\
 
-copy notify\source\objchk_win7_x86\i386\notify.exe         %OUTPUT%\package\chk\x86\
-copy notify\source\objchk_win7_amd64\amd64\notify.exe      %OUTPUT%\package\chk\x64\
-copy notify\source\objfre_win7_x86\i386\notify.exe         %OUTPUT%\package\fre\x86\
-copy notify\source\objfre_win7_amd64\amd64\notify.exe      %OUTPUT%\package\fre\x64\
+copy notify\source\objchk_win7_x86\i386\vmon.exe    %OUTPUT%\package\chk\x86\
+copy notify\source\objchk_win7_amd64\amd64\vmon.exe %OUTPUT%\package\chk\x64\
+copy notify\source\objfre_win7_x86\i386\vmon.exe    %OUTPUT%\package\fre\x86\
+copy notify\source\objfre_win7_amd64\amd64\vmon.exe %OUTPUT%\package\fre\x64\
 
 REM
 REM preparing PDB
 REM
-copy func\source\Debug\x86\vmon_func.pdb        %OUTPUT%\pdb\chk\x86\
-copy func\source\Debug\x64\vmon_func.pdb        %OUTPUT%\pdb\chk\x64\
-copy func\source\Release\x86\vmon_func.pdb      %OUTPUT%\pdb\fre\x86\
-copy func\source\Release\x64\vmon_func.pdb      %OUTPUT%\pdb\fre\x64\
+copy func\source\Debug\x86\vmon_func.pdb            %OUTPUT%\pdb\chk\x86\
+copy func\source\Debug\x64\vmon_func.pdb            %OUTPUT%\pdb\chk\x64\
+copy func\source\Release\x86\vmon_func.pdb          %OUTPUT%\pdb\fre\x86\
+copy func\source\Release\x64\vmon_func.pdb          %OUTPUT%\pdb\fre\x64\
 
-copy notify\source\objchk_win7_x86\i386\notify.pdb         %OUTPUT%\pdb\chk\x86\
-copy notify\source\objchk_win7_amd64\amd64\notify.pdb      %OUTPUT%\pdb\chk\x64\
-copy notify\source\objfre_win7_x86\i386\notify.pdb         %OUTPUT%\pdb\fre\x86\
-copy notify\source\objfre_win7_amd64\amd64\notify.pdb      %OUTPUT%\pdb\fre\x64\
+copy notify\source\objchk_win7_x86\i386\vmon.pdb    %OUTPUT%\pdb\chk\x86\
+copy notify\source\objchk_win7_amd64\amd64\vmon.pdb %OUTPUT%\pdb\chk\x64\
+copy notify\source\objfre_win7_x86\i386\vmon.pdb    %OUTPUT%\pdb\fre\x86\
+copy notify\source\objfre_win7_amd64\amd\vmon.pdb   %OUTPUT%\pdb\fre\x64\
 
 REM
 REM run INF2CAT

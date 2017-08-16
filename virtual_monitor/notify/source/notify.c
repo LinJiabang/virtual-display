@@ -52,7 +52,7 @@ __user_code
 
 static PVOID g_pDebugHandler = NULL;
 LONG
-LCI_PROXYUMD_VectoredHandler(
+LJB_VMON_VectorHandler(
     struct _EXCEPTION_POINTERS *pExceptionInfo
     );
 
@@ -169,7 +169,7 @@ WinMain (
     hInst=hInstance;
 
 #if (DBG)
-    g_pDebugHandler = AddVectoredExceptionHandler(1, LCI_PROXYUMD_VectoredHandler);
+    g_pDebugHandler = AddVectoredExceptionHandler(1, LJB_VMON_VectorHandler);
 #endif
 
     deviceInfo = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(DEVICE_INFO));
@@ -536,7 +536,7 @@ SendIoctlToFilterDevice()
 }
 
 LONG
-LCI_PROXYUMD_VectoredHandler(
+LJB_VMON_VectorHandler(
     struct _EXCEPTION_POINTERS *pExceptionInfo
     )
     {

@@ -405,7 +405,6 @@ LJB_VMON_PixelMain(
     UCHAR                           MyEDID[128];
     ULONG                           bytes_returned;
     BOOLEAN                         PointerPositionChanged;
-    UINT32                          VidPnTargetId;
 
     RtlCopyMemory(MyEDID, EdidTemplate, 128);
     SetEdid(MyEDID);
@@ -446,8 +445,8 @@ LJB_VMON_PixelMain(
         IOCTL_LJB_VMON_PLUGIN_MONITOR,
         MyEDID,
         sizeof(MyEDID),
-        &VidPnTargetId,
-        sizeof(VidPnTargetId),
+        NULL,
+        0,
         &bytes_returned,
         NULL
         );
@@ -456,8 +455,6 @@ LJB_VMON_PixelMain(
         DBG_PRINT((__FUNCTION__": IOCTL_LJB_VMON_PLUGIN_MONITOR failed\n"));
         return;
     }
-
-    DBG_PRINT((__FUNCTION__": VidPnTargetId(0x%x) returned\n", VidPnTargetId));
 
     ExitLoop = FALSE;
     while (!ExitLoop)

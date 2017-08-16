@@ -196,6 +196,14 @@ LJB_VMON_GenericIoctl(
         dev_ctx->LatestFrameId = surface_update->FrameId;
         dev_ctx->hLatestPrimarySurface = surface_update->hPrimarySurface;
 
+        LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
+            (__FUNCTION__
+            ": LCI_PROXYKMD_NOTIFY_PRIMARY_SURFACE_UPDATE, FrameId(%d), "
+            "hLatestPrimarySurface(0x%p)\n",
+            dev_ctx->LatestFrameId,
+            dev_ctx->hLatestPrimarySurface
+            ));
+
         /*
          * Check if there is pending LJB_VMON_WAIT_FOR_EVENT_REQ request
          */

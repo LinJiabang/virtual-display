@@ -55,7 +55,6 @@ LJB_VMON_GetPoolZero(
 #define LJB_VMON_Printf(dev_ctx, Mask, _x_)         \
     if (dev_ctx->DebugLevel & Mask)                 \
         {                                           \
-        DbgPrint(" LJB_VMON:");                     \
         DbgPrint _x_;                               \
         }
 #else
@@ -123,6 +122,10 @@ typedef struct _LJB_VMON_CTX
     TOASTER_INTERFACE_STANDARD      BusInterface;
     ULONG                           DebugLevel;
 
+    DEVICE_OBJECT *                 physical_device_object;
+    UNICODE_STRING                  lci_interface_path;
+
+
     /*
      * EDID
      */
@@ -151,7 +154,7 @@ typedef struct _LJB_VMON_CTX
 	LJB_POINTER_INFO				            PointerInfo;
     LJB_POINTER_INFO                            TempPointerInfo;
     BOOLEAN                                     PointerShapeChanged;
-    
+
     /*
      * VidPn related
      */

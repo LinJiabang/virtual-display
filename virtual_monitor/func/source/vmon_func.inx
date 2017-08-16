@@ -23,10 +23,10 @@ DefaultDestDir = 12
 ; DisplayName                   Section           DeviceId
 ; -----------                   -------           --------
 [vmon_func.NTx86]
-%VMON_FUNC.DeviceDesc%=vmon_func_install, root\virtual_monitor
+%VMON_FUNC.DeviceDesc%=vmon_func_install, root\ljb_vmon
 
 [vmon_func.NTamd64]
-%VMON_FUNC.DeviceDesc%=vmon_func_install, root\virtual_monitor
+%VMON_FUNC.DeviceDesc%=vmon_func_install, root\ljb_vmon
 
 [vmon_func_install]
 CopyFiles=vmon_func_install.CopyFiles

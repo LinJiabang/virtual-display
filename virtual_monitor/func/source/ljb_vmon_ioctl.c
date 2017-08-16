@@ -74,21 +74,16 @@ LJB_VMON_EvtIoDeviceControl(
         }
 
         RtlCopyMemory(dev_ctx->EdidBlock, edid_block, 128);
-        WdfDeviceSetDeviceInterfaceState(
-            Device,
-            (LPGUID) &GUID_LCI_USBAV,
-            NULL,
+        IoSetDeviceInterfaceState(
+            &dev_ctx->lci_interface_path,
             TRUE);
-
         ntStatus = STATUS_SUCCESS;
         break;
 
     case IOCTL_LJB_VMON_UNPLUG_MONITOR:
         RtlZeroMemory(dev_ctx->EdidBlock, 128);
-        WdfDeviceSetDeviceInterfaceState(
-            Device,
-            (LPGUID) &GUID_LCI_USBAV,
-            NULL,
+        IoSetDeviceInterfaceState(
+            &dev_ctx->lci_interface_path,
             FALSE);
         ntStatus = STATUS_SUCCESS;
         break;
@@ -154,6 +149,7 @@ LJB_VMON_WaitForMonitorEvent(
 {
     LJB_VMON_MONITOR_EVENT *    input_data;
     LJB_VMON_MONITOR_EVENT *    output_data;
+    LJB_VMON_MONITOR_EVENT      output_event;
     LJB_VMON_WAIT_FLAGS         input_flags;
     NTSTATUS                    ntStatus = STATUS_SUCCESS;
     ULONG                       bytes_returned = 0;
@@ -216,8 +212,9 @@ LJB_VMON_WaitForMonitorEvent(
     /*
      * check each input flag
      */
-    RtlZeroMemory(output_data, sizeof(LJB_VMON_MONITOR_EVENT));
+    RtlZeroMemory(&output_event, sizeof(LJB_VMON_MONITOR_EVENT));
     input_flags = input_data->Flags;
+
     KeAcquireSpinLock(&dev_ctx->ioctl_lock, &old_irql_ioctl);
     if (input_flags.ModeChange)
     {
@@ -225,11 +222,11 @@ LJB_VMON_WaitForMonitorEvent(
             input_data->TargetModeData.Height != dev_ctx->Height ||
             input_data->TargetModeData.Rotation != dev_ctx->ContentTransformation.Rotation)
         {
-            output_data->Flags.ModeChange = TRUE;
-            output_data->TargetModeData.Width = dev_ctx->Width;
-            output_data->TargetModeData.Height = dev_ctx->Height;
-            output_data->TargetModeData.Rotation = dev_ctx->ContentTransformation.Rotation;
-            output_data->TargetModeData.Enabled = (dev_ctx->Width != 0);
+            output_event.Flags.ModeChange = TRUE;
+            output_event.TargetModeData.Width = dev_ctx->Width;
+            output_event.TargetModeData.Height = dev_ctx->Height;
+            output_event.TargetModeData.Rotation = dev_ctx->ContentTransformation.Rotation;
+            output_event.TargetModeData.Enabled = (dev_ctx->Width != 0);
         }
     }
 
@@ -237,8 +234,8 @@ LJB_VMON_WaitForMonitorEvent(
     {
         if (input_data->VidPnSourceVisibilityData.Visible != dev_ctx->VidPnVisible)
         {
-            output_data->Flags.VidPnSourceVisibilityChange = TRUE;
-            output_data->VidPnSourceVisibilityData.Visible = dev_ctx->VidPnVisible;
+            output_event.Flags.VidPnSourceVisibilityChange = TRUE;
+            output_event.VidPnSourceVisibilityData.Visible = dev_ctx->VidPnVisible;
         }
     }
 
@@ -246,8 +243,8 @@ LJB_VMON_WaitForMonitorEvent(
     {
         if (input_data->FrameId != dev_ctx->LatestFrameId)
         {
-            output_data->Flags.VidPnSourceBitmapChange = TRUE;
-            output_data->FrameId = dev_ctx->LatestFrameId;
+            output_event.Flags.VidPnSourceBitmapChange = TRUE;
+            output_event.FrameId = dev_ctx->LatestFrameId;
         }
     }
 
@@ -255,8 +252,8 @@ LJB_VMON_WaitForMonitorEvent(
     {
         if (input_data->FrameId != dev_ctx->LatestFrameId)
         {
-            output_data->Flags.VidPnSourceBitmapChange = TRUE;
-            output_data->FrameId = dev_ctx->LatestFrameId;
+            output_event.Flags.VidPnSourceBitmapChange = TRUE;
+            output_event.FrameId = dev_ctx->LatestFrameId;
         }
     }
 
@@ -266,10 +263,10 @@ LJB_VMON_WaitForMonitorEvent(
             input_data->PointerPositionData.Y != dev_ctx->PointerInfo.Y ||
             input_data->PointerPositionData.Visible != dev_ctx->PointerInfo.Visible)
         {
-            output_data->Flags.PointerPositionChange = TRUE;
-            output_data->PointerPositionData.X = dev_ctx->PointerInfo.X;
-            output_data->PointerPositionData.Y = dev_ctx->PointerInfo.Y;
-            output_data->PointerPositionData.Visible = dev_ctx->PointerInfo.Visible;
+            output_event.Flags.PointerPositionChange = TRUE;
+            output_event.PointerPositionData.X = dev_ctx->PointerInfo.X;
+            output_event.PointerPositionData.Y = dev_ctx->PointerInfo.Y;
+            output_event.PointerPositionData.Visible = dev_ctx->PointerInfo.Visible;
         }
     }
 
@@ -278,14 +275,15 @@ LJB_VMON_WaitForMonitorEvent(
         if (dev_ctx->PointerShapeChanged)
         {
             dev_ctx->PointerShapeChanged = FALSE;
-            output_data->Flags.PointerShapeChange = TRUE;
+            output_event.Flags.PointerShapeChange = TRUE;
         }
     }
     KeReleaseSpinLock(&dev_ctx->ioctl_lock, old_irql_ioctl);
 
-    if (output_data->Flags.Value != 0)
+    if (output_event.Flags.Value != 0)
     {
         ntStatus = STATUS_SUCCESS;
+        *output_data = output_event;
         bytes_returned = sizeof(*output_data);
     }
     else
