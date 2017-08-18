@@ -1,0 +1,102 @@
+;
+;
+;Module Name:
+;
+;    lci_proxywddm.inf
+;
+;Abstract:
+;    LuminonCore Display Proxy Driver
+;
+;
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318}
+Provider=%LCI%
+DriverVer=06/14/2017,1.0.2017.0614
+CatalogFile=lci_proxywddm.cat
+
+[DestinationDirs]
+DefaultDestDir              = 12
+lci_proxywddm.CopyFiles     = 12                ; drivers
+lci_proxyumd.CopyFiles      = 11                ; system32
+lci_proxyumdwow.CopyFiles   = 10, SysWow64      ; x64-specific
+
+[SourceDisksNames.x86]
+1=%DiskId1%, lci_proxywddm.sys,,\x86
+1=%DiskId1%, lci_proxyumd.dll,,\x86
+
+[SourceDisksNames.amd64]
+1=%DiskId1%, lci_proxywddm.sys,,\x64
+1=%DiskId1%, lci_proxyumd.dll,,\x64
+1=%DiskId1%, lci_proxyumd32.dll,,\x64
+
+[SourceDisksFiles.x86]
+lci_proxywddm.sys    = 1
+lci_proxyumd.dll    = 1
+
+[SourceDisksFiles.amd64]
+lci_proxywddm.sys    = 1
+lci_proxyumd.dll    = 1
+lci_proxyumd32.dll  = 1
+
+
+;*****************************************
+; Table of contents  Install Section
+;*****************************************
+
+[Manufacturer]
+%LCI%=LciProxyDisplay, NTx86, NTamd64
+
+[LciProxyDisplay.NTx86]
+%lci_proxywddm.DeviceDesc%=lci_proxywddm.Install, root\lci_proxywddm
+
+[LciProxyDisplay.NTamd64]
+%lci_proxywddm.DeviceDesc%=lci_proxywddm.Install, root\lci_proxywddm
+
+[lci_proxywddm.Install.NT]
+AddReg=lci_proxywddm.Install.AddReg
+CopyFiles=lci_proxywddm.CopyFiles, lci_proxyumd.CopyFiles
+
+[lci_proxywddm.Install.NTamd64]
+AddReg=lci_proxywddm.Install.AddReg
+CopyFiles=lci_proxywddm.CopyFiles, lci_proxyumd.CopyFiles, lci_proxyumdwow.CopyFiles
+
+[lci_proxywddm.Install.AddReg]
+HKR,, DebugLevel, 0x10001, 0x001f
+HKR,, VSyncIntervalMs, 0x10001, 16
+HKR,, VSyncBlankPeriodMs, 0x10001, 10
+
+
+[lci_proxywddm.CopyFiles]
+lci_proxywddm.sys
+
+[lci_proxyumd.CopyFiles]
+lci_proxyumd.dll
+
+[lci_proxyumdwow.CopyFiles]
+lci_proxyumd32.dll, lci_proxyumd32.dll,, 0x00004000 ; COPYFLG_IN_USE_TRY_RENAME
+
+;
+; Service Installation
+;
+[lci_proxywddm.Install.NT.Services]
+AddService = lci_proxywddm, 0x00000002, lci_proxywddm.Service
+
+[lci_proxywddm.Install.NTAMD64.Services]
+AddService = lci_proxywddm, 0x00000002, lci_proxywddm.Service
+
+[lci_proxywddm.Service]
+DisplayName    = %lci_proxywddm.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 0               ; SERVICE_BOOT_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\lci_proxywddm.sys
+LoadOrderGroup = Extended Base
+
+[Strings]
+LCI = "LuminonCore"
+DiskId1 = "Lci Proxy Display Installation Disk #1"
+lci_proxywddm.DeviceDesc = "LuminonCore WDDM PROXY"
+lci_proxywddm.SVCDESC = "LuminonCore WDDM PROXY"
+
