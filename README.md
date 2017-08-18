@@ -40,7 +40,7 @@
    Use buildall_wdk10.cmd to build all components. An output folder is created
    as the result.
 
-   There is also a precompiled driver binary under bin folder.
+   There is also a precompiled driver binary under precompiled folder.
 
 4. How to run the demo
 
