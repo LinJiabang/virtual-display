@@ -1,6 +1,12 @@
 #include "ljb_vmon_private.h"
 
 /*
+ * forward declaration
+ */
+LCI_RELEASE_INTERFACE   LJB_VMON_ReleaseInterface;
+
+
+/*
  * Function:
  *    LJB_VMON_InternalDeviceIoControl
  *
@@ -149,10 +155,11 @@ LJB_VMON_InternalDeviceIoControl(
             sizeof(MyGenericInterface)
             );
         RtlZeroMemory(&MyGenericInterface, sizeof(MyGenericInterface));
-        MyGenericInterface.Version          = LCI_GENERIC_INTERFACE_V1;
-        MyGenericInterface.Size             = sizeof(MyGenericInterface);
-        MyGenericInterface.ProviderContext  = dev_ctx;
-        MyGenericInterface.pfnGenericIoctl  = &LJB_VMON_GenericIoctl;
+        MyGenericInterface.Version              = LCI_GENERIC_INTERFACE_V1;
+        MyGenericInterface.Size                 = sizeof(MyGenericInterface);
+        MyGenericInterface.ProviderContext      = dev_ctx;
+        MyGenericInterface.pfnGenericIoctl      = &LJB_VMON_GenericIoctl;
+        MyGenericInterface.pfnReleaseInterface  = &LJB_VMON_ReleaseInterface
         ntStatus = WdfRequestRetrieveOutputBuffer(
             Request,
             OutputBufferLength,
@@ -193,4 +200,21 @@ LJB_VMON_InternalDeviceIoControl(
         BytesReturned
         ));
     WdfRequestCompleteWithInformation(Request, ntStatus, BytesReturned);
+}
+
+VOID
+LJB_VMON_ReleaseInterface(
+    __in PVOID          ProviderContext
+    )
+{
+    LJB_VMON_CTX * CONST    dev_ctx = ProviderContext;
+
+    InterlockedDecrement(
+       &dev_ctx->InterfaceReferenceCount
+       );
+    LJB_VMON_Printf(dev_ctx, DBGLVL_FLOW,
+        (__FUNCTION__
+        "InterfaceReferenceCount is now (0x%x)\n",
+        dev_ctx->InterfaceReferenceCount
+        ));
 }
